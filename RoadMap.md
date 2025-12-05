@@ -43,15 +43,15 @@ This document outlines the development plan for the Chtholly programming languag
   - [ ] Implement the borrow checker rules.
 - [x] **Operators:**
   - [x] Arithmetic operators.
-  - [ ] Comparison operators.
-  - [ ] Logical operators.
+  - [x] Comparison operators.
+  - [x] Logical operators.
   - [ ] Bitwise operators.
   - [ ] Assignment operators.
 
 ## Milestone 4: Control Flow
 
-- [ ] **Conditional Statements:**
-  - [ ] `if-else` statements.
+- [x] **Conditional Statements:**
+  - [x] `if-else` statements.
   - [ ] `switch-case` statements.
 - [ ] **Looping Constructs:**
   - [ ] `while` loops.

@@ -21,6 +21,7 @@ pub struct Function {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let(LetDeclaration),
+    Expression(Expression),
 }
 
 /// Represents a let declaration.
@@ -52,6 +53,16 @@ pub enum Type {
 pub enum Expression {
     Literal(Literal),
     Binary(Box<Expression>, BinaryOp, Box<Expression>),
+    If(If),
+    Block(Vec<Statement>),
+}
+
+/// Represents an if-else expression.
+#[derive(Debug, PartialEq, Clone)]
+pub struct If {
+    pub condition: Box<Expression>,
+    pub then_block: Box<Expression>,
+    pub else_block: Option<Box<Expression>>,
 }
 
 /// Represents a literal value.
@@ -71,4 +82,14 @@ pub enum BinaryOp {
     Sub,
     Mul,
     Div,
+
+    Eq,
+    NotEq,
+    Gt,
+    GtEq,
+    Lt,
+    LtEq,
+
+    And,
+    Or,
 }
