@@ -4,10 +4,10 @@ This document outlines the development plan and progress for the Chtholly progra
 
 ## Phase 1: Foundations
 
-- [ ] **Project Setup**: Initialize the Rust project, configure `Cargo.toml`, and set up the basic directory structure.
-- [ ] **Lexer (Tokenizer)**: Implement the lexer to scan the source code and convert it into a stream of tokens.
-    - [ ] Support for comments (single-line and multi-line).
-    - [ ] Recognize keywords, identifiers, operators, and literals (integers, floats, strings, chars).
+- [x] **Project Setup**: Initialize the Rust project, configure `Cargo.toml`, and set up the basic directory structure.
+- [x] **Lexer (Tokenizer)**: Implement the lexer to scan the source code and convert it into a stream of tokens.
+    - [x] Support for comments (single-line and multi-line).
+    - [x] Recognize keywords, identifiers, operators, and literals (integers, strings, chars).
 - [ ] **Parser & AST**: Implement the parser to consume the token stream and build an Abstract Syntax Tree (AST).
     - [ ] Define AST node structures.
     - [ ] Implement parsing for basic expressions and variable declarations.
