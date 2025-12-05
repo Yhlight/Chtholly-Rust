@@ -4,23 +4,23 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Milestone 1: Core Language and Infrastructure
 
-- [ ] **Project Setup:**
-  - [ ] Initialize Rust project with Cargo.
-  - [ ] Add LLVM dependencies.
-  - [ ] Set up `.gitignore`.
-- [ ] **Basic Syntax Parsing:**
-  - [ ] Comments (single-line and multi-line).
-  - [ ] Main function definition.
-- [ ] **Abstract Syntax Tree (AST):**
-  - [ ] Define initial AST nodes.
-- [ ] **Testing:**
-  - [ ] Set up the testing framework.
-  - [ ] Implement initial parser tests.
+- [x] **Project Setup:**
+  - [x] Initialize Rust project with Cargo.
+  - [x] Add LLVM dependencies.
+  - [x] Set up `.gitignore`.
+- [x] **Basic Syntax Parsing:**
+  - [x] Comments (single-line and multi-line).
+  - [x] Main function definition.
+- [x] **Abstract Syntax Tree (AST):**
+  - [x] Define initial AST nodes.
+- [x] **Testing:**
+  - [x] Set up the testing framework.
+  - [x] Implement initial parser tests.
 
 ## Milestone 2: Variables and Data Types
 
-- [ ] **Variable Declarations:**
-  - [ ] `let` (immutable) variables.
+- [x] **Variable Declarations:**
+  - [x] `let` (immutable) variables.
   - [ ] `mut` (mutable) variables.
 - [ ] **Data Types:**
   - [ ] Integer types (`int`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`).
@@ -28,9 +28,9 @@ This document outlines the development plan for the Chtholly programming languag
   - [ ] `char` type.
   - [ ] `bool` type.
   - [ ] `string` type.
-- [ ] **Type Inference and Annotations:**
-  - [ ] Implement type inference for variable declarations.
-  - [ ] Support explicit type annotations.
+- [x] **Type Inference and Annotations:**
+  - [x] Implement type inference for variable declarations.
+  - [x] Support explicit type annotations.
 
 ## Milestone 3: Ownership, Borrowing, and Operators
 

@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 llvm-sys = "181.*"
+chumsky = "0.9.3"

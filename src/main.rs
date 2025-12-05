@@ -10,7 +10,7 @@ fn main() {
     "#;
 
     match parser::parse(source) {
-        Ok(_) => println!("Parsing successful!"),
-        Err(e) => println!("Parsing failed: {}", e),
+        Ok(ast) => println!("Parsing successful: {:?}", ast),
+        Err(e) => println!("Parsing failed: {:?}", e),
     }
 }
