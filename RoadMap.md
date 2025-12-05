@@ -1,0 +1,41 @@
+# Chtholly Language Development Roadmap
+
+## Milestone 1: Core Language and Syntax
+
+- [ ] **Comments:** Implement single-line (`//`) and multi-line (`/* */`) comments.
+- [ ] **Main Function:** Implement the `main` function as the entry point of the program.
+- [ ] **Variables:** Implement `let` and `mut` variable declarations with type inference and annotations.
+- [ ] **Data Types:** Implement basic data types: `int`, `double`, `char`, `string`, `bool`.
+- [ ] **Operators:** Implement basic arithmetic, comparison, and logical operators.
+- [ ] **Control Flow:** Implement `if-else` statements.
+
+## Milestone 2: Functions and Scope
+
+- [ ] **Functions:** Implement function definitions and calls.
+- [ ] **Ownership and Borrowing:** Implement the ownership and borrowing system for memory management.
+- [ ] **Scope:** Implement lexical scoping for variables and functions.
+
+## Milestone 3: Compound Data Types
+
+- [ ] **Arrays:** Implement static and dynamic arrays.
+- [ ] **Structs:** Implement `struct` definitions and instantiations.
+- [ ] **Enums:** Implement `enum` definitions and pattern matching.
+
+## Milestone 4: Classes and Object-Oriented Features
+
+- [ ] **Classes:** Implement `class` definitions, including member variables, constructors, and destructors.
+- [ ] **Member Functions:** Implement member functions with `self`, `&self`, and `&mut self`.
+- [ ] **Access Modifiers:** Implement `public` and `private` access modifiers.
+
+## Milestone 5: Advanced Features
+
+- [ ] **Generics:** Implement generic functions and classes.
+- [ ] **Modules:** Implement a module system with `import` and `use` statements.
+- [ ] **Error Handling:** Implement `Result<T, E>` for error handling.
+- [ ] **Lambdas:** Implement lambda expressions.
+
+## Milestone 6: Standard Library
+
+- [ ] **IO:** Implement a basic IO library for printing to the console.
+- [ ] **String:** Implement a string manipulation library.
+- [ ] **Collections:** Implement basic collection types like vectors and maps.
