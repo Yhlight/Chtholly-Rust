@@ -24,6 +24,50 @@ fn test_let_statement() {
 }
 
 #[test]
+fn test_index_expression_parsing() {
+    let input = "myArray[1 + 1]";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    assert_eq!(program.len(), 1);
+
+    let statement = &program[0];
+    if let Statement::Expression(expression) = statement {
+        if let Expression::Index(left, _index) = expression {
+            if let Expression::Identifier(name) = &**left {
+                assert_eq!(name, "myArray");
+            } else {
+                panic!("left is not an Identifier");
+            }
+        } else {
+            panic!("expression is not an Index expression");
+        }
+    } else {
+        panic!("statement is not an Expression statement");
+    }
+}
+
+#[test]
+fn test_array_literal_parsing() {
+    let input = "[1, 2 * 2, 3 + 3]";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    assert_eq!(program.len(), 1);
+
+    let statement = &program[0];
+    if let Statement::Expression(expression) = statement {
+        if let Expression::Array(elements) = expression {
+            assert_eq!(elements.len(), 3);
+        } else {
+            panic!("expression is not an Array literal");
+        }
+    } else {
+        panic!("statement is not an Expression statement");
+    }
+}
+
+#[test]
 fn test_mut_statement() {
     let input = "mut x = 5;";
     let lexer = Lexer::new(input);

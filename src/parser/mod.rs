@@ -134,7 +134,8 @@ impl<'a> Parser<'a> {
             | Token::LessThanOrEqual
             | Token::GreaterThan
             | Token::GreaterThanOrEqual
-            | Token::LParen => {
+            | Token::LParen
+            | Token::LBracket => {
                     self.next_token();
                     left = self.parse_infix_expression(left)?;
                 }
@@ -155,6 +156,7 @@ impl<'a> Parser<'a> {
             Token::Bool(value) => Some(Expression::Bool(*value)),
             Token::Not | Token::Minus => self.parse_prefix_expression(),
             Token::LParen => self.parse_grouped_expression(),
+            Token::LBracket => self.parse_array_literal(),
             Token::If => self.parse_if_expression(),
             Token::Fn => self.parse_function_literal(),
             _ => None,
@@ -175,6 +177,7 @@ impl<'a> Parser<'a> {
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
         match self.current_token {
             Token::LParen => return self.parse_call_expression(left),
+            Token::LBracket => return self.parse_index_expression(left),
             _ => (),
         }
 
@@ -196,6 +199,39 @@ impl<'a> Parser<'a> {
         self.next_token();
         let right = self.parse_expression(precedence)?;
         Some(Expression::Infix(infix, Box::new(left), Box::new(right)))
+    }
+
+    fn parse_index_expression(&mut self, left: Expression) -> Option<Expression> {
+        self.next_token();
+        let index = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::RBracket) {
+            return None;
+        }
+        Some(Expression::Index(Box::new(left), Box::new(index)))
+    }
+
+    fn parse_array_literal(&mut self) -> Option<Expression> {
+        let elements = self.parse_expression_list(Token::RBracket)?;
+        Some(Expression::Array(elements))
+    }
+
+    fn parse_expression_list(&mut self, end: Token) -> Option<Vec<Expression>> {
+        let mut list = vec![];
+        if self.peek_token == end {
+            self.next_token();
+            return Some(list);
+        }
+        self.next_token();
+        list.push(self.parse_expression(Precedence::Lowest)?);
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            list.push(self.parse_expression(Precedence::Lowest)?);
+        }
+        if !self.expect_peek(end) {
+            return None;
+        }
+        Some(list)
     }
 
     fn parse_grouped_expression(&mut self) -> Option<Expression> {

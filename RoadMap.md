@@ -17,7 +17,7 @@
 - [ ] **Classes and Structs:** Implement class and struct definitions.
 - [ ] **Methods:** Implement method calls.
 - [ ] **Enums:** Implement enums.
-- [ ] **Arrays:** Implement static and dynamic arrays.
+- [x] **Arrays:** Implement static and dynamic arrays.
 - [ ] **Loops:** Implement `while`, `for`, `foreach`, and `do-while` loops.
 - [ ] **Generics:** Implement generic functions and classes.
 - [ ] **Modules:** Implement the module system with `import` and `use`.
