@@ -134,7 +134,7 @@ fn test_next_token_multi_char() {
         Token::Identifier("ten".to_string()),
         Token::RParen,
         Token::Semicolon,
-        Token::Illegal,
+        Token::Bang,
         Token::Minus,
         Token::Slash,
         Token::Asterisk,

@@ -11,13 +11,13 @@ This document outlines the development plan and progress for the Chtholly progra
 - [x] **Parser & AST**: Implement the parser to consume the token stream and build an Abstract Syntax Tree (AST).
     - [x] Define AST node structures.
     - [x] Implement parsing for basic expressions and variable declarations.
+- [x] **Operators**: Implement all standard arithmetic, comparison, logical, and bitwise operators.
 
 ## Phase 2: Core Language Features
 
 - [ ] **Basic Data Types**: Implement support for primitive data types (`int`, `double`, `char`, `bool`, `string`, etc.).
 - [ ] **Variables**: Implement variable declarations (`let`, `mut`) and assignments.
     - [ ] Type inference and explicit type annotations.
-- [ ] **Operators**: Implement all standard arithmetic, comparison, logical, and bitwise operators.
 - [ ] **Basic Control Flow**:
     - [ ] `if-else` expressions.
     - [ ] `switch-case` statements.

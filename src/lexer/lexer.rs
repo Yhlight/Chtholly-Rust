@@ -57,7 +57,10 @@ impl Lexer {
             self.read_char();
         }
         let number_str = &self.input[position..self.position];
-        Token::Integer(number_str.parse().unwrap())
+        match number_str.parse() {
+            Ok(value) => Token::Integer(value),
+            Err(_) => Token::Illegal,
+        }
     }
 
     fn read_string(&mut self) -> Token {
@@ -105,7 +108,7 @@ impl Lexer {
                     Token::NotEq
                 } else {
                     self.read_char();
-                    Token::Illegal
+                    Token::Bang
                 }
             }
             b'/' => {

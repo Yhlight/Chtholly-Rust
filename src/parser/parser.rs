@@ -1,6 +1,16 @@
 use crate::lexer::lexer::Lexer;
 use crate::lexer::token::Token;
-use crate::ast::ast::{Program, Statement, Identifier};
+use crate::ast::ast::{Program, Statement, Expression, Identifier};
+
+#[derive(PartialEq, PartialOrd)]
+enum Precedence {
+    Lowest,
+    Equals,      // ==
+    LessGreater, // > or <
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
+}
 
 pub struct Parser {
     lexer: Lexer,
@@ -37,7 +47,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
-            _ => None,
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -60,19 +70,148 @@ impl Parser {
             return None;
         }
 
-        // TODO: We're skipping the expression until we have a parser for it.
-        while !self.current_token_is(&Token::Semicolon) {
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token_is(&Token::Semicolon) {
             self.next_token();
         }
 
         Some(Statement::LetStatement {
             token: let_token,
             name,
+            value,
         })
     }
 
-    fn current_token_is(&self, token_type: &Token) -> bool {
-        std::mem::discriminant(&self.current_token) == std::mem::discriminant(token_type)
+    fn parse_expression_statement(&mut self) -> Option<Statement> {
+        let token = self.current_token.clone();
+
+        let expression = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token_is(&Token::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Statement::ExpressionStatement { token, expression })
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
+        let mut left_exp = self.parse_prefix()?;
+
+        while !self.peek_token_is(&Token::Semicolon) && precedence < self.peek_precedence() {
+            if let Some(infix_parser) = self.get_infix_parser() {
+                self.next_token();
+                left_exp = infix_parser(self, left_exp)?;
+            } else {
+                return Some(left_exp);
+            }
+        }
+
+        Some(left_exp)
+    }
+
+    fn parse_prefix(&mut self) -> Option<Expression> {
+        match self.current_token {
+            Token::Identifier(_) => self.parse_identifier(),
+            Token::Integer(_) => self.parse_integer_literal(),
+            Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            _ => None,
+        }
+    }
+
+    fn parse_identifier(&self) -> Option<Expression> {
+        Some(Expression::Identifier(Identifier {
+            token: self.current_token.clone(),
+            value: match &self.current_token {
+                Token::Identifier(s) => s.clone(),
+                _ => return None,
+            },
+        }))
+    }
+
+    fn parse_integer_literal(&self) -> Option<Expression> {
+        if let Token::Integer(value) = self.current_token {
+            Some(Expression::IntegerLiteral {
+                token: self.current_token.clone(),
+                value,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+        let operator = match &self.current_token {
+            Token::Bang => "!",
+            Token::Minus => "-",
+            _ => return None,
+        };
+
+        self.next_token();
+
+        let right = self.parse_expression(Precedence::Prefix)?;
+
+        Some(Expression::PrefixExpression {
+            token,
+            operator: operator.to_string(),
+            right: Box::new(right),
+        })
+    }
+
+    fn get_infix_parser(&self) -> Option<fn(&mut Parser, Expression) -> Option<Expression>> {
+        match self.peek_token {
+            Token::Plus | Token::Minus | Token::Slash | Token::Asterisk | Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
+                Some(Parser::parse_infix_expression)
+            }
+            _ => None,
+        }
+    }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
+        let token = self.current_token.clone();
+        let operator = match &self.current_token {
+            Token::Plus => "+",
+            Token::Minus => "-",
+            Token::Slash => "/",
+            Token::Asterisk => "*",
+            Token::Eq => "==",
+            Token::NotEq => "!=",
+            Token::Lt => "<",
+            Token::Gt => ">",
+            _ => return None,
+        };
+
+        let precedence = self.current_precedence();
+        self.next_token();
+        let right = self.parse_expression(precedence)?;
+
+        Some(Expression::InfixExpression {
+            token,
+            left: Box::new(left),
+            operator: operator.to_string(),
+            right: Box::new(right),
+        })
+    }
+
+    fn peek_precedence(&self) -> Precedence {
+        self.get_precedence(&self.peek_token)
+    }
+
+    fn current_precedence(&self) -> Precedence {
+        self.get_precedence(&self.current_token)
+    }
+
+    fn get_precedence(&self, token: &Token) -> Precedence {
+        match token {
+            Token::Eq | Token::NotEq => Precedence::Equals,
+            Token::Lt | Token::Gt => Precedence::LessGreater,
+            Token::Plus | Token::Minus => Precedence::Sum,
+            Token::Slash | Token::Asterisk => Precedence::Product,
+            _ => Precedence::Lowest,
+        }
     }
 
     fn peek_token_is(&self, token_type: &Token) -> bool {
