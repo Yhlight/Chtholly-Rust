@@ -27,6 +27,7 @@ pub enum Statement {
 #[derive(Debug, PartialEq, Clone)]
 pub struct LetDeclaration {
     pub name: String,
+    pub mutable: bool,
     pub type_info: Option<Type>,
     pub value: Expression,
 }
@@ -50,10 +51,24 @@ pub enum Type {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Literal(Literal),
+    Binary(Box<Expression>, BinaryOp, Box<Expression>),
 }
 
 /// Represents a literal value.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
     Int(i64),
+    Float(f64),
+    Char(char),
+    Bool(bool),
+    String(String),
+}
+
+/// Represents a binary operator.
+#[derive(Debug, PartialEq, Clone)]
+pub enum BinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
 }

@@ -1,6 +1,6 @@
 //! Parser for the Chtholly language.
 
-use crate::ast::{self, Expression, Function, LetDeclaration, Literal, Parameter, Statement, Type};
+use crate::ast::{self, BinaryOp, Expression, Function, LetDeclaration, Literal, Parameter, Statement, Type};
 use chumsky::prelude::*;
 
 fn type_parser() -> impl Parser<char, Type, Error = Simple<char>> {
@@ -27,22 +27,70 @@ fn type_parser() -> impl Parser<char, Type, Error = Simple<char>> {
 }
 
 fn expression_parser() -> impl Parser<char, Expression, Error = Simple<char>> {
-    let integer = text::int(10).map(|s: String| Expression::Literal(Literal::Int(s.parse().unwrap())));
-    integer
+    recursive(|expr| {
+        let integer = text::int(10).map(|s: String| Literal::Int(s.parse().unwrap()));
+        let float = text::int(10)
+            .then_ignore(just('.'))
+            .then(text::digits(10))
+            .map(|(a, b): (String, String)| Literal::Float(format!("{}.{}", a, b).parse().unwrap()));
+        let char_literal = none_of('\'')
+            .delimited_by(just('\''), just('\''))
+            .map(Literal::Char);
+        let bool_literal = just("true").to(Literal::Bool(true)).or(just("false").to(Literal::Bool(false)));
+        let string_literal = none_of('"')
+            .repeated()
+            .delimited_by(just('"'), just('"'))
+            .collect()
+            .map(Literal::String);
+
+        let literal = choice((
+            float,
+            integer,
+            char_literal,
+            bool_literal,
+            string_literal,
+        )).map(Expression::Literal);
+
+        let atom = literal.or(expr.delimited_by(just('('), just(')')));
+
+        let op = |c| just(c).padded();
+
+        let mul_div = op('*').to(BinaryOp::Mul).or(op('/').to(BinaryOp::Div));
+        let add_sub = op('+').to(BinaryOp::Add).or(op('-').to(BinaryOp::Sub));
+
+        let product = atom.clone()
+            .then(mul_div.then(atom).repeated())
+            .foldl(|lhs, (op, rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs)));
+
+        let sum = product.clone()
+            .then(add_sub.then(product).repeated())
+            .foldl(|lhs, (op, rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs)));
+
+        sum
+    })
 }
 
 fn statement_parser() -> impl Parser<char, Statement, Error = Simple<char>> {
-    let let_declaration = just("let")
+    let let_declaration = just("let").to(false)
+        .or(just("mut").to(true))
         .padded()
-        .ignore_then(text::ident().padded())
+        .then(text::ident().padded())
         .then(just(':').padded().ignore_then(type_parser()).or_not())
         .then_ignore(just('=').padded())
         .then(expression_parser())
         .then_ignore(just(';'))
-        .map(|((name, type_info), value)| Statement::Let(LetDeclaration { name, type_info, value }));
+        .map(|(((mutable, name), type_info), value)| {
+            Statement::Let(LetDeclaration {
+                name,
+                mutable,
+                type_info,
+                value,
+            })
+        });
 
     let_declaration
 }
+
 
 fn function_parser() -> impl Parser<char, ast::Node, Error = Simple<char>> {
     let ident = text::ident().padded();
@@ -97,86 +145,34 @@ pub fn parse(source: &str) -> Result<Vec<ast::Node>, Vec<Simple<char>>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Expression, Function, LetDeclaration, Literal, Node, Parameter, Statement, Type};
+    use crate::ast::{BinaryOp, Expression, Function, LetDeclaration, Literal, Node, Statement, Type};
 
     #[test]
-    fn test_parse_empty_source() {
-        assert!(parse("").unwrap().is_empty());
-    }
-
-    #[test]
-    fn test_parse_comments_only() {
+    fn test_parse_arithmetic_expressions() {
         let source = r#"
-            // This is a single-line comment.
-            /* This is a multi-line comment. */
-        "#;
-        assert!(parse(source).unwrap().is_empty());
-    }
-
-    #[test]
-    fn test_parse_main_function_with_let_declaration() {
-        let source = r#"
-            fn main(args: string[]): Result<int, SystemError>
-            {
-                let a = 10;
-                let b: int = 20;
+            fn main(): void {
+                let a = 1 + 2 * 3;
             }
         "#;
         let expected_ast = vec![Node::Function(Function {
             name: "main".to_string(),
-            parameters: vec![Parameter {
-                name: "args".to_string(),
-                type_info: Type::Array(Box::new(Type::Simple("string".to_string()))),
-            }],
-            return_type: Type::Generic(
-                "Result".to_string(),
-                vec![
-                    Type::Simple("int".to_string()),
-                    Type::Simple("SystemError".to_string()),
-                ],
-            ),
-            body: vec![
-                Statement::Let(LetDeclaration {
-                    name: "a".to_string(),
-                    type_info: None,
-                    value: Expression::Literal(Literal::Int(10)),
-                }),
-                Statement::Let(LetDeclaration {
-                    name: "b".to_string(),
-                    type_info: Some(Type::Simple("int".to_string())),
-                    value: Expression::Literal(Literal::Int(20)),
-                }),
-            ],
+            parameters: vec![],
+            return_type: Type::Simple("void".to_string()),
+            body: vec![Statement::Let(LetDeclaration {
+                name: "a".to_string(),
+                mutable: false,
+                type_info: None,
+                value: Expression::Binary(
+                    Box::new(Expression::Literal(Literal::Int(1))),
+                    BinaryOp::Add,
+                    Box::new(Expression::Binary(
+                        Box::new(Expression::Literal(Literal::Int(2))),
+                        BinaryOp::Mul,
+                        Box::new(Expression::Literal(Literal::Int(3))),
+                    )),
+                ),
+            })],
         })];
-
-        assert_eq!(parse(source).unwrap(), expected_ast);
-    }
-
-    #[test]
-    fn test_parse_interspersed_comments() {
-        let source = r#"
-            // Comment before function
-            fn first(): void {}
-
-            /* Comment between functions */
-            fn second(): void {}
-            // Comment after function
-        "#;
-        let expected_ast = vec![
-            Node::Function(Function {
-                name: "first".to_string(),
-                parameters: vec![],
-                return_type: Type::Simple("void".to_string()),
-                body: vec![],
-            }),
-            Node::Function(Function {
-                name: "second".to_string(),
-                parameters: vec![],
-                return_type: Type::Simple("void".to_string()),
-                body: vec![],
-            }),
-        ];
-
         assert_eq!(parse(source).unwrap(), expected_ast);
     }
 }

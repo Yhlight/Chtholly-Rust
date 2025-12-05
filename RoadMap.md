@@ -21,13 +21,13 @@ This document outlines the development plan for the Chtholly programming languag
 
 - [x] **Variable Declarations:**
   - [x] `let` (immutable) variables.
-  - [ ] `mut` (mutable) variables.
-- [ ] **Data Types:**
-  - [ ] Integer types (`int`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`).
-  - [ ] Floating-point types (`double`, `float`).
-  - [ ] `char` type.
-  - [ ] `bool` type.
-  - [ ] `string` type.
+  - [x] `mut` (mutable) variables.
+- [x] **Data Types:**
+  - [x] Integer types (`int`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`).
+  - [x] Floating-point types (`double`, `float`).
+  - [x] `char` type.
+  - [x] `bool` type.
+  - [x] `string` type.
 - [x] **Type Inference and Annotations:**
   - [x] Implement type inference for variable declarations.
   - [x] Support explicit type annotations.
@@ -41,8 +41,8 @@ This document outlines the development plan for the Chtholly programming languag
   - [ ] `&` (immutable) references.
   - [ ] `&mut` (mutable) references.
   - [ ] Implement the borrow checker rules.
-- [ ] **Operators:**
-  - [ ] Arithmetic operators.
+- [x] **Operators:**
+  - [x] Arithmetic operators.
   - [ ] Comparison operators.
   - [ ] Logical operators.
   - [ ] Bitwise operators.
