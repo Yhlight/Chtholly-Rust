@@ -8,9 +8,9 @@ This document outlines the development plan and progress for the Chtholly progra
 - [x] **Lexer (Tokenizer)**: Implement the lexer to scan the source code and convert it into a stream of tokens.
     - [x] Support for comments (single-line and multi-line).
     - [x] Recognize keywords, identifiers, operators, and literals (integers, strings, chars).
-- [ ] **Parser & AST**: Implement the parser to consume the token stream and build an Abstract Syntax Tree (AST).
-    - [ ] Define AST node structures.
-    - [ ] Implement parsing for basic expressions and variable declarations.
+- [x] **Parser & AST**: Implement the parser to consume the token stream and build an Abstract Syntax Tree (AST).
+    - [x] Define AST node structures.
+    - [x] Implement parsing for basic expressions and variable declarations.
 
 ## Phase 2: Core Language Features
 
