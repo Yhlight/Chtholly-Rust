@@ -130,6 +130,7 @@ impl<'a> Parser<'a> {
             Token::True => Some(Expression::Literal(Literal::Bool(true))),
             Token::False => Some(Expression::Literal(Literal::Bool(false))),
             Token::If => self.parse_if_expression(),
+            Token::While => self.parse_while_expression(),
             _ => None,
         }
     }
@@ -327,6 +328,30 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    fn parse_while_expression(&mut self) -> Option<Expression> {
+        if !matches!(self.peek_token, Token::LParen) {
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !matches!(self.peek_token, Token::RParen) {
+            return None;
+        }
+        self.next_token();
+
+        if !matches!(self.peek_token, Token::LBrace) {
+            return None;
+        }
+        self.next_token();
+
+        let body = self.parse_block_statement()?;
+
+        Some(Expression::While(Box::new(condition), body))
+    }
+
     fn skip_to_semicolon(&mut self) {
         while !matches!(self.current_token, Token::Semicolon | Token::Eof) {
             self.next_token();
@@ -484,6 +509,31 @@ mod tests {
                     Box::new(Expression::Literal(Literal::Int(3))),
                 ),
             ],
+        ));
+
+        assert_eq!(program.statements[0], expected);
+    }
+
+    #[test]
+    fn test_while_expression() {
+        let input = "while (x < y) { x }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+
+        let expected = Statement::ExpressionStatement(Expression::While(
+            Box::new(Expression::Binary(
+                Operator::Lt,
+                Box::new(Expression::Identifier("x".to_string())),
+                Box::new(Expression::Identifier("y".to_string())),
+            )),
+            BlockStatement {
+                statements: vec![Statement::ExpressionStatement(Expression::Identifier(
+                    "x".to_string(),
+                ))],
+            },
         ));
 
         assert_eq!(program.statements[0], expected);

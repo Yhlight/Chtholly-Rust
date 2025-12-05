@@ -9,7 +9,12 @@
     - [x] `mut` declarations
 - [x] **Data Types:** Implement basic data types: `int`, `double`, `char`, `string`, `bool`.
 - [x] **Operators:** Implement basic arithmetic, comparison, and logical operators.
-- [x] **Control Flow:** Implement `if-else` statements.
+- [x] **Control Flow:**
+    - [x] `if-else` statements
+    - [x] `while` loops
+    - [ ] `for` loops
+    - [ ] `foreach` loops
+    - [ ] `do-while` loops
 
 ## Milestone 2: Functions and Scope
 
