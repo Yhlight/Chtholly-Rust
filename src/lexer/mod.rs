@@ -253,17 +253,16 @@ impl<'a> Lexer<'a> {
         }
         let number = &self.input[position..self.position];
         if is_float {
-            Token::Double(number.parse().unwrap())
+            Token::Double(number.parse().unwrap_or(0.0))
         } else {
-            Token::Int(number.parse().unwrap())
+            Token::Int(number.parse().unwrap_or(0))
         }
     }
 
     fn read_char_literal(&mut self) -> Token {
-        self.read_char(); // consume the opening '
-        let ch = self.ch as char;
-        self.read_char(); // consume the character
-        self.read_char(); // consume the closing '
+        let ch = self.peek_char() as char;
+        self.read_char();
+        self.read_char();
         Token::Char(ch)
     }
 

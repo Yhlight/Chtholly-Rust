@@ -9,7 +9,7 @@
 - [x] **Variable Declarations:** Implement `let` and `mut` variable declarations.
 - [ ] **Operators:** Implement basic arithmetic and logical operators.
 - [x] **Control Flow:** Implement `if`/`else` statements.
-- [ ] **Functions:** Implement function definitions and calls.
+- [x] **Functions:** Implement function definitions and calls.
 
 ## Phase 2: Advanced Language Features
 

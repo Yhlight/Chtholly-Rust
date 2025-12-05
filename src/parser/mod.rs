@@ -123,7 +123,18 @@ impl<'a> Parser<'a> {
 
         while self.peek_token != Token::Semicolon && precedence < self.peek_precedence() {
             match self.peek_token {
-                Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Percent | Token::Equal | Token::NotEqual | Token::LessThan | Token::LessThanOrEqual | Token::GreaterThan | Token::GreaterThanOrEqual => {
+            Token::Plus
+            | Token::Minus
+            | Token::Star
+            | Token::Slash
+            | Token::Percent
+            | Token::Equal
+            | Token::NotEqual
+            | Token::LessThan
+            | Token::LessThanOrEqual
+            | Token::GreaterThan
+            | Token::GreaterThanOrEqual
+            | Token::LParen => {
                     self.next_token();
                     left = self.parse_infix_expression(left)?;
                 }
@@ -139,9 +150,13 @@ impl<'a> Parser<'a> {
             Token::Identifier(name) => Some(Expression::Identifier(name.clone())),
             Token::Int(value) => Some(Expression::Int(*value)),
             Token::Double(value) => Some(Expression::Double(*value)),
+            Token::String(value) => Some(Expression::String(value.clone())),
+            Token::Char(value) => Some(Expression::Char(*value)),
             Token::Bool(value) => Some(Expression::Bool(*value)),
             Token::Not | Token::Minus => self.parse_prefix_expression(),
+            Token::LParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
+            Token::Fn => self.parse_function_literal(),
             _ => None,
         }
     }
@@ -158,6 +173,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
+        match self.current_token {
+            Token::LParen => return self.parse_call_expression(left),
+            _ => (),
+        }
+
         let infix = match self.current_token {
             Token::Plus => Infix::Plus,
             Token::Minus => Infix::Minus,
@@ -176,6 +196,81 @@ impl<'a> Parser<'a> {
         self.next_token();
         let right = self.parse_expression(precedence)?;
         Some(Expression::Infix(infix, Box::new(left), Box::new(right)))
+    }
+
+    fn parse_grouped_expression(&mut self) -> Option<Expression> {
+        self.next_token();
+        let exp = self.parse_expression(Precedence::Lowest);
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+        exp
+    }
+
+    fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
+        let arguments = self.parse_call_arguments()?;
+        Some(Expression::Call {
+            function: Box::new(function),
+            arguments,
+        })
+    }
+
+    fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
+        let mut args = vec![];
+        if self.peek_token == Token::RParen {
+            self.next_token();
+            return Some(args);
+        }
+        self.next_token();
+        args.push(self.parse_expression(Precedence::Lowest)?);
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            args.push(self.parse_expression(Precedence::Lowest)?);
+        }
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+        Some(args)
+    }
+
+    fn parse_function_literal(&mut self) -> Option<Expression> {
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+        let parameters = self.parse_function_parameters()?;
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+        let body = self.parse_block_statement();
+        Some(Expression::Function { parameters, body })
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<String>> {
+        let mut identifiers = vec![];
+        if self.peek_token == Token::RParen {
+            self.next_token();
+            return Some(identifiers);
+        }
+        self.next_token();
+        if let Token::Identifier(name) = &self.current_token {
+            identifiers.push(name.clone());
+        } else {
+            return None;
+        }
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            if let Token::Identifier(name) = &self.current_token {
+                identifiers.push(name.clone());
+            } else {
+                return None;
+            }
+        }
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+        Some(identifiers)
     }
 
     fn parse_if_expression(&mut self) -> Option<Expression> {

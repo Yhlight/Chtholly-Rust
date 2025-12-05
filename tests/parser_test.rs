@@ -1,4 +1,4 @@
-use chtholly::ast::{Expression, Statement};
+use chtholly::ast::{Expression, Infix, Statement};
 use chtholly::lexer::Lexer;
 use chtholly::parser::Parser;
 
@@ -64,6 +64,142 @@ fn test_if_expression() {
             assert_eq!(consequence.len(), 1);
         } else {
             panic!("expression is not an If expression");
+        }
+    } else {
+        panic!("statement is not an Expression statement");
+    }
+}
+
+#[test]
+fn test_operator_precedence_parsing() {
+    let tests = vec![
+        (
+            "1 + 2 * 3",
+            Expression::Infix(
+                Infix::Plus,
+                Box::new(Expression::Int(1)),
+                Box::new(Expression::Infix(
+                    Infix::Star,
+                    Box::new(Expression::Int(2)),
+                    Box::new(Expression::Int(3)),
+                )),
+            ),
+        ),
+        (
+            "(1 + 2) * 3",
+            Expression::Infix(
+                Infix::Star,
+                Box::new(Expression::Infix(
+                    Infix::Plus,
+                    Box::new(Expression::Int(1)),
+                    Box::new(Expression::Int(2)),
+                )),
+                Box::new(Expression::Int(3)),
+            ),
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert_eq!(program.len(), 1);
+
+        let statement = &program[0];
+        if let Statement::Expression(expression) = statement {
+            assert_eq!(*expression, expected);
+        } else {
+            panic!("statement is not an Expression statement");
+        }
+    }
+}
+
+#[test]
+fn test_character_literal_expression() {
+    let input = "'a';";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    assert_eq!(program.len(), 1);
+
+    let statement = &program[0];
+    if let Statement::Expression(expression) = statement {
+        if let Expression::Char(value) = expression {
+            assert_eq!(*value, 'a');
+        } else {
+            panic!("expression is not a Char literal");
+        }
+    } else {
+        panic!("statement is not an Expression statement");
+    }
+}
+
+#[test]
+fn test_string_literal_expression() {
+    let input = "\"hello world\";";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    assert_eq!(program.len(), 1);
+
+    let statement = &program[0];
+    if let Statement::Expression(expression) = statement {
+        if let Expression::String(value) = expression {
+            assert_eq!(value, "hello world");
+        } else {
+            panic!("expression is not a String literal");
+        }
+    } else {
+        panic!("statement is not an Expression statement");
+    }
+}
+
+#[test]
+fn test_call_expression_parsing() {
+    let input = "add(1, 2 * 3, 4 + 5);";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    assert_eq!(program.len(), 1);
+
+    let statement = &program[0];
+    if let Statement::Expression(expression) = statement {
+        if let Expression::Call {
+            function,
+            arguments,
+        } = expression
+        {
+            assert_eq!(arguments.len(), 3);
+            if let Expression::Identifier(name) = &**function {
+                assert_eq!(name, "add");
+            } else {
+                panic!("function is not an Identifier");
+            }
+        } else {
+            panic!("expression is not a Call expression");
+        }
+    } else {
+        panic!("statement is not an Expression statement");
+    }
+}
+
+#[test]
+fn test_function_literal_parsing() {
+    let input = "fn(x, y) { x + y; }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    assert_eq!(program.len(), 1);
+
+    let statement = &program[0];
+    if let Statement::Expression(expression) = statement {
+        if let Expression::Function { parameters, body } = expression {
+            assert_eq!(parameters.len(), 2);
+            assert_eq!(parameters[0], "x");
+            assert_eq!(parameters[1], "y");
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("expression is not a Function literal");
         }
     } else {
         panic!("statement is not an Expression statement");
