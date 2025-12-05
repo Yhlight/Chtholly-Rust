@@ -16,6 +16,7 @@ pub enum Expression {
     Identifier(String),
     Literal(Literal),
     Binary(Operator, Box<Expression>, Box<Expression>),
+    If(Box<Expression>, BlockStatement, Option<BlockStatement>),
     // Other expressions will be added here
 }
 
@@ -25,6 +26,7 @@ pub enum Operator {
     Minus,
     Star,
     Slash,
+    Lt,
 }
 
 #[derive(Debug, PartialEq)]
@@ -32,6 +34,8 @@ pub enum Literal {
     Int(i64),
     Double(f64),
     String(String),
+    Char(char),
+    Bool(bool),
 }
 
 #[derive(Debug)]

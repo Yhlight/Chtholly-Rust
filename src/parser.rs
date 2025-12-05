@@ -4,6 +4,8 @@ use crate::lexer::{Lexer, Token};
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
+    Equals,
+    LessGreater,
     Sum,
     Product,
 }
@@ -123,6 +125,10 @@ impl<'a> Parser<'a> {
             Token::Int(value) => Some(Expression::Literal(Literal::Int(*value))),
             Token::Double(value) => Some(Expression::Literal(Literal::Double(*value))),
             Token::String(value) => Some(Expression::Literal(Literal::String(value.clone()))),
+            Token::Char(value) => Some(Expression::Literal(Literal::Char(*value))),
+            Token::True => Some(Expression::Literal(Literal::Bool(true))),
+            Token::False => Some(Expression::Literal(Literal::Bool(false))),
+            Token::If => self.parse_if_expression(),
             _ => None,
         }
     }
@@ -133,6 +139,7 @@ impl<'a> Parser<'a> {
             Token::Minus => Operator::Minus,
             Token::Star => Operator::Star,
             Token::Slash => Operator::Slash,
+            Token::Lt => Operator::Lt,
             _ => return None,
         };
 
@@ -147,6 +154,7 @@ impl<'a> Parser<'a> {
         match self.peek_token {
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Star | Token::Slash => Precedence::Product,
+            Token::Lt => Precedence::LessGreater,
             _ => Precedence::Lowest,
         }
     }
@@ -155,6 +163,7 @@ impl<'a> Parser<'a> {
         match self.current_token {
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Star | Token::Slash => Precedence::Product,
+            Token::Lt => Precedence::LessGreater,
             _ => Precedence::Lowest,
         }
     }
@@ -228,6 +237,46 @@ impl<'a> Parser<'a> {
         }
 
         Some(BlockStatement { statements })
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Expression> {
+        if !matches!(self.peek_token, Token::LParen) {
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !matches!(self.peek_token, Token::RParen) {
+            return None;
+        }
+        self.next_token();
+
+        if !matches!(self.peek_token, Token::LBrace) {
+            return None;
+        }
+        self.next_token();
+
+        let consequence = self.parse_block_statement()?;
+
+        let mut alternative = None;
+        if matches!(self.peek_token, Token::Else) {
+            self.next_token();
+
+            if !matches!(self.peek_token, Token::LBrace) {
+                return None;
+            }
+            self.next_token();
+
+            alternative = self.parse_block_statement();
+        }
+
+        Some(Expression::If(
+            Box::new(condition),
+            consequence,
+            alternative,
+        ))
     }
 
     fn skip_to_semicolon(&mut self) {
@@ -333,6 +382,36 @@ mod tests {
                 Box::new(Expression::Literal(Literal::Int(2))),
                 Box::new(Expression::Literal(Literal::Int(3))),
             )),
+        ));
+
+        assert_eq!(program.statements[0], expected);
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let input = "if (x < y) { x } else { y }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+
+        let expected = Statement::ExpressionStatement(Expression::If(
+            Box::new(Expression::Binary(
+                Operator::Lt,
+                Box::new(Expression::Identifier("x".to_string())),
+                Box::new(Expression::Identifier("y".to_string())),
+            )),
+            BlockStatement {
+                statements: vec![Statement::ExpressionStatement(Expression::Identifier(
+                    "x".to_string(),
+                ))],
+            },
+            Some(BlockStatement {
+                statements: vec![Statement::ExpressionStatement(Expression::Identifier(
+                    "y".to_string(),
+                ))],
+            }),
         ));
 
         assert_eq!(program.statements[0], expected);

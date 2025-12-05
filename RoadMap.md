@@ -7,9 +7,9 @@
 - [x] **Variables:**
     - [x] `let` declarations
     - [x] `mut` declarations
-- [ ] **Data Types:** Implement basic data types: `int`, `double`, `char`, `string`, `bool`.
+- [x] **Data Types:** Implement basic data types: `int`, `double`, `char`, `string`, `bool`.
 - [x] **Operators:** Implement basic arithmetic, comparison, and logical operators.
-- [ ] **Control Flow:** Implement `if-else` statements.
+- [x] **Control Flow:** Implement `if-else` statements.
 
 ## Milestone 2: Functions and Scope
 

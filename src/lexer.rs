@@ -4,6 +4,10 @@ pub enum Token {
     Fn,
     Let,
     Mut,
+    True,
+    False,
+    If,
+    Else,
 
     // Identifiers
     Ident(String),
@@ -12,6 +16,7 @@ pub enum Token {
     Int(i64),
     Double(f64),
     String(String),
+    Char(char),
 
     // Operators
     Plus,
@@ -19,6 +24,7 @@ pub enum Token {
     Star,
     Slash,
     Assign,
+    Lt,
 
     // Delimiters
     LParen,
@@ -93,6 +99,7 @@ impl<'a> Lexer<'a> {
             b'+' => Token::Plus,
             b'-' => Token::Minus,
             b'*' => Token::Star,
+            b'<' => Token::Lt,
             b'(' => Token::LParen,
             b')' => Token::RParen,
             b'{' => Token::LBrace,
@@ -106,6 +113,10 @@ impl<'a> Lexer<'a> {
                     "fn" => Token::Fn,
                     "let" => Token::Let,
                     "mut" => Token::Mut,
+                    "true" => Token::True,
+                    "false" => Token::False,
+                    "if" => Token::If,
+                    "else" => Token::Else,
                     _ => Token::Ident(ident),
                 };
             }
@@ -115,6 +126,15 @@ impl<'a> Lexer<'a> {
             b'"' => {
                 let string = self.read_string();
                 Token::String(string)
+            }
+            b'\'' => {
+                self.read_char();
+                let ch = self.ch as char;
+                self.read_char();
+                if self.ch != b'\'' {
+                    return Token::Illegal;
+                }
+                Token::Char(ch)
             }
             0 => Token::Eof,
             _ => Token::Illegal,
@@ -189,10 +209,9 @@ mod tests {
                 x + y;
             }
             let result = add(five, ten);
-            // comment
-            /* multi
-            line
-            comment */
+            true;
+            false;
+            'a';
         "#;
 
         let tests = vec![
@@ -228,6 +247,12 @@ mod tests {
             Token::Comma,
             Token::Ident("ten".to_string()),
             Token::RParen,
+            Token::Semicolon,
+            Token::True,
+            Token::Semicolon,
+            Token::False,
+            Token::Semicolon,
+            Token::Char('a'),
             Token::Semicolon,
             Token::Eof,
         ];
