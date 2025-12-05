@@ -6,9 +6,9 @@
 - [ ] **Parsing:** Implement a parser to build an Abstract Syntax Tree (AST) from the tokens.
 - [ ] **AST Definition:** Define the data structures for the AST.
 - [ ] **Basic Types:** Implement support for basic data types (`int`, `double`, `char`, `string`, `bool`).
-- [ ] **Variable Declarations:** Implement `let` and `mut` variable declarations.
+- [x] **Variable Declarations:** Implement `let` and `mut` variable declarations.
 - [ ] **Operators:** Implement basic arithmetic and logical operators.
-- [ ] **Control Flow:** Implement `if`/`else` statements.
+- [x] **Control Flow:** Implement `if`/`else` statements.
 - [ ] **Functions:** Implement function definitions and calls.
 
 ## Phase 2: Advanced Language Features

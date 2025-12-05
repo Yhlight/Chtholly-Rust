@@ -57,6 +57,7 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
+            Token::Mut => self.parse_mut_statement(),
             Token::Return => self.parse_return_statement(),
             _ => self.parse_expression_statement(),
         }
@@ -79,6 +80,25 @@ impl<'a> Parser<'a> {
             self.next_token();
         }
         Some(Statement::Let(name, value))
+    }
+
+    fn parse_mut_statement(&mut self) -> Option<Statement> {
+        if !self.expect_peek(Token::Identifier("".to_string())) {
+            return None;
+        }
+        let name = match &self.current_token {
+            Token::Identifier(name) => name.clone(),
+            _ => return None,
+        };
+        if !self.expect_peek(Token::Assign) {
+            return None;
+        }
+        self.next_token();
+        let value = self.parse_expression(Precedence::Lowest)?;
+        if self.peek_token == Token::Semicolon {
+            self.next_token();
+        }
+        Some(Statement::Mut(name, value))
     }
 
     fn parse_return_statement(&mut self) -> Option<Statement> {
@@ -121,6 +141,7 @@ impl<'a> Parser<'a> {
             Token::Double(value) => Some(Expression::Double(*value)),
             Token::Bool(value) => Some(Expression::Bool(*value)),
             Token::Not | Token::Minus => self.parse_prefix_expression(),
+            Token::If => self.parse_if_expression(),
             _ => None,
         }
     }
@@ -155,6 +176,46 @@ impl<'a> Parser<'a> {
         self.next_token();
         let right = self.parse_expression(precedence)?;
         Some(Expression::Infix(infix, Box::new(left), Box::new(right)))
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Expression> {
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+        let consequence = self.parse_block_statement();
+        let mut alternative = None;
+        if self.peek_token == Token::Else {
+            self.next_token();
+            if !self.expect_peek(Token::LBrace) {
+                return None;
+            }
+            alternative = Some(self.parse_block_statement());
+        }
+        Some(Expression::If {
+            condition: Box::new(condition),
+            consequence,
+            alternative,
+        })
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let mut statements = vec![];
+        self.next_token();
+        while self.current_token != Token::RBrace && self.current_token != Token::Eof {
+            if let Some(statement) = self.parse_statement() {
+                statements.push(statement);
+            }
+            self.next_token();
+        }
+        statements
     }
 
     fn expect_peek(&mut self, token: Token) -> bool {
