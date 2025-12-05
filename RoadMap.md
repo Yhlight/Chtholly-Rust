@@ -2,11 +2,13 @@
 
 ## Milestone 1: Core Language and Syntax
 
-- [ ] **Comments:** Implement single-line (`//`) and multi-line (`/* */`) comments.
-- [ ] **Main Function:** Implement the `main` function as the entry point of the program.
-- [ ] **Variables:** Implement `let` and `mut` variable declarations with type inference and annotations.
+- [x] **Comments:** Implement single-line (`//`) and multi-line (`/* */`) comments.
+- [x] **Main Function:** Implement the `main` function as the entry point of the program.
+- [x] **Variables:**
+    - [x] `let` declarations
+    - [x] `mut` declarations
 - [ ] **Data Types:** Implement basic data types: `int`, `double`, `char`, `string`, `bool`.
-- [ ] **Operators:** Implement basic arithmetic, comparison, and logical operators.
+- [x] **Operators:** Implement basic arithmetic, comparison, and logical operators.
 - [ ] **Control Flow:** Implement `if-else` statements.
 
 ## Milestone 2: Functions and Scope

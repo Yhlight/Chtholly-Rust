@@ -1,14 +1,30 @@
 #[derive(Debug, PartialEq)]
 pub enum Statement {
-    Let(String, Expression),
+    Let(String, bool, Expression), // bool represents mutability
+    Function(String, Vec<String>, BlockStatement),
+    ExpressionStatement(Expression),
     // Other statements will be added here
+}
+
+#[derive(Debug, PartialEq)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
     Identifier(String),
     Literal(Literal),
+    Binary(Operator, Box<Expression>, Box<Expression>),
     // Other expressions will be added here
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Operator {
+    Plus,
+    Minus,
+    Star,
+    Slash,
 }
 
 #[derive(Debug, PartialEq)]

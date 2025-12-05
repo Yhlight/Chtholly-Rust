@@ -29,9 +29,6 @@ pub enum Token {
     Colon,
     Semicolon,
 
-    // Comments
-    Comment(String),
-
     // End of file
     Eof,
 
@@ -74,24 +71,20 @@ impl<'a> Lexer<'a> {
         let token = match self.ch {
             b'/' => {
                 if self.peek_char() == b'/' {
-                    let position = self.position + 2;
                     while self.ch != b'\n' && self.ch != 0 {
                         self.read_char();
                     }
-                    let comment = self.input[position..self.position].to_string();
-                    return Token::Comment(comment);
+                    return self.next_token();
                 } else if self.peek_char() == b'*' {
-                    let position = self.position + 2;
                     loop {
                         self.read_char();
                         if self.ch == b'*' && self.peek_char() == b'/' {
                             break;
                         }
                     }
-                    let comment = self.input[position..self.position].to_string();
                     self.read_char();
                     self.read_char();
-                    return Token::Comment(comment)
+                    return self.next_token();
                 } else {
                     Token::Slash
                 }
@@ -236,8 +229,6 @@ mod tests {
             Token::Ident("ten".to_string()),
             Token::RParen,
             Token::Semicolon,
-            Token::Comment(" comment".to_string()),
-            Token::Comment(" multi\n            line\n            comment ".to_string()),
             Token::Eof,
         ];
 

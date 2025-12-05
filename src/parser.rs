@@ -1,5 +1,12 @@
-use crate::ast::{Expression, Literal, Program, Statement};
+use crate::ast::{BlockStatement, Expression, Literal, Operator, Program, Statement};
 use crate::lexer::{Lexer, Token};
+
+#[derive(PartialEq, PartialOrd)]
+enum Precedence {
+    Lowest,
+    Sum,
+    Product,
+}
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -40,11 +47,119 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
-            _ => None,
+            Token::Fn => self.parse_fn_statement(),
+            _ => {
+                if !matches!(self.peek_token, Token::Let | Token::Fn | Token::Mut) {
+                    self.parse_expression_statement()
+                } else {
+                    None
+                }
+            }
         }
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {
+        let mut is_mutable = false;
+        if matches!(self.peek_token, Token::Mut) {
+            is_mutable = true;
+            self.next_token();
+        }
+
+        if !matches!(self.peek_token, Token::Ident(_)) {
+            self.skip_to_semicolon();
+            return None;
+        }
+        self.next_token();
+
+        let name = match self.current_token.clone() {
+            Token::Ident(name) => name,
+            _ => return None, // Unreachable
+        };
+
+        if !matches!(self.peek_token, Token::Assign) {
+            self.skip_to_semicolon();
+            return None;
+        }
+        self.next_token(); // consume '='
+        self.next_token(); // consume token to start expression
+
+        let expression = self.parse_expression(Precedence::Lowest);
+        if expression.is_none() {
+            self.skip_to_semicolon();
+            return None;
+        }
+
+        if matches!(self.peek_token, Token::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Statement::Let(name, is_mutable, expression.unwrap()))
+    }
+
+    fn parse_expression_statement(&mut self) -> Option<Statement> {
+        let expression = self.parse_expression(Precedence::Lowest)?;
+
+        if matches!(self.peek_token, Token::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Statement::ExpressionStatement(expression))
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
+        let mut left = self.parse_prefix()?;
+
+        while !matches!(self.peek_token, Token::Semicolon) && precedence < self.peek_precedence() {
+            self.next_token();
+            left = self.parse_infix(left)?;
+        }
+
+        Some(left)
+    }
+
+    fn parse_prefix(&mut self) -> Option<Expression> {
+        match &self.current_token {
+            Token::Ident(name) => Some(Expression::Identifier(name.clone())),
+            Token::Int(value) => Some(Expression::Literal(Literal::Int(*value))),
+            Token::Double(value) => Some(Expression::Literal(Literal::Double(*value))),
+            Token::String(value) => Some(Expression::Literal(Literal::String(value.clone()))),
+            _ => None,
+        }
+    }
+
+    fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
+        let operator = match self.current_token {
+            Token::Plus => Operator::Plus,
+            Token::Minus => Operator::Minus,
+            Token::Star => Operator::Star,
+            Token::Slash => Operator::Slash,
+            _ => return None,
+        };
+
+        let precedence = self.current_precedence();
+        self.next_token();
+        let right = self.parse_expression(precedence)?;
+
+        Some(Expression::Binary(operator, Box::new(left), Box::new(right)))
+    }
+
+    fn peek_precedence(&self) -> Precedence {
+        match self.peek_token {
+            Token::Plus | Token::Minus => Precedence::Sum,
+            Token::Star | Token::Slash => Precedence::Product,
+            _ => Precedence::Lowest,
+        }
+    }
+
+    fn current_precedence(&self) -> Precedence {
+        match self.current_token {
+            Token::Plus | Token::Minus => Precedence::Sum,
+            Token::Star | Token::Slash => Precedence::Product,
+            _ => Precedence::Lowest,
+        }
+    }
+
+    fn parse_fn_statement(&mut self) -> Option<Statement> {
         if !matches!(self.peek_token, Token::Ident(_)) {
             return None;
         }
@@ -55,28 +170,69 @@ impl<'a> Parser<'a> {
             _ => return None,
         };
 
-        if !matches!(self.peek_token, Token::Assign) {
+        if !matches!(self.peek_token, Token::LParen) {
             return None;
         }
         self.next_token();
+
+        let parameters = self.parse_function_parameters()?;
+
+        if !matches!(self.peek_token, Token::LBrace) {
+            return None;
+        }
         self.next_token();
 
-        let expression = self.parse_expression()?;
+        let body = self.parse_block_statement()?;
 
-        if matches!(self.peek_token, Token::Semicolon) {
+        Some(Statement::Function(name, parameters, body))
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<String>> {
+        let mut identifiers = Vec::new();
+
+        if matches!(self.peek_token, Token::RParen) {
+            self.next_token();
+            return Some(identifiers);
+        }
+
+        self.next_token();
+
+        if let Token::Ident(name) = self.current_token.clone() {
+            identifiers.push(name);
+        }
+
+        while matches!(self.peek_token, Token::Comma) {
+            self.next_token();
+            self.next_token();
+            if let Token::Ident(name) = self.current_token.clone() {
+                identifiers.push(name);
+            }
+        }
+
+        if !matches!(self.peek_token, Token::RParen) {
+            return None;
+        }
+        self.next_token();
+
+        Some(identifiers)
+    }
+
+    fn parse_block_statement(&mut self) -> Option<BlockStatement> {
+        let mut statements = Vec::new();
+
+        while !matches!(self.current_token, Token::RBrace) && !matches!(self.current_token, Token::Eof) {
+            if let Some(statement) = self.parse_statement() {
+                statements.push(statement);
+            }
             self.next_token();
         }
 
-        Some(Statement::Let(name, expression))
+        Some(BlockStatement { statements })
     }
 
-    fn parse_expression(&mut self) -> Option<Expression> {
-        match &self.current_token {
-            Token::Ident(name) => Some(Expression::Identifier(name.clone())),
-            Token::Int(value) => Some(Expression::Literal(Literal::Int(*value))),
-            Token::Double(value) => Some(Expression::Literal(Literal::Double(*value))),
-            Token::String(value) => Some(Expression::Literal(Literal::String(value.clone()))),
-            _ => None,
+    fn skip_to_semicolon(&mut self) {
+        while !matches!(self.current_token, Token::Semicolon | Token::Eof) {
+            self.next_token();
         }
     }
 }
@@ -91,7 +247,7 @@ mod tests {
     fn test_let_statements() {
         let input = r#"
             let x = 5;
-            let y = 10.0;
+            let mut y = 10.0;
             let foobar = "bar";
         "#;
 
@@ -102,9 +258,13 @@ mod tests {
         assert_eq!(program.statements.len(), 3);
 
         let expected = vec![
-            Statement::Let("x".to_string(), Expression::Literal(Literal::Int(5))),
-            Statement::Let("y".to_string(), Expression::Literal(Literal::Double(10.0))),
-            Statement::Let("foobar".to_string(), Expression::Literal(Literal::String("bar".to_string()))),
+            Statement::Let("x".to_string(), false, Expression::Literal(Literal::Int(5))),
+            Statement::Let("y".to_string(), true, Expression::Literal(Literal::Double(10.0))),
+            Statement::Let(
+                "foobar".to_string(),
+                false,
+                Expression::Literal(Literal::String("bar".to_string())),
+            ),
         ];
 
         for (i, statement) in program.statements.iter().enumerate() {
@@ -125,5 +285,56 @@ mod tests {
         let program = parser.parse_program();
 
         assert_eq!(program.statements.len(), 0);
+    }
+
+    #[test]
+    fn test_function_statement() {
+        let input = r#"
+            fn main(x, y) {
+                let z = x;
+            }
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+
+        let expected = Statement::Function(
+            "main".to_string(),
+            vec!["x".to_string(), "y".to_string()],
+            BlockStatement {
+                statements: vec![Statement::Let(
+                    "z".to_string(),
+                    false,
+                    Expression::Identifier("x".to_string()),
+                )],
+            },
+        );
+
+        assert_eq!(program.statements[0], expected);
+    }
+
+    #[test]
+    fn test_operator_precedence() {
+        let input = "1 + 2 * 3";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+
+        let expected = Statement::ExpressionStatement(Expression::Binary(
+            Operator::Plus,
+            Box::new(Expression::Literal(Literal::Int(1))),
+            Box::new(Expression::Binary(
+                Operator::Star,
+                Box::new(Expression::Literal(Literal::Int(2))),
+                Box::new(Expression::Literal(Literal::Int(3))),
+            )),
+        ));
+
+        assert_eq!(program.statements[0], expected);
     }
 }
