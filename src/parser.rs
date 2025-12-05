@@ -8,6 +8,7 @@ enum Precedence {
     LessGreater,
     Sum,
     Product,
+    Call,
 }
 
 pub struct Parser<'a> {
@@ -133,7 +134,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
+    fn parse_binary_expression(&mut self, left: Expression) -> Option<Expression> {
         let operator = match self.current_token {
             Token::Plus => Operator::Plus,
             Token::Minus => Operator::Minus,
@@ -150,11 +151,57 @@ impl<'a> Parser<'a> {
         Some(Expression::Binary(operator, Box::new(left), Box::new(right)))
     }
 
+    fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
+        let arguments = self.parse_call_arguments()?;
+        Some(Expression::Call(Box::new(function), arguments))
+    }
+
+    fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
+        let mut arguments = Vec::new();
+
+        if matches!(self.peek_token, Token::RParen) {
+            self.next_token();
+            return Some(arguments);
+        }
+
+        self.next_token();
+
+        if let Some(expression) = self.parse_expression(Precedence::Lowest) {
+            arguments.push(expression);
+        }
+
+        while matches!(self.peek_token, Token::Comma) {
+            self.next_token();
+            self.next_token();
+            if let Some(expression) = self.parse_expression(Precedence::Lowest) {
+                arguments.push(expression);
+            }
+        }
+
+        if !matches!(self.peek_token, Token::RParen) {
+            return None;
+        }
+        self.next_token();
+
+        Some(arguments)
+    }
+
+    fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
+        match self.current_token {
+            Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Lt => {
+                self.parse_binary_expression(left)
+            }
+            Token::LParen => self.parse_call_expression(left),
+            _ => None,
+        }
+    }
+
     fn peek_precedence(&self) -> Precedence {
         match self.peek_token {
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Star | Token::Slash => Precedence::Product,
             Token::Lt => Precedence::LessGreater,
+            Token::LParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -164,6 +211,7 @@ impl<'a> Parser<'a> {
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Star | Token::Slash => Precedence::Product,
             Token::Lt => Precedence::LessGreater,
+            Token::LParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -412,6 +460,30 @@ mod tests {
                     "y".to_string(),
                 ))],
             }),
+        ));
+
+        assert_eq!(program.statements[0], expected);
+    }
+
+    #[test]
+    fn test_call_expression() {
+        let input = "add(1, 2 * 3)";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+
+        let expected = Statement::ExpressionStatement(Expression::Call(
+            Box::new(Expression::Identifier("add".to_string())),
+            vec![
+                Expression::Literal(Literal::Int(1)),
+                Expression::Binary(
+                    Operator::Star,
+                    Box::new(Expression::Literal(Literal::Int(2))),
+                    Box::new(Expression::Literal(Literal::Int(3))),
+                ),
+            ],
         ));
 
         assert_eq!(program.statements[0], expected);

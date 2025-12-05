@@ -17,6 +17,7 @@ pub enum Expression {
     Literal(Literal),
     Binary(Operator, Box<Expression>, Box<Expression>),
     If(Box<Expression>, BlockStatement, Option<BlockStatement>),
+    Call(Box<Expression>, Vec<Expression>),
     // Other expressions will be added here
 }
 

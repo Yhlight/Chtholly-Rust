@@ -177,10 +177,10 @@ impl<'a> Lexer<'a> {
                 self.read_char();
             }
             let literal = &self.input[position..self.position];
-            Token::Double(literal.parse().unwrap())
+            Token::Double(literal.parse().expect("Failed to parse double"))
         } else {
             let literal = &self.input[position..self.position];
-            Token::Int(literal.parse().unwrap())
+            Token::Int(literal.parse().expect("Failed to parse int"))
         }
     }
 

@@ -13,7 +13,9 @@
 
 ## Milestone 2: Functions and Scope
 
-- [ ] **Functions:** Implement function definitions and calls.
+- [x] **Functions:**
+    - [x] Function definitions
+    - [x] Function calls
 - [ ] **Ownership and Borrowing:** Implement the ownership and borrowing system for memory management.
 - [ ] **Scope:** Implement lexical scoping for variables and functions.
 
