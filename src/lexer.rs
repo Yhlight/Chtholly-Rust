@@ -56,6 +56,8 @@ impl<'a> Lexer<'a> {
             b'+' => Token::Plus,
             b'{' => Token::LBrace,
             b'}' => Token::RBrace,
+            b'[' => Token::LBracket,
+            b']' => Token::RBracket,
             b'-' => Token::Minus,
             b'*' => Token::Asterisk,
             b'/' => Token::Slash,
@@ -254,6 +256,17 @@ mod tests {
         let input = "&& ||";
         let mut lexer = Lexer::new(input);
         let tokens = vec![Token::And, Token::Or];
+        for expected_token in tokens {
+            let token = lexer.next_token();
+            assert_eq!(token, expected_token);
+        }
+    }
+
+    #[test]
+    fn test_brackets() {
+        let input = "[]";
+        let mut lexer = Lexer::new(input);
+        let tokens = vec![Token::LBracket, Token::RBracket];
         for expected_token in tokens {
             let token = lexer.next_token();
             assert_eq!(token, expected_token);

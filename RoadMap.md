@@ -40,7 +40,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [ ] `for` loops.
     - [ ] `do-while` loops.
     - [ ] `foreach` loops.
-- [ ] **Arrays:**
+- [x] **Arrays:** (Parser support for literals and indexing)
     - [ ] Static arrays (`int[4]`).
     - [ ] Dynamic arrays (`int[]`).
 

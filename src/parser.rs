@@ -12,6 +12,7 @@ enum Precedence {
     Product,     // *
     Prefix,      // -X or !X
     Call,        // myFunction(X)
+    Index,       // array[index]
 }
 
 fn token_to_precedence(token: &Token) -> Precedence {
@@ -21,6 +22,7 @@ fn token_to_precedence(token: &Token) -> Precedence {
         Token::Plus | Token::Minus => Precedence::Sum,
         Token::Slash | Token::Asterisk => Precedence::Product,
         Token::LParen => Precedence::Call,
+        Token::LBracket => Precedence::Index,
         Token::And | Token::Or => Precedence::Logical,
         _ => Precedence::Lowest,
     }
@@ -223,6 +225,7 @@ impl<'a> Parser<'a> {
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
             Token::LParen => self.parse_grouped_expression(),
+            Token::LBracket => self.parse_array_literal(),
             Token::Function => self.parse_function_literal(),
             _ => {
                 self.no_prefix_parse_fn_error(&token_clone);
@@ -244,6 +247,14 @@ impl<'a> Parser<'a> {
                     self.next_token();
                     if let Some(left) = left_exp {
                         left_exp = self.parse_call_expression(left);
+                    } else {
+                        return None;
+                    }
+                }
+                Token::LBracket => {
+                    self.next_token();
+                    if let Some(left) = left_exp {
+                        left_exp = self.parse_index_expression(left);
                     } else {
                         return None;
                     }
@@ -520,6 +531,60 @@ impl<'a> Parser<'a> {
         self.next_token();
 
         args
+    }
+
+    fn parse_array_literal(&mut self) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+        let elements = self.parse_expression_list(Token::RBracket);
+        Some(Box::new(ast::ArrayLiteral { token, elements }))
+    }
+
+    fn parse_expression_list(&mut self, end: Token) -> Vec<Box<dyn Expression>> {
+        let mut list = Vec::new();
+
+        if self.peek_token == end {
+            self.next_token();
+            return list;
+        }
+
+        self.next_token();
+        if let Some(exp) = self.parse_expression(Precedence::Lowest) {
+            list.push(exp);
+        }
+
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            if let Some(exp) = self.parse_expression(Precedence::Lowest) {
+                list.push(exp);
+            }
+        }
+
+        if self.peek_token != end {
+            self.peek_error(&end);
+            return Vec::new();
+        }
+        self.next_token();
+
+        list
+    }
+
+    fn parse_index_expression(&mut self, left: Box<dyn Expression>) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+        self.next_token();
+        let index = self.parse_expression(Precedence::Lowest);
+
+        if self.peek_token != Token::RBracket {
+            self.peek_error(&Token::RBracket);
+            return None;
+        }
+        self.next_token();
+
+        Some(Box::new(ast::IndexExpression {
+            token,
+            left,
+            index: index.unwrap(),
+        }))
     }
 }
 
@@ -912,5 +977,37 @@ mod tests {
         assert_eq!(exp.arguments[0].to_string(), "1");
         assert_eq!(exp.arguments[1].to_string(), "(2 * 3)");
         assert_eq!(exp.arguments[2].to_string(), "(4 + 5)");
+    }
+
+    #[test]
+    fn test_array_literal_parsing() {
+        let input = "[1, 2 * 2, 3 + 3]";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let array = stmt.expression.as_any().downcast_ref::<ast::ArrayLiteral>().expect("expression not ArrayLiteral");
+
+        assert_eq!(array.elements.len(), 3);
+        test_integer_literal(&array.elements[0], 1);
+        assert_eq!(array.elements[1].to_string(), "(2 * 2)");
+        assert_eq!(array.elements[2].to_string(), "(3 + 3)");
+    }
+
+    #[test]
+    fn test_index_expression_parsing() {
+        let input = "my_array[1 + 1]";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let index_exp = stmt.expression.as_any().downcast_ref::<ast::IndexExpression>().expect("expression not IndexExpression");
+
+        assert_eq!(index_exp.left.to_string(), "my_array");
+        assert_eq!(index_exp.index.to_string(), "(1 + 1)");
     }
 }

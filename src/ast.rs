@@ -109,6 +109,52 @@ impl Expression for Identifier {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct ArrayLiteral {
+    pub token: Token, // the '[' token
+    pub elements: Vec<Box<dyn Expression>>,
+}
+
+impl fmt::Display for ArrayLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let elements: Vec<String> = self.elements.iter().map(|e| e.to_string()).collect();
+        write!(f, "[{}]", elements.join(", "))
+    }
+}
+
+impl Node for ArrayLiteral {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for ArrayLiteral {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+pub struct IndexExpression {
+    pub token: Token, // the '[' token
+    pub left: Box<dyn Expression>,
+    pub index: Box<dyn Expression>,
+}
+
+impl fmt::Display for IndexExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}[{}])", self.left, self.index)
+    }
+}
+
+impl Node for IndexExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for IndexExpression {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 pub struct StringLiteral {
     pub token: Token,
     pub value: String,
