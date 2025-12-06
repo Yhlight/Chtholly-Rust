@@ -48,6 +48,40 @@ fn test_index_expression_parsing() {
 }
 
 #[test]
+fn test_while_expression() {
+    let input = "while (x < y) { x }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    assert_eq!(program.len(), 1);
+
+    let statement = &program[0];
+    if let Statement::Expression(expression) = statement {
+        if let Expression::While { condition, body } = expression {
+            if let Expression::Infix(Infix::LessThan, left, right) = &**condition {
+                if let Expression::Identifier(name) = &**left {
+                    assert_eq!(name, "x");
+                } else {
+                    panic!("left is not an Identifier");
+                }
+                if let Expression::Identifier(name) = &**right {
+                    assert_eq!(name, "y");
+                } else {
+                    panic!("right is not an Identifier");
+                }
+            } else {
+                panic!("condition is not an Infix expression");
+            }
+            assert_eq!(body.len(), 1);
+        } else {
+            panic!("expression is not a While expression");
+        }
+    } else {
+        panic!("statement is not an Expression statement");
+    }
+}
+
+#[test]
 fn test_array_literal_parsing() {
     let input = "[1, 2 * 2, 3 + 3]";
     let lexer = Lexer::new(input);

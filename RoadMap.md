@@ -2,12 +2,12 @@
 
 ## Phase 1: Core Language Features
 
-- [ ] **Lexical Analysis:** Implement a lexer to tokenize the source code.
-- [ ] **Parsing:** Implement a parser to build an Abstract Syntax Tree (AST) from the tokens.
-- [ ] **AST Definition:** Define the data structures for the AST.
-- [ ] **Basic Types:** Implement support for basic data types (`int`, `double`, `char`, `string`, `bool`).
+- [x] **Lexical Analysis:** Implement a lexer to tokenize the source code.
+- [x] **Parsing:** Implement a parser to build an Abstract Syntax Tree (AST) from the tokens.
+- [x] **AST Definition:** Define the data structures for the AST.
+- [x] **Basic Types:** Implement support for basic data types (`int`, `double`, `char`, `string`, `bool`).
 - [x] **Variable Declarations:** Implement `let` and `mut` variable declarations.
-- [ ] **Operators:** Implement basic arithmetic and logical operators.
+- [x] **Operators:** Implement basic arithmetic and logical operators.
 - [x] **Control Flow:** Implement `if`/`else` statements.
 - [x] **Functions:** Implement function definitions and calls.
 
@@ -18,7 +18,11 @@
 - [ ] **Methods:** Implement method calls.
 - [ ] **Enums:** Implement enums.
 - [x] **Arrays:** Implement static and dynamic arrays.
-- [ ] **Loops:** Implement `while`, `for`, `foreach`, and `do-while` loops.
+- [ ] **Loops:**
+  - [x] `while`
+  - [ ] `for`
+  - [ ] `foreach`
+  - [ ] `do-while`
 - [ ] **Generics:** Implement generic functions and classes.
 - [ ] **Modules:** Implement the module system with `import` and `use`.
 - [ ] **Error Handling:** Implement `Result<T, E>` and the `?` operator.

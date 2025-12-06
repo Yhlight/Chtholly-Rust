@@ -31,6 +31,10 @@ pub enum Expression {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+    While {
+        condition: Box<Expression>,
+        body: BlockStatement,
+    },
 }
 
 pub type BlockStatement = Vec<Statement>;

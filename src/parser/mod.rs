@@ -159,6 +159,7 @@ impl<'a> Parser<'a> {
             Token::LBracket => self.parse_array_literal(),
             Token::If => self.parse_if_expression(),
             Token::Fn => self.parse_function_literal(),
+            Token::While => self.parse_while_expression(),
             _ => None,
         }
     }
@@ -334,6 +335,25 @@ impl<'a> Parser<'a> {
             condition: Box::new(condition),
             consequence,
             alternative,
+        })
+    }
+
+    fn parse_while_expression(&mut self) -> Option<Expression> {
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+        let body = self.parse_block_statement();
+        Some(Expression::While {
+            condition: Box::new(condition),
+            body,
         })
     }
 
