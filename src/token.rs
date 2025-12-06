@@ -57,6 +57,7 @@ pub enum Token {
     If,       // if
     Else,     // else
     While,    // while
+    For,      // for
 }
 
 impl fmt::Display for Token {
@@ -96,6 +97,7 @@ impl fmt::Display for Token {
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
             Token::While => write!(f, "while"),
+            Token::For => write!(f, "for"),
         }
     }
 }
@@ -112,6 +114,7 @@ pub fn from_literal(literal: &str) -> Token {
         "if" => Token::If,
         "else" => Token::Else,
         "while" => Token::While,
+        "for" => Token::For,
         _ => Token::Identifier(literal.to_string()),
     }
 }

@@ -225,6 +225,7 @@ impl<'a> Parser<'a> {
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
             Token::While => self.parse_while_expression(),
+            Token::For => self.parse_for_expression(),
             Token::LParen => self.parse_grouped_expression(),
             Token::LBracket => self.parse_array_literal(),
             Token::Function => self.parse_function_literal(),
@@ -581,11 +582,15 @@ impl<'a> Parser<'a> {
         }
         self.next_token();
 
-        Some(Box::new(ast::IndexExpression {
-            token,
-            left,
-            index: index.unwrap(),
-        }))
+        if let Some(index) = index {
+            Some(Box::new(ast::IndexExpression {
+                token,
+                left,
+                index,
+            }))
+        } else {
+            None
+        }
     }
 
     fn parse_while_expression(&mut self) -> Option<Box<dyn Expression>> {
@@ -621,6 +626,77 @@ impl<'a> Parser<'a> {
         Some(Box::new(ast::WhileExpression {
             token,
             condition,
+            body,
+        }))
+    }
+
+    fn parse_for_expression(&mut self) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+
+        if !matches!(self.peek_token, Token::LParen) {
+            self.peek_error(&Token::LParen);
+            return None;
+        }
+        self.next_token(); // Consume 'for'
+        self.next_token(); // Consume '('
+
+        let init = if !matches!(self.current_token, Token::Semicolon) {
+            self.parse_statement()
+        } else {
+            None
+        };
+
+        if !matches!(self.current_token, Token::Semicolon) {
+            if !matches!(self.peek_token, Token::Semicolon) {
+                self.peek_error(&Token::Semicolon);
+                return None;
+            }
+            self.next_token();
+        }
+        self.next_token(); // Consume ';'
+
+        let cond = if !matches!(self.current_token, Token::Semicolon) {
+            self.parse_expression(Precedence::Lowest)
+        } else {
+            None
+        };
+
+        if !matches!(self.current_token, Token::Semicolon) {
+             if !matches!(self.peek_token, Token::Semicolon) {
+                self.peek_error(&Token::Semicolon);
+                return None;
+            }
+            self.next_token();
+        }
+        self.next_token(); // Consume ';'
+
+        let incr = if !matches!(self.current_token, Token::RParen) {
+            self.parse_expression(Precedence::Lowest)
+        } else {
+            None
+        };
+
+        if !matches!(self.current_token, Token::RParen) {
+            if !matches!(self.peek_token, Token::RParen) {
+                self.peek_error(&Token::RParen);
+                return None;
+            }
+            self.next_token();
+        }
+        self.next_token(); // Consume ')'
+
+        if !matches!(self.current_token, Token::LBrace) {
+            self.errors.push(format!("expected LBrace, got {:?} instead", self.current_token));
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Box::new(ast::ForExpression {
+            token,
+            init,
+            cond,
+            incr,
             body,
         }))
     }
@@ -1065,5 +1141,28 @@ mod tests {
         assert_eq!(exp.body.statements.len(), 1);
         let body_stmt = exp.body.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
         assert_eq!(body_stmt.expression.to_string(), "x");
+    }
+
+    #[test]
+    fn test_for_expression_parsing() {
+        let input = "for (let i = 0; i < 10; i) { i }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let exp = stmt.expression.as_any().downcast_ref::<ast::ForExpression>().expect("expression not ForExpression");
+
+        assert_eq!(exp.init.is_some(), true);
+        assert_eq!(exp.init.as_ref().unwrap().to_string(), "let i = 0;");
+        assert_eq!(exp.cond.is_some(), true);
+        assert_eq!(exp.cond.as_ref().unwrap().to_string(), "(i < 10)");
+        assert_eq!(exp.incr.is_some(), true);
+        assert_eq!(exp.incr.as_ref().unwrap().to_string(), "i");
+        assert_eq!(exp.body.statements.len(), 1);
+        let body_stmt = exp.body.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        assert_eq!(body_stmt.expression.to_string(), "i");
     }
 }

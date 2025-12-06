@@ -280,4 +280,12 @@ mod tests {
         let token = lexer.next_token();
         assert_eq!(token, Token::While);
     }
+
+    #[test]
+    fn test_for_keyword() {
+        let input = "for";
+        let mut lexer = Lexer::new(input);
+        let token = lexer.next_token();
+        assert_eq!(token, Token::For);
+    }
 }

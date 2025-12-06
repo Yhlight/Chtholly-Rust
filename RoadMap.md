@@ -37,7 +37,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [x] `if-else` statements.
     - [ ] `switch-case` statements.
     - [x] `while` loops. (Parser support)
-    - [ ] `for` loops.
+    - [x] `for` loops. (Parser support)
     - [ ] `do-while` loops.
     - [ ] `foreach` loops.
 - [x] **Arrays:** (Parser support for literals and indexing)

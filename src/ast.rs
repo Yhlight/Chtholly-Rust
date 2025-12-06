@@ -109,6 +109,45 @@ impl Expression for Identifier {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct ForExpression {
+    pub token: Token, // The 'for' token
+    pub init: Option<Box<dyn Statement>>,
+    pub cond: Option<Box<dyn Expression>>,
+    pub incr: Option<Box<dyn Expression>>,
+    pub body: BlockStatement,
+}
+
+impl fmt::Display for ForExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "for (")?;
+        if let Some(init) = &self.init {
+            write!(f, "{}; ", init)?;
+        } else {
+            write!(f, "; ")?;
+        }
+        if let Some(cond) = &self.cond {
+            write!(f, "{}; ", cond)?;
+        } else {
+            write!(f, "; ")?;
+        }
+        if let Some(incr) = &self.incr {
+            write!(f, "{}", incr)?;
+        }
+        write!(f, ") {}", self.body)
+    }
+}
+
+impl Node for ForExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for ForExpression {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 pub struct WhileExpression {
     pub token: Token, // The 'while' token
     pub condition: Box<dyn Expression>,
