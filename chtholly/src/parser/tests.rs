@@ -378,3 +378,79 @@ fn test_if_else_expression() {
         panic!("expected expression statement, got {:?}", program.statements[0]);
     }
 }
+
+#[test]
+fn test_function_literal_parsing() {
+    let input = "fn(x, y) { x + y; }".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::Expression(expr) = &program.statements[0] {
+        if let Expression::FunctionLiteral { parameters, body } = expr {
+            assert_eq!(parameters.len(), 2);
+            assert_eq!(parameters[0].0, "x");
+            assert_eq!(parameters[1].0, "y");
+
+            assert_eq!(body.statements.len(), 1);
+            if let Statement::Expression(expr) = &body.statements[0] {
+                if let Expression::Infix(left, op, right) = expr {
+                    if let Expression::Identifier(ident) = &**left {
+                        assert_eq!(ident.0, "x");
+                    } else {
+                        panic!("expected identifier, got {:?}", left);
+                    }
+                    assert_eq!(*op, Token::Plus);
+                    if let Expression::Identifier(ident) = &**right {
+                        assert_eq!(ident.0, "y");
+                    } else {
+                        panic!("expected identifier, got {:?}", right);
+                    }
+                } else {
+                    panic!("expected infix expression, got {:?}", expr);
+                }
+            } else {
+                panic!(
+                    "expected expression statement, got {:?}",
+                    body.statements[0]
+                );
+            }
+        } else {
+            panic!("expected function literal, got {:?}", expr);
+        }
+    } else {
+        panic!("expected expression statement, got {:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_call_expression_parsing() {
+    let input = "add(1, 2 * 3, 4 + 5);".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::Expression(expr) = &program.statements[0] {
+        if let Expression::Call {
+            function,
+            arguments,
+        } = expr
+        {
+            if let Expression::Identifier(ident) = &**function {
+                assert_eq!(ident.0, "add");
+            } else {
+                panic!("expected identifier, got {:?}", function);
+            }
+
+            assert_eq!(arguments.len(), 3);
+        } else {
+            panic!("expected call expression, got {:?}", expr);
+        }
+    } else {
+        panic!("expected expression statement, got {:?}", program.statements[0]);
+    }
+}

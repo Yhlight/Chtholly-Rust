@@ -19,6 +19,7 @@ fn token_precedence(token: &Token) -> Precedence {
         Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
         Token::Plus | Token::Minus => Precedence::Sum,
         Token::Slash | Token::Asterisk => Precedence::Product,
+        Token::LParen => Precedence::Call,
         _ => Precedence::Lowest,
     }
 }
@@ -105,6 +106,7 @@ impl Parser {
             Token::String(_) => self.parse_string_literal(),
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
+            Token::Fn => self.parse_function_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             _ => None,
         };
@@ -114,6 +116,10 @@ impl Parser {
                 Token::Plus | Token::Minus | Token::Slash | Token::Asterisk | Token::Equal | Token::NotEqual | Token::LessThan | Token::GreaterThan => {
                     self.next_token();
                     left_exp = self.parse_infix_expression(left_exp.unwrap());
+                }
+                Token::LParen => {
+                    self.next_token();
+                    left_exp = self.parse_call_expression(left_exp.unwrap());
                 }
                 _ => return left_exp,
             }
@@ -225,6 +231,87 @@ impl Parser {
         }
 
         BlockStatement { statements }
+    }
+
+    fn parse_function_literal(&mut self) -> Option<ast::Expression> {
+        if !self.expect_peek(&Token::LParen) {
+            return None;
+        }
+
+        let parameters = self.parse_function_parameters();
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(ast::Expression::FunctionLiteral { parameters, body })
+    }
+
+    fn parse_function_parameters(&mut self) -> Vec<ast::Identifier> {
+        let mut identifiers = Vec::new();
+
+        if self.peek_token_is(&Token::RParen) {
+            self.next_token();
+            return identifiers;
+        }
+
+        self.next_token();
+
+        if let Token::Identifier(name) = &self.current_token {
+            identifiers.push(ast::Identifier(name.clone()));
+        }
+
+        while self.peek_token_is(&Token::Comma) {
+            self.next_token();
+            self.next_token();
+            if let Token::Identifier(name) = &self.current_token {
+                identifiers.push(ast::Identifier(name.clone()));
+            }
+        }
+
+        if !self.expect_peek(&Token::RParen) {
+            return Vec::new();
+        }
+
+        identifiers
+    }
+
+    fn parse_call_expression(&mut self, function: ast::Expression) -> Option<ast::Expression> {
+        let arguments = self.parse_call_arguments();
+        Some(ast::Expression::Call {
+            function: Box::new(function),
+            arguments,
+        })
+    }
+
+    fn parse_call_arguments(&mut self) -> Vec<ast::Expression> {
+        let mut args = Vec::new();
+
+        if self.peek_token_is(&Token::RParen) {
+            self.next_token();
+            return args;
+        }
+
+        self.next_token();
+        if let Some(exp) = self.parse_expression(Precedence::Lowest) {
+            args.push(exp);
+        }
+
+        while self.peek_token_is(&Token::Comma) {
+            self.next_token();
+            self.next_token();
+            if let Some(exp) = self.parse_expression(Precedence::Lowest) {
+                args.push(exp);
+            }
+        }
+
+        if !self.expect_peek(&Token::RParen) {
+            return Vec::new();
+        }
+
+        args
     }
 
     fn parse_let_statement(&mut self) -> Option<ast::Statement> {

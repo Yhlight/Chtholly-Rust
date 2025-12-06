@@ -23,6 +23,14 @@ pub enum Expression {
         consequence: BlockStatement,
         alternative: Option<BlockStatement>,
     },
+    FunctionLiteral {
+        parameters: Vec<Identifier>,
+        body: BlockStatement,
+    },
+    Call {
+        function: Box<Expression>,
+        arguments: Vec<Expression>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
