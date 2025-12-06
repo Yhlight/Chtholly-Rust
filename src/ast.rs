@@ -63,6 +63,29 @@ impl Statement for LetStatement {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct MutStatement {
+    pub token: Token, // the 'mut' token
+    pub name: Identifier,
+    pub value: Box<dyn Expression>,
+}
+
+impl fmt::Display for MutStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {} = {};", self.token_literal(), self.name, self.value)
+    }
+}
+
+impl Node for MutStatement {
+    fn token_literal(&self) -> String {
+        "mut".to_string()
+    }
+}
+
+impl Statement for MutStatement {
+    fn statement_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 #[derive(Clone)]
 pub struct Identifier {
     pub token: Token, // the 'Identifier' token
@@ -82,6 +105,54 @@ impl Node for Identifier {
 }
 
 impl Expression for Identifier {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+pub struct FunctionLiteral {
+    pub token: Token, // The 'fn' token
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl fmt::Display for FunctionLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let params: Vec<String> = self.parameters.iter().map(|p| p.to_string()).collect();
+        write!(f, "{}({}) {}", self.token_literal(), params.join(", "), self.body)
+    }
+}
+
+impl Node for FunctionLiteral {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for FunctionLiteral {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+pub struct CallExpression {
+    pub token: Token, // The '(' token
+    pub function: Box<dyn Expression>, // Identifier or FunctionLiteral
+    pub arguments: Vec<Box<dyn Expression>>,
+}
+
+impl fmt::Display for CallExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let args: Vec<String> = self.arguments.iter().map(|a| a.to_string()).collect();
+        write!(f, "{}({})", self.function, args.join(", "))
+    }
+}
+
+impl Node for CallExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for CallExpression {
     fn expression_node(&self) {}
     fn as_any(&self) -> &dyn Any { self }
 }

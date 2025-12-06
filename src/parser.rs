@@ -19,6 +19,7 @@ fn token_to_precedence(token: &Token) -> Precedence {
         Token::Lt | Token::Gt => Precedence::LessGreater,
         Token::Plus | Token::Minus => Precedence::Sum,
         Token::Slash | Token::Asterisk => Precedence::Product,
+        Token::LParen => Precedence::Call,
         _ => Precedence::Lowest,
     }
 }
@@ -82,6 +83,7 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Box<dyn Statement>> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
+            Token::Mut => self.parse_mut_statement(),
             Token::Return => self.parse_return_statement(),
             _ => self.parse_expression_statement(),
         }
@@ -146,6 +148,50 @@ impl<'a> Parser<'a> {
         Some(Box::new(stmt))
     }
 
+    fn parse_mut_statement(&mut self) -> Option<Box<dyn Statement>> {
+        let mut_token = self.current_token.clone();
+
+        if !matches!(self.peek_token, Token::Identifier(_)) {
+            self.peek_error(&Token::Identifier("".to_string()));
+            return None;
+        }
+        self.next_token();
+
+        let name = match self.current_token.clone() {
+            Token::Identifier(s) => ast::Identifier {
+                token: self.current_token.clone(),
+                value: s,
+            },
+            _ => unreachable!(),
+        };
+
+        if !matches!(self.peek_token, Token::Assign) {
+            self.peek_error(&Token::Assign);
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let value = match self.parse_expression(Precedence::Lowest) {
+            Some(expr) => expr,
+            None => {
+                return None;
+            }
+        };
+
+        if matches!(self.peek_token, Token::Semicolon) {
+            self.next_token();
+        }
+
+        let stmt = ast::MutStatement {
+            token: mut_token,
+            name,
+            value,
+        };
+
+        Some(Box::new(stmt))
+    }
+
     fn parse_return_statement(&mut self) -> Option<Box<dyn Statement>> {
         let return_token = self.current_token.clone();
         self.next_token();
@@ -174,6 +220,7 @@ impl<'a> Parser<'a> {
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
             Token::LParen => self.parse_grouped_expression(),
+            Token::Function => self.parse_function_literal(),
             _ => {
                 self.no_prefix_parse_fn_error(&token_clone);
                 return None;
@@ -186,6 +233,14 @@ impl<'a> Parser<'a> {
                     self.next_token();
                     if let Some(left) = left_exp {
                         left_exp = self.parse_infix_expression(left);
+                    } else {
+                        return None;
+                    }
+                }
+                Token::LParen => {
+                    self.next_token();
+                    if let Some(left) = left_exp {
+                        left_exp = self.parse_call_expression(left);
                     } else {
                         return None;
                     }
@@ -351,6 +406,107 @@ impl<'a> Parser<'a> {
 
         ast::BlockStatement { token, statements }
     }
+
+    fn parse_function_literal(&mut self) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+
+        if !matches!(self.peek_token, Token::LParen) {
+            self.peek_error(&Token::LParen);
+            return None;
+        }
+        self.next_token();
+
+        let parameters = self.parse_function_parameters();
+
+        if !matches!(self.peek_token, Token::LBrace) {
+            self.peek_error(&Token::LBrace);
+            return None;
+        }
+        self.next_token();
+
+        let body = self.parse_block_statement();
+
+        Some(Box::new(ast::FunctionLiteral {
+            token,
+            parameters,
+            body,
+        }))
+    }
+
+    fn parse_function_parameters(&mut self) -> Vec<ast::Identifier> {
+        let mut identifiers = Vec::new();
+
+        if matches!(self.peek_token, Token::RParen) {
+            self.next_token();
+            return identifiers;
+        }
+
+        self.next_token();
+
+        let ident = ast::Identifier {
+            token: self.current_token.clone(),
+            value: self.current_token.to_string(),
+        };
+        identifiers.push(ident);
+
+        while matches!(self.peek_token, Token::Comma) {
+            self.next_token();
+            self.next_token();
+            let ident = ast::Identifier {
+                token: self.current_token.clone(),
+                value: self.current_token.to_string(),
+            };
+            identifiers.push(ident);
+        }
+
+        if !matches!(self.peek_token, Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return Vec::new(); // Return empty vec on error
+        }
+        self.next_token();
+
+        identifiers
+    }
+
+    fn parse_call_expression(&mut self, function: Box<dyn Expression>) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+        let arguments = self.parse_call_arguments();
+        Some(Box::new(ast::CallExpression {
+            token,
+            function,
+            arguments,
+        }))
+    }
+
+    fn parse_call_arguments(&mut self) -> Vec<Box<dyn Expression>> {
+        let mut args = Vec::new();
+
+        if matches!(self.peek_token, Token::RParen) {
+            self.next_token();
+            return args;
+        }
+
+        self.next_token();
+        if let Some(exp) = self.parse_expression(Precedence::Lowest) {
+            args.push(exp);
+        }
+
+        while matches!(self.peek_token, Token::Comma) {
+            self.next_token();
+            self.next_token();
+            if let Some(exp) = self.parse_expression(Precedence::Lowest) {
+                args.push(exp);
+            }
+        }
+
+        if !matches!(self.peek_token, Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return Vec::new(); // Return empty vec on error
+        }
+        self.next_token();
+
+        args
+    }
 }
 
 #[cfg(test)]
@@ -388,6 +544,37 @@ mod tests {
 
         assert_eq!(let_stmt.name.value, name, "let_stmt.name.value not '{}'. got={}", name, let_stmt.name.value);
         assert_eq!(let_stmt.name.token_literal(), name, "let_stmt.name.token_literal() not '{}'. got={}", name, let_stmt.name.token_literal());
+    }
+
+    #[test]
+    fn test_mut_statements() {
+        let tests = vec![
+            ("mut x = 5;", "x", 5),
+            ("mut y = 10;", "y", 10),
+            ("mut foobar = 838383;", "foobar", 838383),
+        ];
+
+        for (input, expected_identifier, expected_value) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            assert_eq!(program.statements.len(), 1);
+            let stmt = &program.statements[0];
+            test_mut_statement(stmt, expected_identifier);
+            let mut_stmt = stmt.as_any().downcast_ref::<ast::MutStatement>().unwrap();
+            test_integer_literal(&mut_stmt.value, expected_value);
+        }
+    }
+
+    fn test_mut_statement(stmt: &Box<dyn Statement>, name: &str) {
+        assert_eq!(stmt.token_literal(), "mut", "stmt.token_literal not 'mut'. got={}", stmt.token_literal());
+
+        let mut_stmt = stmt.as_any().downcast_ref::<ast::MutStatement>().expect("statement not a MutStatement");
+
+        assert_eq!(mut_stmt.name.value, name, "mut_stmt.name.value not '{}'. got={}", name, mut_stmt.name.value);
+        assert_eq!(mut_stmt.name.token_literal(), name, "mut_stmt.name.token_literal() not '{}'. got={}", name, mut_stmt.name.token_literal());
     }
 
     fn test_integer_literal(expr: &Box<dyn Expression>, value: i64) {
@@ -628,5 +815,69 @@ mod tests {
 
             assert_eq!(parser.errors().len(), error_count, "Expected {} error(s) for input '{}', but got {} {:?}", error_count, input, parser.errors().len(), parser.errors());
         }
+    }
+
+    #[test]
+    fn test_function_literal_parsing() {
+        let input = "fn(x, y) { x + y; }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let function = stmt.expression.as_any().downcast_ref::<ast::FunctionLiteral>().expect("expression not FunctionLiteral");
+
+        assert_eq!(function.parameters.len(), 2);
+        assert_eq!(function.parameters[0].value, "x");
+        assert_eq!(function.parameters[1].value, "y");
+
+        assert_eq!(function.body.statements.len(), 1);
+        let body_stmt = function.body.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        assert_eq!(body_stmt.expression.to_string(), "(x + y)");
+    }
+
+    #[test]
+    fn test_function_parameter_parsing() {
+        let tests = vec![
+            ("fn() {};", vec![]),
+            ("fn(x) {};", vec!["x"]),
+            ("fn(x, y, z) {};", vec!["x", "y", "z"]),
+        ];
+
+        for (input, expected_params) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().unwrap();
+            let function = stmt.expression.as_any().downcast_ref::<ast::FunctionLiteral>().unwrap();
+
+            assert_eq!(function.parameters.len(), expected_params.len());
+            for (i, ident) in expected_params.iter().enumerate() {
+                assert_eq!(function.parameters[i].value, *ident);
+            }
+        }
+    }
+
+    #[test]
+    fn test_call_expression_parsing() {
+        let input = "add(1, 2 * 3, 4 + 5);";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let exp = stmt.expression.as_any().downcast_ref::<ast::CallExpression>().expect("expression not CallExpression");
+
+        assert_eq!(exp.function.to_string(), "add");
+        assert_eq!(exp.arguments.len(), 3);
+        assert_eq!(exp.arguments[0].to_string(), "1");
+        assert_eq!(exp.arguments[1].to_string(), "(2 * 3)");
+        assert_eq!(exp.arguments[2].to_string(), "(4 + 5)");
     }
 }

@@ -11,7 +11,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [ ] **Main Function:** Implement the entry point of the program.
 - [ ] **Variables:**
     - [x] Immutable variables (`let`) (Parser support)
-    - [ ] Mutable variables (`mut`) (Lexer support only)
+    - [x] Mutable variables (`mut`) (Parser support)
     - [ ] Type inference.
     - [ ] Type annotations.
 - [ ] **Data Types:**
@@ -30,7 +30,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [x] Unary: `++`, `--` (Parser support for `-`)
     - [x] Grouped (parenthesized) expressions
 - [ ] **Functions:**
-    - [ ] Function definition and calls.
+    - [x] Function definition and calls. (Parser support)
     - [ ] Function as a variable.
     - [x] Return statements.
 - [ ] **Control Flow:**

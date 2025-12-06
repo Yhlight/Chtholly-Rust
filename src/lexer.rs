@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_next_token_core_syntax() {
-        let input = "let five = 5;";
+        let input = "let five = 5; mut ten = 10;";
         let mut lexer = Lexer::new(input);
 
         let tokens = vec![
@@ -190,6 +190,11 @@ mod tests {
             Token::Identifier("five".to_string()),
             Token::Assign,
             Token::Int(5),
+            Token::Semicolon,
+            Token::Mut,
+            Token::Identifier("ten".to_string()),
+            Token::Assign,
+            Token::Int(10),
             Token::Semicolon,
             Token::Eof,
         ];
