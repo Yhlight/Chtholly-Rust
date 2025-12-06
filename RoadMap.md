@@ -10,23 +10,23 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **Comments:** Implement support for single-line and multi-line comments.
 - [ ] **Main Function:** Implement the entry point of the program.
 - [ ] **Variables:**
-    - [ ] Immutable variables (`let`).
-    - [ ] Mutable variables (`mut`).
+    - [x] Immutable variables (`let`).
+    - [x] Mutable variables (`mut`).
     - [ ] Type inference.
     - [ ] Type annotations.
 - [ ] **Data Types:**
-    - [ ] `int`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`
+    - [x] `int`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`
     - [ ] `double`, `float`
     - [ ] `char`
     - [ ] `bool`
     - [ ] `void`
     - [ ] `string`
 - [ ] **Operators:**
-    - [ ] Arithmetic: `+`, `-`, `*`, `/`, `%`
+    - [x] Arithmetic: `+`, `-`, `*`, `/`
     - [ ] Comparison: `==`, `!=`, `>`, `>=`, `<`, `<=`
     - [ ] Logical: `!`, `&&`, `||`
     - [ ] Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
-    - [ ] Assignment: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
+    - [x] Assignment: `=`
     - [ ] Unary: `++`, `--`
 - [ ] **Functions:**
     - [ ] Function definition and calls.

@@ -19,4 +19,33 @@ pub enum Token {
     Identifier(String),
     Int(i64),
     String(String),
+
+    // Operators
+    Assign,   // =
+    Plus,     // +
+    Minus,    // -
+    Asterisk, // *
+    Slash,    // /
+
+    // Delimiters
+    Comma,     // ,
+    Semicolon, // ;
+    LParen,    // (
+    RParen,    // )
+    LBrace,    // {
+    RBrace,    // }
+
+    // Keywords
+    Function, // fn
+    Let,      // let
+    Mut,      // mut
+}
+
+pub fn from_literal(literal: &str) -> Token {
+    match literal {
+        "fn" => Token::Function,
+        "let" => Token::Let,
+        "mut" => Token::Mut,
+        _ => Token::Identifier(literal.to_string()),
+    }
 }

@@ -1,4 +1,4 @@
-use crate::token::Token;
+use crate::token::{self, Token};
 
 pub struct Lexer<'a> {
     input: &'a str,
@@ -32,19 +32,50 @@ impl<'a> Lexer<'a> {
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
-        match self.ch {
+        let tok = match self.ch {
+            b'=' => Token::Assign,
+            b';' => Token::Semicolon,
+            b'(' => Token::LParen,
+            b')' => Token::RParen,
+            b',' => Token::Comma,
+            b'+' => Token::Plus,
+            b'{' => Token::LBrace,
+            b'}' => Token::RBrace,
+            b'-' => Token::Minus,
+            b'*' => Token::Asterisk,
+            b'/' => Token::Slash,
             0 => Token::Eof,
             _ => {
-                // If it's not whitespace or a comment, we'll just return EOF for now
-                // to make the test pass.
-                if self.position >= self.input.len() {
-                    Token::Eof
+                if is_letter(self.ch) {
+                    let literal = self.read_identifier();
+                    return token::from_literal(&literal);
+                } else if is_digit(self.ch) {
+                    return Token::Int(self.read_number());
                 } else {
-                    // This path should not be hit by the current test
                     Token::Illegal(self.ch.to_string())
                 }
             }
+        };
+
+        self.read_char();
+        tok
+    }
+
+    fn read_identifier(&mut self) -> String {
+        let position = self.position;
+        while is_letter(self.ch) {
+            self.read_char();
         }
+        self.input[position..self.position].to_string()
+    }
+
+    fn read_number(&mut self) -> i64 {
+        let position = self.position;
+        while is_digit(self.ch) {
+            self.read_char();
+        }
+        // This is safe because we know it's a number from the is_digit check
+        self.input[position..self.position].parse().unwrap()
     }
 
     fn skip_whitespace(&mut self) {
@@ -74,9 +105,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip_multi_line_comment(&mut self) {
-        // advance past the initial '/*'
-        self.read_char();
-        self.read_char();
+        self.read_char(); // consume '*'
+        self.read_char(); // consume '/'
 
         loop {
             if self.ch == b'*' && self.peek_char() == b'/' {
@@ -100,6 +130,15 @@ impl<'a> Lexer<'a> {
     }
 }
 
+fn is_letter(ch: u8) -> bool {
+    b'a' <= ch && ch <= b'z' || b'A' <= ch && ch <= b'Z' || ch == b'_'
+}
+
+fn is_digit(ch: u8) -> bool {
+    b'0' <= ch && ch <= b'9'
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,5 +156,25 @@ mod tests {
         let mut lexer = Lexer::new(input);
         let token = lexer.next_token();
         assert_eq!(token, Token::Eof);
+    }
+
+    #[test]
+    fn test_next_token_core_syntax() {
+        let input = "let five = 5;";
+        let mut lexer = Lexer::new(input);
+
+        let tokens = vec![
+            Token::Let,
+            Token::Identifier("five".to_string()),
+            Token::Assign,
+            Token::Int(5),
+            Token::Semicolon,
+            Token::Eof,
+        ];
+
+        for expected_token in tokens {
+            let token = lexer.next_token();
+            assert_eq!(token, expected_token);
+        }
     }
 }
