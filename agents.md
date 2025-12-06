@@ -2,20 +2,11 @@
 ```
 #!/bin/bash
 
-echo "--- 1. 安装 Rust 工具链 (rustup) ---"
-# 安装 curl，用于下载 rustup 脚本
+echo "--- 1. 更新系统并安装基本依赖 ---"
 sudo apt update
-sudo apt install -y curl build-essential
-
-# 安装 Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-
-# 激活 Rust 环境变量
-source $HOME/.cargo/env
-echo "Rust 安装完成。"
+sudo apt install -y build-essential wget gpg
 
 echo "--- 2. 添加 LLVM 18 官方存储库 ---"
-# LLVM 官方推荐的添加方式，保证版本正确
 
 # 1. 导入 LLVM 官方 GPG 密钥
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/llvm-archive-keyring.gpg
@@ -23,31 +14,32 @@ wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /et
 # 2. 将密钥文件移动到正确位置
 sudo chmod 644 /etc/apt/keyrings/llvm-archive-keyring.gpg
 
-# 3. 添加 LLVM 18 存储库 (假设您使用的是 Ubuntu 22.04 LTS 或类似版本)
+# 3. 添加 LLVM 18 存储库
 RELEASE=$(lsb_release -sc)
 echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/$RELEASE/ llvm-toolchain-$RELEASE-18 main" | sudo tee /etc/apt/sources.list.d/llvm.list > /dev/null
 
 echo "--- 3. 安装 LLVM 18 核心开发库 ---"
 sudo apt update
 
-# 安装 clang-18, libllvm-18-dev (核心开发库)
+# 安装 clang-18 和 libllvm-18-dev（核心头文件和静态库）
 sudo apt install -y clang-18 libllvm-18-dev
 
 echo "--- 4. 配置 LLVM 环境变量 (关键步骤) ---"
 
-# 定义 LLVM 18 的安装路径。在 Debian/Ubuntu 系统上，它通常位于 /usr/lib/llvm-18
+# 定义 LLVM 18 的安装路径
 LLVM_18_PATH="/usr/lib/llvm-18"
 
-# 导出环境变量：告诉 Rust 的 llvm-sys 库在哪里找到 LLVM 18
-# 181 是 llvm-sys 库期望的版本前缀
+# 导出环境变量：告诉 Rust 的 llvm-sys 库（版本 181）在哪里找到 LLVM 18
+# 临时设置，对当前会话有效
 export LLVM_SYS_181_PREFIX=$LLVM_18_PATH
 
-# 为了方便，将这个环境变量写入用户的 ~/.bashrc 文件，使其永久生效
+# 永久写入用户的 ~/.bashrc 文件，使其在每次登录时自动加载
+echo "" >> ~/.bashrc
+echo "# Chtholly LLVM 18 Configuration" >> ~/.bashrc
 echo "export LLVM_SYS_181_PREFIX=$LLVM_18_PATH" >> ~/.bashrc
 echo "export PATH=\$PATH:$LLVM_18_PATH/bin" >> ~/.bashrc
 
 echo "--- 环境配置完成! ---"
-echo "Rust 版本: $(rustc --version)"
 echo "LLVM 18 开发环境已安装并配置。"
 echo "!!! 请重启终端会话或运行 'source ~/.bashrc' 使环境变量永久生效 !!!"
 ```
