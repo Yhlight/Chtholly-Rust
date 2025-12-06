@@ -1,6 +1,6 @@
 //! The Parser for the Chtholly language.
 
-use crate::ast::{self, Node, Program, Statement, LetStatement, Identifier, Expression, IntegerLiteral, FloatLiteral, StringLiteral, Boolean, ExpressionStatement, PrefixExpression, InfixExpression};
+use crate::ast::{self, Node, Program, Statement, LetStatement, Identifier, Expression, IntegerLiteral, FloatLiteral, StringLiteral, Boolean, ExpressionStatement, PrefixExpression, InfixExpression, ReturnStatement, BlockStatement, IfExpression};
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
 
@@ -64,6 +64,7 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.cur_token {
             Token::Let => self.parse_let_statement().map(Statement::Let),
+            Token::Return => self.parse_return_statement().map(Statement::Return),
             _ => self.parse_expression_statement().map(Statement::Expression),
         }
     }
@@ -98,6 +99,19 @@ impl<'a> Parser<'a> {
         Some(LetStatement { token, name, value })
     }
 
+    fn parse_return_statement(&mut self) -> Option<ReturnStatement> {
+        let token = self.cur_token.clone();
+        self.next_token();
+
+        let return_value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token_is(&Token::Semicolon) {
+            self.next_token();
+        }
+
+        Some(ReturnStatement { token, return_value })
+    }
+
     fn parse_expression_statement(&mut self) -> Option<ExpressionStatement> {
         let stmt = ExpressionStatement {
             token: self.cur_token.clone(),
@@ -116,6 +130,7 @@ impl<'a> Parser<'a> {
             Token::Ident(_) => self.parse_identifier(),
             Token::Int(_) => self.parse_integer_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            Token::If => self.parse_if_expression(),
             _ => None,
         }?;
 
@@ -182,6 +197,65 @@ impl<'a> Parser<'a> {
         }))
     }
 
+    fn parse_if_expression(&mut self) -> Option<Expression> {
+        let token = self.cur_token.clone();
+
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+
+        let consequence = self.parse_block_statement()?;
+
+        let mut alternative = None;
+        if self.peek_token_is(&Token::Else) {
+            self.next_token();
+
+            if !self.expect_peek(Token::LBrace) {
+                return None;
+            }
+
+            alternative = self.parse_block_statement();
+        }
+
+        Some(Expression::If(IfExpression {
+            token,
+            condition: Box::new(condition),
+            consequence,
+            alternative,
+        }))
+    }
+
+    fn parse_block_statement(&mut self) -> Option<BlockStatement> {
+        let token = self.cur_token.clone();
+        let mut statements = Vec::new();
+
+        self.next_token();
+
+        while !self.cur_token_is(&Token::RBrace) && !self.cur_token_is(&Token::Eof) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        Some(BlockStatement { token, statements })
+    }
+
+    fn cur_token_is(&self, t: &Token) -> bool {
+        std::mem::discriminant(&self.cur_token) == std::mem::discriminant(t)
+    }
+
     fn peek_token_is(&self, t: &Token) -> bool {
         std::mem::discriminant(&self.peek_token) == std::mem::discriminant(t)
     }
@@ -237,7 +311,7 @@ let y = 10;
 let foobar = 838383;
 ";
         let program = parse_program(input);
-        check_parser_errors(program.1);
+        check_parser_errors(&program.1);
 
         assert_eq!(
             program.0.statements.len(),
@@ -263,10 +337,31 @@ let foobar = 838383;
     }
 
     #[test]
+    fn test_return_statements() {
+        let input = "
+return 5;
+return 10;
+return 993322;
+";
+        let program = parse_program(input);
+        check_parser_errors(&program.1);
+
+        assert_eq!(program.0.statements.len(), 3);
+
+        for stmt in program.0.statements {
+            if let Statement::Return(return_stmt) = stmt {
+                assert_eq!(return_stmt.token_literal(), "return");
+            } else {
+                panic!("statement not ReturnStatement. got={:?}", stmt);
+            }
+        }
+    }
+
+    #[test]
     fn test_expression_statement() {
         let input = "foobar;";
         let program = parse_program(input);
-        check_parser_errors(program.1);
+        check_parser_errors(&program.1);
 
         assert_eq!(program.0.statements.len(), 1);
 
@@ -291,7 +386,7 @@ let foobar = 838383;
 
         for (input, operator, value) in prefix_tests {
             let program = parse_program(input);
-            check_parser_errors(program.1);
+            check_parser_errors(&program.1);
 
             assert_eq!(program.0.statements.len(), 1);
             if let Statement::Expression(exp_stmt) = &program.0.statements[0] {
@@ -322,7 +417,7 @@ let foobar = 838383;
 
         for (input, left_val, operator, right_val) in infix_tests {
             let program = parse_program(input);
-            check_parser_errors(program.1);
+            check_parser_errors(&program.1);
 
             assert_eq!(program.0.statements.len(), 1);
             if let Statement::Expression(exp_stmt) = &program.0.statements[0] {
@@ -336,6 +431,44 @@ let foobar = 838383;
             } else {
                 panic!("statement not ExpressionStatement. got={:?}", program.0.statements[0]);
             }
+        }
+    }
+
+    #[test]
+    fn test_if_expression() {
+        let input = "if (x < y) { x }";
+        let program = parse_program(input);
+        check_parser_errors(&program.1);
+
+        assert_eq!(program.0.statements.len(), 1);
+        if let Statement::Expression(exp_stmt) = &program.0.statements[0] {
+            if let Expression::If(if_exp) = &exp_stmt.expression {
+                assert_eq!(if_exp.consequence.statements.len(), 1);
+                assert!(if_exp.alternative.is_none());
+            } else {
+                panic!("expression not IfExpression. got={:?}", exp_stmt.expression);
+            }
+        } else {
+            panic!("statement not ExpressionStatement. got={:?}", program.0.statements[0]);
+        }
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let input = "if (x < y) { x } else { y }";
+        let program = parse_program(input);
+        check_parser_errors(&program.1);
+
+        assert_eq!(program.0.statements.len(), 1);
+        if let Statement::Expression(exp_stmt) = &program.0.statements[0] {
+            if let Expression::If(if_exp) = &exp_stmt.expression {
+                assert_eq!(if_exp.consequence.statements.len(), 1);
+                assert!(if_exp.alternative.is_some());
+            } else {
+                panic!("expression not IfExpression. got={:?}", exp_stmt.expression);
+            }
+        } else {
+            panic!("statement not ExpressionStatement. got={:?}", program.0.statements[0]);
         }
     }
 
@@ -370,7 +503,7 @@ let foobar = 838383;
         }
     }
 
-    fn check_parser_errors(parser: Parser) {
+    fn check_parser_errors(parser: &Parser) {
         let errors = parser.errors();
         if errors.is_empty() {
             return;

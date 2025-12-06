@@ -15,6 +15,7 @@ pub trait Node {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let(LetStatement),
+    Return(ReturnStatement),
     Expression(ExpressionStatement),
 }
 
@@ -22,12 +23,14 @@ impl Node for Statement {
     fn token_literal(&self) -> String {
         match self {
             Statement::Let(s) => s.token_literal(),
+            Statement::Return(s) => s.token_literal(),
             Statement::Expression(s) => s.token_literal(),
         }
     }
     fn string(&self) -> String {
         match self {
             Statement::Let(s) => s.string(),
+            Statement::Return(s) => s.string(),
             Statement::Expression(s) => s.string(),
         }
     }
@@ -43,6 +46,7 @@ pub enum Expression {
     Boolean(Boolean),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
+    If(IfExpression),
 }
 
 impl Node for Expression {
@@ -55,6 +59,7 @@ impl Node for Expression {
             Expression::Boolean(b) => b.token_literal(),
             Expression::Prefix(p) => p.token_literal(),
             Expression::Infix(i) => i.token_literal(),
+            Expression::If(i) => i.token_literal(),
         }
     }
     fn string(&self) -> String {
@@ -66,6 +71,7 @@ impl Node for Expression {
             Expression::Boolean(b) => b.string(),
             Expression::Prefix(p) => p.string(),
             Expression::Infix(i) => i.string(),
+            Expression::If(i) => i.string(),
         }
     }
 }
@@ -114,6 +120,22 @@ impl Node for LetStatement {
     }
 }
 
+/// Represents a `return` statement: `return <value>;`
+#[derive(Debug, PartialEq, Clone)]
+pub struct ReturnStatement {
+    pub token: Token,
+    pub return_value: Expression,
+}
+
+impl Node for ReturnStatement {
+    fn token_literal(&self) -> String {
+        "return".to_string()
+    }
+    fn string(&self) -> String {
+        format!("{} {};", self.token_literal(), self.return_value.string())
+    }
+}
+
 /// Represents a statement that consists of a single expression.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionStatement {
@@ -127,6 +149,25 @@ impl Node for ExpressionStatement {
     }
     fn string(&self) -> String {
         self.expression.string()
+    }
+}
+
+/// Represents a block of statements.
+#[derive(Debug, PartialEq, Clone)]
+pub struct BlockStatement {
+    pub token: Token, // the { token
+    pub statements: Vec<Statement>,
+}
+
+impl Node for BlockStatement {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+    fn string(&self) -> String {
+        self.statements
+            .iter()
+            .map(|s| s.string())
+            .collect::<String>()
     }
 }
 
@@ -247,5 +288,32 @@ impl Node for InfixExpression {
             self.operator,
             self.right.string()
         )
+    }
+}
+
+/// Represents an if-else expression.
+#[derive(Debug, PartialEq, Clone)]
+pub struct IfExpression {
+    pub token: Token, // The 'if' token
+    pub condition: Box<Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl Node for IfExpression {
+    fn token_literal(&self) -> String {
+        "if".to_string()
+    }
+    fn string(&self) -> String {
+        let mut s = format!(
+            "if {} {}",
+            self.condition.string(),
+            self.consequence.string()
+        );
+        if let Some(alt) = &self.alternative {
+            s.push_str(" else ");
+            s.push_str(&alt.string());
+        }
+        s
     }
 }
