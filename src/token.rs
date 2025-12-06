@@ -1,0 +1,22 @@
+#[derive(Debug, PartialEq, Clone)]
+pub struct Position {
+    pub line: usize,
+    pub column: usize,
+}
+
+impl Position {
+    pub fn new(line: usize, column: usize) -> Self {
+        Self { line, column }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Token {
+    Illegal(String),
+    Eof,
+
+    // Identifiers + literals
+    Identifier(String),
+    Int(i64),
+    String(String),
+}

@@ -4,10 +4,10 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 1: Core Language Features
 
-- [ ] **Lexer:** Implement the lexical analyzer to tokenize the source code.
+- [x] **Lexer:** Implement the lexical analyzer to tokenize the source code.
 - [ ] **Parser:** Implement the parser to build an Abstract Syntax Tree (AST) from the tokens.
 - [ ] **AST:** Define the data structures for the AST.
-- [ ] **Comments:** Implement support for single-line and multi-line comments.
+- [x] **Comments:** Implement support for single-line and multi-line comments.
 - [ ] **Main Function:** Implement the entry point of the program.
 - [ ] **Variables:**
     - [ ] Immutable variables (`let`).
