@@ -1,4 +1,3 @@
-
 use crate::token::Token;
 
 pub trait Node {

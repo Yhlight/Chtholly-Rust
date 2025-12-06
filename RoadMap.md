@@ -45,11 +45,10 @@ This document outlines the development plan for the Chtholly programming languag
   - [x] `+`, `-`, `*`, `/`
   - [ ] `%`
 - [x] **Comparison Operators**
-  - [x] `==`, `!=`, `>`, `<`
-  - [ ] `>=`, `<=`
+  - [x] `==`, `!=`, `>`, `<`, `>=`, `<=`
 - [x] **Logical Operators**
   - [x] `!`
-  - [ ] `&&`, `||`
+  - [x] `&&`, `||`
 - [ ] **Bitwise Operators**
   - [ ] `&`, `|`, `^`, `~`, `<<`, `>>`
 - [ ] **Assignment Operators**

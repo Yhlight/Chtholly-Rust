@@ -1,4 +1,3 @@
-
 use crate::token::{Token, TokenKind};
 
 pub struct Lexer<'a> {
@@ -83,8 +82,38 @@ impl<'a> Lexer<'a> {
                     Token::new(TokenKind::Bang, "!".to_string())
                 }
             }
-            b'<' => Token::new(TokenKind::Lt, "<".to_string()),
-            b'>' => Token::new(TokenKind::Gt, ">".to_string()),
+            b'<' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::new(TokenKind::LtEq, "<=".to_string())
+                } else {
+                    Token::new(TokenKind::Lt, "<".to_string())
+                }
+            }
+            b'>' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::new(TokenKind::GtEq, ">=".to_string())
+                } else {
+                    Token::new(TokenKind::Gt, ">".to_string())
+                }
+            }
+            b'&' => {
+                if self.peek_char() == b'&' {
+                    self.read_char();
+                    Token::new(TokenKind::And, "&&".to_string())
+                } else {
+                    Token::new(TokenKind::Illegal, "&".to_string())
+                }
+            }
+            b'|' => {
+                if self.peek_char() == b'|' {
+                    self.read_char();
+                    Token::new(TokenKind::Or, "||".to_string())
+                } else {
+                    Token::new(TokenKind::Illegal, "|".to_string())
+                }
+            }
             b'+' => Token::new(TokenKind::Plus, "+".to_string()),
             b'-' => Token::new(TokenKind::Minus, "-".to_string()),
             b'*' => Token::new(TokenKind::Asterisk, "*".to_string()),

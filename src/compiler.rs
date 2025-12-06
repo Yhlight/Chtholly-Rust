@@ -1,4 +1,3 @@
-
 use crate::ast::{Expression, Program, Statement};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -50,7 +49,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     let basic_block = self.context.append_basic_block(function, "entry");
                     self.builder.position_at_end(basic_block);
                     let value = self.compile_expression_in_function(expression)?;
-                    self.builder.build_return(Some(&value)).map_err(|_| "Failed to build return")?;
+                    self.builder
+                        .build_return(Some(&value))
+                        .map_err(|_| "Failed to build return")?;
                     return Ok(function);
                 }
             } else {
@@ -108,16 +109,26 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         match stmt {
             Statement::Let { name, value, .. } => {
                 let i32_type = self.context.i32_type();
-                let alloca = self.builder.build_alloca(i32_type, &name.value).map_err(|_| "Failed to build alloca")?;
+                let alloca = self
+                    .builder
+                    .build_alloca(i32_type, &name.value)
+                    .map_err(|_| "Failed to build alloca")?;
                 let val = self.compile_expression_in_function(value)?;
-                self.builder.build_store(alloca, val).map_err(|_| "Failed to build store")?;
+                self.builder
+                    .build_store(alloca, val)
+                    .map_err(|_| "Failed to build store")?;
                 self.variables.insert(name.value.clone(), alloca);
             }
             Statement::Mut { name, value, .. } => {
                 let i32_type = self.context.i32_type();
-                let alloca = self.builder.build_alloca(i32_type, &name.value).map_err(|_| "Failed to build alloca")?;
+                let alloca = self
+                    .builder
+                    .build_alloca(i32_type, &name.value)
+                    .map_err(|_| "Failed to build alloca")?;
                 let val = self.compile_expression_in_function(value)?;
-                self.builder.build_store(alloca, val).map_err(|_| "Failed to build store")?;
+                self.builder
+                    .build_store(alloca, val)
+                    .map_err(|_| "Failed to build store")?;
                 self.variables.insert(name.value.clone(), alloca);
             }
             Statement::ExpressionStatement { expression } => {
@@ -133,10 +144,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         expr: &Expression,
     ) -> Result<IntValue<'ctx>, &'static str> {
         match expr {
-             Expression::Identifier(ident) => {
+            Expression::Identifier(ident) => {
                 let ptr = self.variables.get(&ident.value).ok_or("Unknown variable")?;
                 let i32_type = self.context.i32_type();
-                Ok(self.builder.build_load(i32_type, *ptr, &ident.value).map_err(|_| "Failed to build load")?.into_int_value())
+                Ok(self
+                    .builder
+                    .build_load(i32_type, *ptr, &ident.value)
+                    .map_err(|_| "Failed to build load")?
+                    .into_int_value())
             }
             Expression::IntegerLiteral { value, .. } => {
                 let i32_type = self.context.i32_type();
@@ -146,13 +161,18 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 let i1_type = self.context.bool_type();
                 Ok(i1_type.const_int(*value as u64, false))
             }
-            Expression::PrefixExpression { operator, right, .. } => {
+            Expression::PrefixExpression {
+                operator, right, ..
+            } => {
                 let right = self.compile_expression_in_function(right)?;
                 match operator.as_str() {
                     "!" => {
                         let i1_type = self.context.bool_type();
                         let zero = i1_type.const_int(0, false);
-                        Ok(self.builder.build_int_compare(IntPredicate::EQ, right, zero, "nottmp").map_err(|_| "Failed to build int compare")?)
+                        Ok(self
+                            .builder
+                            .build_int_compare(IntPredicate::EQ, right, zero, "nottmp")
+                            .map_err(|_| "Failed to build int compare")?)
                     }
                     _ => Err("Unknown operator"),
                 }
@@ -166,14 +186,38 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 let left = self.compile_expression_in_function(left)?;
                 let right = self.compile_expression_in_function(right)?;
                 match operator.as_str() {
-                    "+" => Ok(self.builder.build_int_add(left, right, "addtmp").map_err(|_| "Failed to build int add")?),
-                    "-" => Ok(self.builder.build_int_sub(left, right, "subtmp").map_err(|_| "Failed to build int sub")?),
-                    "*" => Ok(self.builder.build_int_mul(left, right, "multmp").map_err(|_| "Failed to build int mul")?),
-                    "/" => Ok(self.builder.build_int_signed_div(left, right, "divtmp").map_err(|_| "Failed to build int signed div")?),
-                    "<" => Ok(self.builder.build_int_compare(IntPredicate::SLT, left, right, "cmptmp").map_err(|_| "Failed to build int compare")?),
-                    ">" => Ok(self.builder.build_int_compare(IntPredicate::SGT, left, right, "cmptmp").map_err(|_| "Failed to build int compare")?),
-                    "==" => Ok(self.builder.build_int_compare(IntPredicate::EQ, left, right, "cmptmp").map_err(|_| "Failed to build int compare")?),
-                    "!=" => Ok(self.builder.build_int_compare(IntPredicate::NE, left, right, "cmptmp").map_err(|_| "Failed to build int compare")?),
+                    "+" => Ok(self
+                        .builder
+                        .build_int_add(left, right, "addtmp")
+                        .map_err(|_| "Failed to build int add")?),
+                    "-" => Ok(self
+                        .builder
+                        .build_int_sub(left, right, "subtmp")
+                        .map_err(|_| "Failed to build int sub")?),
+                    "*" => Ok(self
+                        .builder
+                        .build_int_mul(left, right, "multmp")
+                        .map_err(|_| "Failed to build int mul")?),
+                    "/" => Ok(self
+                        .builder
+                        .build_int_signed_div(left, right, "divtmp")
+                        .map_err(|_| "Failed to build int signed div")?),
+                    "<" => Ok(self
+                        .builder
+                        .build_int_compare(IntPredicate::SLT, left, right, "cmptmp")
+                        .map_err(|_| "Failed to build int compare")?),
+                    ">" => Ok(self
+                        .builder
+                        .build_int_compare(IntPredicate::SGT, left, right, "cmptmp")
+                        .map_err(|_| "Failed to build int compare")?),
+                    "==" => Ok(self
+                        .builder
+                        .build_int_compare(IntPredicate::EQ, left, right, "cmptmp")
+                        .map_err(|_| "Failed to build int compare")?),
+                    "!=" => Ok(self
+                        .builder
+                        .build_int_compare(IntPredicate::NE, left, right, "cmptmp")
+                        .map_err(|_| "Failed to build int compare")?),
                     _ => Err("Unknown operator"),
                 }
             }
@@ -195,16 +239,26 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     ) -> Result<IntValue<'ctx>, &'static str> {
         let cond = self.compile_expression_in_function(condition)?;
 
-        let then_bb = self.context.append_basic_block(self.function.unwrap(), "then");
-        let else_bb = self.context.append_basic_block(self.function.unwrap(), "else");
-        let merge_bb = self.context.append_basic_block(self.function.unwrap(), "ifcont");
+        let then_bb = self
+            .context
+            .append_basic_block(self.function.unwrap(), "then");
+        let else_bb = self
+            .context
+            .append_basic_block(self.function.unwrap(), "else");
+        let merge_bb = self
+            .context
+            .append_basic_block(self.function.unwrap(), "ifcont");
 
-        self.builder.build_conditional_branch(cond, then_bb, else_bb).map_err(|_| "Failed to build conditional branch")?;
+        self.builder
+            .build_conditional_branch(cond, then_bb, else_bb)
+            .map_err(|_| "Failed to build conditional branch")?;
 
         // Build then block
         self.builder.position_at_end(then_bb);
         let then_val = self.compile_block_for_if(consequence)?;
-        self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
+        self.builder
+            .build_unconditional_branch(merge_bb)
+            .map_err(|_| "Failed to build unconditional branch")?;
         let then_bb = self.builder.get_insert_block().unwrap();
 
         // Build else block
@@ -212,22 +266,24 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         let else_val = if let Some(alt) = alternative {
             self.compile_block_for_if(alt)?
         } else {
-           return Err("if expression without else is not supported yet");
+            return Err("if expression without else is not supported yet");
         };
-        self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
+        self.builder
+            .build_unconditional_branch(merge_bb)
+            .map_err(|_| "Failed to build unconditional branch")?;
         let else_bb = self.builder.get_insert_block().unwrap();
 
         // Build merge block
         self.builder.position_at_end(merge_bb);
-        let phi = self.builder.build_phi(self.context.i32_type(), "iftmp").map_err(|_| "Failed to build phi")?;
+        let phi = self
+            .builder
+            .build_phi(self.context.i32_type(), "iftmp")
+            .map_err(|_| "Failed to build phi")?;
         phi.add_incoming(&[(&then_val, then_bb), (&else_val, else_bb)]);
         Ok(phi.as_basic_value().into_int_value())
     }
 
-    fn compile_block_for_if(
-        &mut self,
-        stmts: &Statement,
-    ) -> Result<IntValue<'ctx>, &'static str> {
+    fn compile_block_for_if(&mut self, stmts: &Statement) -> Result<IntValue<'ctx>, &'static str> {
         if let Statement::Block(stmts) = stmts {
             let mut last_val = None;
             for stmt in stmts {

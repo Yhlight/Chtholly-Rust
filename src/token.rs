@@ -1,4 +1,3 @@
-
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum TokenKind {
     Eof,
@@ -19,6 +18,10 @@ pub enum TokenKind {
     NotEq,
     Lt,
     Gt,
+    GtEq,
+    LtEq,
+    And,
+    Or,
 
     // Delimiters
     Semicolon,

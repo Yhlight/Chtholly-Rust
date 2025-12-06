@@ -1,4 +1,3 @@
-
 use crate::ast::{Expression, Identifier, Program, Statement};
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -10,11 +9,13 @@ type InfixParseFn = fn(&mut Parser, Expression) -> Option<Expression>;
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
-    Equals, // ==
+    And,         // &&
+    Or,          // ||
+    Equals,      // ==
     LessGreater, // > or <
-    Sum,     // +
-    Product, // *
-    Prefix, // -X or !X
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
 }
 
 fn precedents(token_kind: &TokenKind) -> Precedence {
@@ -23,10 +24,14 @@ fn precedents(token_kind: &TokenKind) -> Precedence {
         TokenKind::NotEq => Precedence::Equals,
         TokenKind::Lt => Precedence::LessGreater,
         TokenKind::Gt => Precedence::LessGreater,
+        TokenKind::LtEq => Precedence::LessGreater,
+        TokenKind::GtEq => Precedence::LessGreater,
         TokenKind::Plus => Precedence::Sum,
         TokenKind::Minus => Precedence::Sum,
         TokenKind::Slash => Precedence::Product,
         TokenKind::Asterisk => Precedence::Product,
+        TokenKind::And => Precedence::And,
+        TokenKind::Or => Precedence::Or,
         _ => Precedence::Lowest,
     }
 }
@@ -62,7 +67,10 @@ impl<'a> Parser<'a> {
             let value = match parser.current_token.literal.parse::<i64>() {
                 Ok(v) => v,
                 Err(_) => {
-                    parser.errors.push(format!("could not parse {} as integer", parser.current_token.literal));
+                    parser.errors.push(format!(
+                        "could not parse {} as integer",
+                        parser.current_token.literal
+                    ));
                     return None;
                 }
             };
@@ -226,6 +234,54 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             })
         });
+        p.register_infix(TokenKind::GtEq, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: ">=".to_string(),
+                right: Box::new(right),
+            })
+        });
+        p.register_infix(TokenKind::LtEq, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: "<=".to_string(),
+                right: Box::new(right),
+            })
+        });
+        p.register_infix(TokenKind::And, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: "&&".to_string(),
+                right: Box::new(right),
+            })
+        });
+        p.register_infix(TokenKind::Or, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: "||".to_string(),
+                right: Box::new(right),
+            })
+        });
 
         p
     }
@@ -335,10 +391,8 @@ impl<'a> Parser<'a> {
         let prefix = self.prefix_parse_fns.get(&self.current_token.kind)?;
         let mut left_exp = prefix(self)?;
 
-        while self.peek_token.kind != TokenKind::Semicolon
-            && precedence < self.peek_precedence()
-        {
-            let infix = self.infix_parse_fns.get(&self.peek_token.kind)?.clone();
+        while self.peek_token.kind != TokenKind::Semicolon && precedence < self.peek_precedence() {
+            let infix = *self.infix_parse_fns.get(&self.peek_token.kind)?;
             self.next_token();
             left_exp = infix(self, left_exp)?;
         }
@@ -401,7 +455,9 @@ impl<'a> Parser<'a> {
     fn parse_block_statement(&mut self) -> Option<Statement> {
         let mut statements = Vec::new();
         self.next_token();
-        while self.current_token.kind != TokenKind::RBrace && self.current_token.kind != TokenKind::Eof {
+        while self.current_token.kind != TokenKind::RBrace
+            && self.current_token.kind != TokenKind::Eof
+        {
             if let Some(stmt) = self.parse_statement() {
                 statements.push(stmt);
             }

@@ -1,6 +1,5 @@
-
 use chtholly::lexer::Lexer;
-use chtholly::token::{TokenKind};
+use chtholly::token::TokenKind;
 
 #[test]
 fn test_next_token() {

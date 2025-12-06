@@ -1,4 +1,3 @@
-
 use chtholly::compiler::Compiler;
 use chtholly::lexer::Lexer;
 use chtholly::parser::Parser;
@@ -20,7 +19,10 @@ fn test_main_function() {
 
     assert!(result.is_ok());
     let function = result.unwrap();
-    assert!(function.print_to_string().to_string().contains("define i32 @main()"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("define i32 @main()"));
 }
 
 #[test]
@@ -38,8 +40,14 @@ fn test_let_statement() {
 
     assert!(result.is_ok());
     let function = result.unwrap();
-    assert!(function.print_to_string().to_string().contains("alloca i32"));
-    assert!(function.print_to_string().to_string().contains("store i32 5, ptr %x"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("alloca i32"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("store i32 5, ptr %x"));
 }
 
 #[test]
@@ -57,8 +65,14 @@ fn test_mut_statement() {
 
     assert!(result.is_ok());
     let function = result.unwrap();
-    assert!(function.print_to_string().to_string().contains("alloca i32"));
-    assert!(function.print_to_string().to_string().contains("store i32 5, ptr %x"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("alloca i32"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("store i32 5, ptr %x"));
 }
 
 #[test]
@@ -89,10 +103,7 @@ fn test_integer_arithmetic() {
 
 #[test]
 fn test_boolean_expressions_compiler() {
-    let tests = vec![
-        ("true", "ret i1 true"),
-        ("false", "ret i1 false"),
-    ];
+    let tests = vec![("true", "ret i1 true"), ("false", "ret i1 false")];
 
     for (input, expected) in tests {
         let lexer = Lexer::new(input);
@@ -139,10 +150,7 @@ fn test_comparison_expressions_compiler() {
 
 #[test]
 fn test_bang_operator_compiler() {
-    let tests = vec![
-        ("!true", "ret i1 false"),
-        ("!false", "ret i1 true"),
-    ];
+    let tests = vec![("!true", "ret i1 false"), ("!false", "ret i1 true")];
 
     for (input, expected) in tests {
         let lexer = Lexer::new(input);
@@ -192,7 +200,10 @@ fn test_if_else_expression_compiler() {
 
     assert!(result.is_ok());
     let function = result.unwrap();
-    assert!(function.print_to_string().to_string().contains("phi i32 [ 10, %then ], [ 20, %else ]"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("phi i32 [ 10, %then ], [ 20, %else ]"));
 }
 
 #[test]
@@ -210,7 +221,10 @@ fn test_variable_use() {
 
     assert!(result.is_ok());
     let function = result.unwrap();
-    assert!(function.print_to_string().to_string().contains("load i32, ptr %x"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("load i32, ptr %x"));
 }
 
 #[test]
@@ -228,7 +242,10 @@ fn test_function_name() {
 
     assert!(result.is_ok());
     let function = result.unwrap();
-    assert!(function.print_to_string().to_string().contains("define i32 @myFunction()"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("define i32 @myFunction()"));
 }
 
 #[test]
@@ -249,6 +266,9 @@ fn test_multiple_functions() {
 
     assert!(result.is_ok());
     let function = result.unwrap();
-    assert!(function.print_to_string().to_string().contains("define i32 @main()"));
+    assert!(function
+        .print_to_string()
+        .to_string()
+        .contains("define i32 @main()"));
     assert!(module.get_function("anotherFunction").is_some());
 }
