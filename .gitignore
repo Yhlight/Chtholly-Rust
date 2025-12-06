@@ -1,5 +1,6 @@
 /target
 Cargo.lock
 chtholly_compiler
+output
 *.o
 *.ll
