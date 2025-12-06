@@ -17,7 +17,7 @@
     - [x] `while` loops
     - [ ] `for` loops
     - [ ] `foreach` loops
-    - [ ] `do-while` loops
+    - [x] `do-while` loops
 
 ## Milestone 2: Functions and Scope
 

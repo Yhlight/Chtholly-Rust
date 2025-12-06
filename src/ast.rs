@@ -19,6 +19,7 @@ pub enum Expression {
     If(Box<Expression>, BlockStatement, Option<BlockStatement>),
     Call(Box<Expression>, Vec<Expression>),
     While(Box<Expression>, BlockStatement),
+    DoWhile(BlockStatement, Box<Expression>),
     Prefix(PrefixOperator, Box<Expression>),
     // Other expressions will be added here
 }

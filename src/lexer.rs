@@ -9,6 +9,7 @@ pub enum Token {
     If,
     Else,
     While,
+    Do,
 
     // Identifiers
     Ident(String),
@@ -155,6 +156,7 @@ impl<'a> Lexer<'a> {
                     "if" => Token::If,
                     "else" => Token::Else,
                     "while" => Token::While,
+                    "do" => Token::Do,
                     _ => Token::Ident(ident),
                 };
             }
@@ -257,6 +259,7 @@ mod tests {
             1 > 2;
             1 >= 2;
             1 <= 2;
+            do { x } while (x < y);
         "#;
 
         let tests = vec![
@@ -331,6 +334,17 @@ mod tests {
             Token::Int(1),
             Token::LtEq,
             Token::Int(2),
+            Token::Semicolon,
+            Token::Do,
+            Token::LBrace,
+            Token::Ident("x".to_string()),
+            Token::RBrace,
+            Token::While,
+            Token::LParen,
+            Token::Ident("x".to_string()),
+            Token::Lt,
+            Token::Ident("y".to_string()),
+            Token::RParen,
             Token::Semicolon,
             Token::Eof,
         ];
