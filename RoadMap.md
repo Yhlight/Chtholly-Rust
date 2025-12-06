@@ -31,7 +31,7 @@ This document outlines the development plan for the Chtholly programming languag
   - [ ] Type annotations
 - [x] **Data Types**
   - [x] `int` (i32)
-  - [ ] `double` (f64) and `float` (f32)
+  - [x] `double` (f64) and `float` (f32)
   - [ ] `char`
   - [x] `bool`
   - [ ] `string`

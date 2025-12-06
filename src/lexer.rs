@@ -171,6 +171,9 @@ impl<'a> Lexer<'a> {
             }
             b'0'..=b'9' => {
                 let literal = self.read_number();
+                if literal.contains('.') {
+                    return Token::new(TokenKind::Float, literal);
+                }
                 return Token::new(TokenKind::Int, literal);
             }
             0 => Token::new(TokenKind::Eof, "".to_string()),
@@ -203,6 +206,13 @@ impl<'a> Lexer<'a> {
         let position = self.position;
         while self.ch.is_ascii_digit() {
             self.read_char();
+        }
+
+        if self.ch == b'.' && self.peek_char().is_ascii_digit() {
+            self.read_char();
+            while self.ch.is_ascii_digit() {
+                self.read_char();
+            }
         }
         self.input[position..self.position].to_string()
     }

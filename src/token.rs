@@ -6,6 +6,7 @@ pub enum TokenKind {
     // Identifiers + literals
     Ident, // add, foobar, x, y, ...
     Int,   // 1343456
+    Float,
     String,
     Char,
 

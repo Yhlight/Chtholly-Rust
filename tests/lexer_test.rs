@@ -117,6 +117,25 @@ let var1 = 5;
 }
 
 #[test]
+fn test_float_literal() {
+    let input = "3.14 0.5";
+
+    let tests = vec![
+        (TokenKind::Float, "3.14"),
+        (TokenKind::Float, "0.5"),
+        (TokenKind::Eof, ""),
+    ];
+
+    let mut lexer = Lexer::new(input);
+
+    for (expected_kind, expected_literal) in tests {
+        let tok = lexer.next_token();
+        assert_eq!(tok.kind, expected_kind);
+        assert_eq!(tok.literal, expected_literal);
+    }
+}
+
+#[test]
 fn test_char_literal() {
     let input = "'a' 'b' ' '";
 

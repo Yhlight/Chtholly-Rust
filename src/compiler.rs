@@ -7,10 +7,12 @@ use inkwell::IntPredicate;
 use std::collections::HashMap;
 
 use inkwell::basic_block::BasicBlock;
+use inkwell::values::FloatValue;
 
 #[derive(Debug, Clone)]
 pub enum CompilerValue<'ctx> {
     Int(IntValue<'ctx>),
+    Float(FloatValue<'ctx>),
     Bool(IntValue<'ctx>),
     String(PointerValue<'ctx>),
     Char(IntValue<'ctx>),
@@ -22,6 +24,7 @@ impl<'ctx> CompilerValue<'ctx> {
             CompilerValue::Int(iv) => Ok(iv),
             CompilerValue::Bool(iv) => Ok(iv),
             CompilerValue::Char(iv) => Ok(iv),
+            CompilerValue::Float(_) => Err("Expected an integer value, got a float"),
             _ => Err("Expected an integer value"),
         }
     }
@@ -67,18 +70,42 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     }
                     functions.push(function);
                 } else {
-                    let i32_type = self.context.i32_type();
-                    let fn_type = i32_type.fn_type(&[], false);
-                    let function = self.module.add_function("main", fn_type, None);
+                    let function = match expression {
+                        Expression::FloatLiteral { .. } => {
+                            let f64_type = self.context.f64_type();
+                            let fn_type = f64_type.fn_type(&[], false);
+                            self.module.add_function("main", fn_type, None)
+                        }
+                        _ => {
+                            let i32_type = self.context.i32_type();
+                            let fn_type = i32_type.fn_type(&[], false);
+                            self.module.add_function("main", fn_type, None)
+                        }
+                    };
+
                     self.function = Some(function);
                     let basic_block = self.context.append_basic_block(function, "entry");
                     self.builder.position_at_end(basic_block);
-                    let value = self
-                        .compile_expression_in_function(expression)?
-                        .into_int_value()?;
-                    self.builder
-                        .build_return(Some(&value))
-                        .map_err(|_| "Failed to build return")?;
+
+                    let value = self.compile_expression_in_function(expression)?;
+
+                    match value {
+                        CompilerValue::Int(iv) | CompilerValue::Bool(iv) | CompilerValue::Char(iv) => {
+                            if function.get_type().get_return_type().unwrap().is_int_type() {
+                                self.builder.build_return(Some(&iv)).map_err(|_| "Failed to build return")?;
+                            } else {
+                                return Err("Type mismatch: expected int, function returns float");
+                            }
+                        }
+                        CompilerValue::Float(fv) => {
+                            if function.get_type().get_return_type().unwrap().is_float_type() {
+                                self.builder.build_return(Some(&fv)).map_err(|_| "Failed to build return")?;
+                            } else {
+                                return Err("Type mismatch: expected float, function returns int");
+                            }
+                        }
+                        _ => return Err("Unsupported return type for implicit main function"),
+                    }
                     return Ok(function);
                 }
             } else {
@@ -206,6 +233,10 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             Expression::IntegerLiteral { value, .. } => {
                 let i32_type = self.context.i32_type();
                 Ok(CompilerValue::Int(i32_type.const_int(*value as u64, false)))
+            }
+            Expression::FloatLiteral { value, .. } => {
+                let f64_type = self.context.f64_type();
+                Ok(CompilerValue::Float(f64_type.const_float(*value)))
             }
             Expression::BooleanLiteral { value, .. } => {
                 let i1_type = self.context.bool_type();

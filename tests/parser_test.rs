@@ -288,6 +288,14 @@ fn assert_char_literal(expr: &Expression, value: char) {
     }
 }
 
+fn assert_float_literal(expr: &Expression, value: f64) {
+    if let Expression::FloatLiteral { value: v, .. } = expr {
+        assert!((*v - value).abs() < f64::EPSILON, "FloatLiteral value not {}. got={}", value, v);
+    } else {
+        panic!("expr not FloatLiteral. got={:?}", expr);
+    }
+}
+
 fn assert_boolean_literal(expr: &Expression, value: bool) {
     if let Expression::BooleanLiteral { value: v, .. } = expr {
         assert_eq!(*v, value, "BooleanLiteral value not {}. got={}", value, v);
@@ -415,6 +423,22 @@ fn test_continue_statement() {
         } else {
             panic!("expression is not WhileExpression. got={:?}", expression);
         }
+    } else {
+        panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_float_literal_expression() {
+    let input = r#"3.14;"#;
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        assert_float_literal(expression, 3.14);
     } else {
         panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
     }

@@ -50,6 +50,10 @@ pub enum Expression {
         token: Token,
         value: i64,
     },
+    FloatLiteral {
+        token: Token,
+        value: f64,
+    },
     BooleanLiteral {
         token: Token,
         value: bool,
@@ -97,6 +101,7 @@ impl Node for Expression {
         match self {
             Expression::Identifier(ident) => ident.token.literal.clone(),
             Expression::IntegerLiteral { token, .. } => token.literal.clone(),
+            Expression::FloatLiteral { token, .. } => token.literal.clone(),
             Expression::BooleanLiteral { token, .. } => token.literal.clone(),
             Expression::StringLiteral { token, .. } => token.literal.clone(),
             Expression::CharLiteral { token, .. } => token.literal.clone(),
