@@ -97,6 +97,22 @@ impl<'a> Parser<'a> {
                 value: parser.current_token.literal.clone(),
             })
         });
+        p.register_prefix(TokenKind::Char, |parser| {
+            let value = match parser.current_token.literal.chars().next() {
+                Some(c) => c,
+                None => {
+                    parser.errors.push(format!(
+                        "could not parse {} as char",
+                        parser.current_token.literal
+                    ));
+                    return None;
+                }
+            };
+            Some(Expression::CharLiteral {
+                token: parser.current_token.clone(),
+                value,
+            })
+        });
         p.register_prefix(TokenKind::Bang, |parser| {
             let token = parser.current_token.clone();
             parser.next_token();

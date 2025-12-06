@@ -157,6 +157,10 @@ impl<'a> Lexer<'a> {
                 self.read_char(); // Consume the closing quote
                 return Token::new(TokenKind::String, literal);
             }
+            b'\'' => {
+                let literal = self.read_char_literal();
+                return Token::new(TokenKind::Char, literal);
+            }
             b'0'..=b'9' => {
                 let literal = self.read_number();
                 return Token::new(TokenKind::Int, literal);
@@ -177,6 +181,18 @@ impl<'a> Lexer<'a> {
             }
         }
         self.input[position..self.position].to_string()
+    }
+
+    fn read_char_literal(&mut self) -> String {
+        let position = self.position + 1;
+        self.read_char(); // consumes the char, e.g. 'a'
+        let literal = &self.input[position..self.read_position];
+        if self.peek_char() != b'\'' {
+            // better error handling would be good
+            return "".to_string();
+        }
+        self.read_char(); // consumes the closing quote, e.g. '\''
+        literal.to_string()
     }
 
     fn read_identifier(&mut self) -> String {
