@@ -101,6 +101,33 @@ fn test_infix_expressions() {
 }
 
 #[test]
+fn test_mut_statements_with_type() {
+    let input = r#"
+        mut x: int = 5;
+        mut y: string = "hello";
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 2);
+
+    let tests = vec![("x", "int"), ("y", "string")];
+
+    for (i, (name, type_val)) in tests.iter().enumerate() {
+        let stmt = &program.statements[i];
+        if let Statement::Mut { name: n, value_type, .. } = stmt {
+            assert_eq!(n.value, *name);
+            assert!(value_type.is_some());
+            assert_eq!(value_type.as_ref().unwrap().value, *type_val);
+        } else {
+            panic!("stmt not MutStatement. got={:?}", stmt);
+        }
+    }
+}
+
+#[test]
 fn test_boolean_expressions() {
     let tests = vec![("true", true), ("false", false)];
 
@@ -409,6 +436,33 @@ fn test_continue_statement() {
         }
     } else {
         panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_let_statements_with_type() {
+    let input = r#"
+        let x: int = 5;
+        let y: string = "hello";
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 2);
+
+    let tests = vec![("x", "int"), ("y", "string")];
+
+    for (i, (name, type_val)) in tests.iter().enumerate() {
+        let stmt = &program.statements[i];
+        if let Statement::Let { name: n, value_type, .. } = stmt {
+            assert_eq!(n.value, *name);
+            assert!(value_type.is_some());
+            assert_eq!(value_type.as_ref().unwrap().value, *type_val);
+        } else {
+            panic!("stmt not LetStatement. got={:?}", stmt);
+        }
     }
 }
 

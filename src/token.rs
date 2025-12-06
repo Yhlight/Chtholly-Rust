@@ -33,6 +33,7 @@ pub enum TokenKind {
     LBrace,
     RBrace,
     Comma,
+    Colon,
 
     // Keywords
     Let,

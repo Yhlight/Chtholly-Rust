@@ -133,6 +133,7 @@ impl<'a> Lexer<'a> {
             b'(' => Token::new(TokenKind::LParen, "(".to_string()),
             b')' => Token::new(TokenKind::RParen, ")".to_string()),
             b',' => Token::new(TokenKind::Comma, ",".to_string()),
+            b':' => Token::new(TokenKind::Colon, ":".to_string()),
             b'{' => Token::new(TokenKind::LBrace, "{".to_string()),
             b'}' => Token::new(TokenKind::RBrace, "}".to_string()),
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {

@@ -28,13 +28,13 @@ This document outlines the development plan for the Chtholly programming languag
   - [x] Immutable variables (`let`)
   - [x] Mutable variables (`mut`)
   - [ ] Type inference
-  - [ ] Type annotations
+  - [x] Type annotations
 - [x] **Data Types**
   - [x] `int` (i32)
   - [x] `double` (f64) and `float` (f32)
-  - [ ] `char`
+  - [x] `char`
   - [x] `bool`
-  - [ ] `string`
+  - [x] `string`
   - [ ] `void`
 - [ ] **Type Casting**
   - [ ] `type_cast<T>()`

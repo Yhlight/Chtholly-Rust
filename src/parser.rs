@@ -1,4 +1,4 @@
-use crate::ast::{Expression, Identifier, Program, Statement};
+use crate::ast::{Expression, Identifier, Program, Statement, Type};
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
 use std::collections::HashMap;
@@ -407,6 +407,16 @@ impl<'a> Parser<'a> {
             value: self.current_token.literal.clone(),
         };
 
+        let mut value_type = None;
+        if self.peek_token.kind == TokenKind::Colon {
+            self.next_token();
+            self.next_token();
+            value_type = Some(Type {
+                token: self.current_token.clone(),
+                value: self.current_token.literal.clone(),
+            });
+        }
+
         if !self.expect_peek(TokenKind::Assign) {
             return None;
         }
@@ -419,7 +429,12 @@ impl<'a> Parser<'a> {
             self.next_token();
         }
 
-        Some(Statement::Let { token, name, value })
+        Some(Statement::Let {
+            token,
+            name,
+            value,
+            value_type,
+        })
     }
 
     fn parse_mut_statement(&mut self) -> Option<Statement> {
@@ -434,6 +449,16 @@ impl<'a> Parser<'a> {
             value: self.current_token.literal.clone(),
         };
 
+        let mut value_type = None;
+        if self.peek_token.kind == TokenKind::Colon {
+            self.next_token();
+            self.next_token();
+            value_type = Some(Type {
+                token: self.current_token.clone(),
+                value: self.current_token.literal.clone(),
+            });
+        }
+
         if !self.expect_peek(TokenKind::Assign) {
             return None;
         }
@@ -446,7 +471,12 @@ impl<'a> Parser<'a> {
             self.next_token();
         }
 
-        Some(Statement::Mut { token, name, value })
+        Some(Statement::Mut {
+            token,
+            name,
+            value,
+            value_type,
+        })
     }
 
     fn parse_function_statement(&mut self) -> Option<Statement> {

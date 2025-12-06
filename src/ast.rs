@@ -4,17 +4,31 @@ pub trait Node {
     fn token_literal(&self) -> String;
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Type {
+    pub token: Token, // the type token
+    pub value: String,
+}
+
+impl Node for Type {
+    fn token_literal(&self) -> String {
+        self.token.literal.clone()
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let {
         token: Token, // the 'let' token
         name: Identifier,
         value: Expression,
+        value_type: Option<Type>,
     },
     Mut {
         token: Token, // the 'mut' token
         name: Identifier,
         value: Expression,
+        value_type: Option<Type>,
     },
     ExpressionStatement {
         expression: Expression,
