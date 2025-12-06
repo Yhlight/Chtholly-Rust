@@ -18,7 +18,7 @@ Chtholly文件后缀为`.cns`。
 ### 主函数
 
 ```chtholly
-fn main(args: string[]): Result<int, SystemError>
+fn main(args: string[]): Result<i32, SystemError>
 {
 
 }
@@ -48,11 +48,11 @@ let c = 'a';
 let d = "HelloWorld";
 let e = [1, 2, 3, 4];
 
-let a2: int = 10;
-let b2: double = 30.4;
+let a2: i32 = 10;
+let b2: f64 = 30.4;
 let c2: char = 'a';
 let d2: string = "HelloWorld";
-let e2: int[] = [1, 2, 3, 4];
+let e2: i32[] = [1, 2, 3, 4];
 ```
 
 ### 可变变量 (Mutable Variables)
@@ -118,16 +118,16 @@ let m2 = &mut x; // 正确：现在可以创建可变引用 M2
 
 Chtholly有如下内置数据类型：
 
-  * `int`: 默认使用的整数类型。它是i32的别名  
+  * `i32`: 默认使用的整数类型。
   * 精细划分的整数类型：`i8, i16, i32, i64` (有符号)；`u8, u16, u32, u64` (无符号)。
   * `char`: 字符类型。
-  * `double`: 默认使用的浮点数类型，对应 **64 位浮点数 (f64)**。
-  * 精细划分的浮点数类型：`f32`，`f64`。
+  * `f64`: 默认使用的浮点数类型。
+  * 精细划分的浮点数类型：`f32, f64`。  
   * `void`: 表示空类型，通常用于函数不返回任何值的情况。
   * `bool`: 布尔类型。
   * `string`: 表示动态字符串，默认使用 **UTF-8 编码**。
-  * 数组：`int[]` (动态数组，所有权在堆上)，`int[4]` (静态数组，大小编译期确定，通常在栈上)。
-  * 函数：`function`，`(int, int): void`
+  * 数组：`i32[]` (动态数组，所有权在堆上)，`i32[4]` (静态数组，大小编译期确定，通常在栈上)。
+  * 函数：`function`，使用`(i32, i32): void`进行表示。
 
 这部分的类型注解使用定义时的标识符：
 
@@ -208,7 +208,7 @@ Chtholly使用`mut`声明可变成员变量。
 class Person
 {
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
-    let age: int;
+    let age: i32;
 
     mut des: string;  // 可变成员变量，也可以赋予默认值
 }
@@ -222,11 +222,11 @@ Chtholly使用C++语法的构造函数
 class Person
 {
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
-    let age: int;
+    let age: i32;
 
     mut des: string;  // 可变成员变量，也可以赋予默认值
 
-    Person(age: int, des: string)
+    Person(age: i32, des: string)
     {
         Self.age = age;  // 使用 Self 表示本身
         Self.des = des;
@@ -275,11 +275,11 @@ class fileSysteam
 class Person
 {
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
-    let age: int;
+    let age: i32;
 
     mut des: srting;  // 可变成员变量，也可以赋予默认值
 
-    Person(age: int, des: string)
+    Person(age: i32, des: string)
     {
         Self.age = age;  // 使用 Self 表示本身
         Self.des = des;
@@ -315,7 +315,7 @@ class Person
 {
 public:
     let name: string = "yhlight";
-    let age: int;
+    let age: i32;
     mut des: string;
 
 private:
@@ -355,7 +355,7 @@ Chtholly使用`struct`关键字定义结构体。
 struct Person
 {
     let name: string;  // 支持默认值
-    let age: int;
+    let age: i32;
     mut des: string;
 
     fn show(self): void
@@ -393,12 +393,12 @@ let a: color = color::red;
 
 Chtholly使用类型 + []创建数组。
 
-int[]为动态数组，int[4]为静态数组。
+i32[]为动态数组，i32[4]为静态数组。
 
 a[0] = 10;这一种访问方式属于安全的静态访问。
 
 ```Chtholly
-let a: int[] = [1, 2, 3];
+let a: i32[] = [1, 2, 3];
 a[0] = 10;
 ```
 
@@ -508,9 +508,9 @@ fn add<T>(a: T, b: T): T
     return a + b;
 }
 
-add<int>(1, 2);
+add<i32>(1, 2);
 
-fn add<T = double>(a: T, b: T): T  // 默认值
+fn add<T = f64>(a: T, b: T): T  // 默认值
 {
     return a + b;
 }
@@ -533,28 +533,28 @@ class Point<T>
         
     }
 
-    fn swap(self, other: Point<T = int>): Self
+    fn swap(self, other: Point<T = i32>): Self
     {
 
     }
 
-    fn swap(self, other: Point<int>): Self
+    fn swap(self, other: Point<i32>): Self
     {
 
     }
 }
 
-class Point<T = int>
+class Point<T = i32>
 {
 
 }
 
-class Point<int>
+class Point<i32>
 {
 
 }
 
-let p = Point<int>(1, 2);
+let p = Point<i32>(1, 2);
 ```
 
 #### 类内的泛型函数
@@ -574,7 +574,7 @@ class Printer
 fn main()
 {
     let p = Printer();
-    p.print<int>(10);  // 调用时指定类型
+    p.print<i32>(10);  // 调用时指定类型
     p.print("hello");  // 或者让编译器自动推断类型
 }
 ```
@@ -592,22 +592,22 @@ class Point<T>
 
     }
 
-    fn test2<K = int, F>()
+    fn test2<K = i32, F>()
     {
 
     }
 
-    fn test2<K, F = int>()
+    fn test2<K, F = i32>()
     {
 
     }
 
-    fn test2<K = int, F = int>()
+    fn test2<K = i32, F = i32>()
     {
 
     }
 
-    fn test2<int, int>()
+    fn test2<i32, i32>()
     {
 
     }
@@ -624,7 +624,7 @@ optional需要optional模块的支持。
 optional类型有两个主要方法，unwrap和unwarp_or。
 
 ```
-let a = optional<int>(10);
+let a = optional<i32>(10);
 ```
 
 ### request
@@ -685,7 +685,7 @@ request iterator
 
 class container requier iterator
 {
-    type item = int;  // 把所有的item参数替换为int
+    type item = i32;  // 把所有的item参数替换为i32
 
     fn next(&mut self): optional<item>
     {
@@ -835,7 +835,7 @@ fn main()
 
 ```Chtholly
 // math.cns
-fn add(a: int, b: int): int
+fn add(a: i32, b: i32): i32
 {
     return a + b;
 }
@@ -874,7 +874,7 @@ import "math.cns" as math2;
 // 例如这个是数学模块
 package packageName;
 
-fn add(a: int, b: int): int
+fn add(a: i32, b: i32): i32
 {
     return a + b;
 }
@@ -910,7 +910,7 @@ enum Result<T, E>
 2.  如果 Result 是 Fail(E)，立即将错误 E 从当前函数返回，实现错误传播。
 
 ```chtholly
-fn process_file(path: string): Result<int, ErrorType>
+fn process_file(path: string): Result<i32, ErrorType>
 {
     // 如果 file::open 失败，函数立即返回 Fail(ErrorType)
     let handle = file::open(path)?; 
