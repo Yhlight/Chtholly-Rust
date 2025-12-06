@@ -15,7 +15,7 @@ This document outlines the development plan for the Chtholly compiler, following
 
 *   **Goal:** Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
 *   **Tasks:**
-    *   [ ] Define the AST data structures in `ast.rs`.
+    *   [x] Define the AST data structures in `ast.rs`.
     *   [ ] Implement the parser in `parser.rs`.
     *   [ ] Write unit tests for the parser to verify that it correctly parses valid code and handles errors for invalid code.
 
