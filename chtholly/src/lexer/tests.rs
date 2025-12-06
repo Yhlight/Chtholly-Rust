@@ -61,3 +61,22 @@ fn test_next_token() {
         assert_eq!(token, lexer.next_token());
     }
 }
+
+#[test]
+fn test_identifiers_with_numbers() {
+    let input = "let var1 = 5;".to_string();
+    let mut lexer = Lexer::new(input);
+
+    let tokens = vec![
+        Token::Let,
+        Token::Identifier("var1".to_string()),
+        Token::Assign,
+        Token::Int(5),
+        Token::Semicolon,
+        Token::Eof,
+    ];
+
+    for token in tokens {
+        assert_eq!(token, lexer.next_token());
+    }
+}

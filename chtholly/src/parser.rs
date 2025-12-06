@@ -1,4 +1,4 @@
-use crate::ast::{self, Program};
+use crate::ast::{self, BlockStatement, Program};
 use crate::lexer::Lexer;
 use crate::token::Token;
 
@@ -103,6 +103,7 @@ impl Parser {
             Token::Float(_) => self.parse_float_literal(),
             Token::String(_) => self.parse_string_literal(),
             Token::True | Token::False => self.parse_boolean(),
+            Token::If => self.parse_if_expression(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             _ => None,
         };
@@ -175,6 +176,56 @@ impl Parser {
         right.map(|r| ast::Expression::Infix(Box::new(left), token, Box::new(r)))
     }
 
+    fn parse_if_expression(&mut self) -> Option<ast::Expression> {
+        if !self.expect_peek(&Token::LParen) {
+            return None;
+        }
+
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest);
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let consequence = self.parse_block_statement();
+
+        let mut alternative = None;
+        if self.peek_token_is(&Token::Else) {
+            self.next_token();
+
+            if !self.expect_peek(&Token::LBrace) {
+                return None;
+            }
+
+            alternative = Some(self.parse_block_statement());
+        }
+
+        condition.map(|c| ast::Expression::If {
+            condition: Box::new(c),
+            consequence,
+            alternative,
+        })
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let mut statements = Vec::new();
+        self.next_token();
+
+        while !self.current_token_is(Token::RBrace) && !self.current_token_is(Token::Eof) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        BlockStatement { statements }
+    }
+
     fn parse_let_statement(&mut self) -> Option<ast::Statement> {
         if !self.expect_peek(&Token::Identifier("".to_string())) {
             return None;
@@ -216,6 +267,10 @@ impl Parser {
             t, self.peek_token
         );
         self.errors.push(msg);
+    }
+
+    fn current_token_is(&self, t: Token) -> bool {
+        std::mem::discriminant(&self.current_token) == std::mem::discriminant(&t)
     }
 
     fn peek_token_is(&self, t: &Token) -> bool {

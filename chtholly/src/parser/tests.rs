@@ -227,3 +227,127 @@ fn test_infix_expressions() {
         }
     }
 }
+
+#[test]
+fn test_if_expression() {
+    let input = "if (x < y) { x }".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::Expression(expr) = &program.statements[0] {
+        if let Expression::If {
+            condition,
+            consequence,
+            alternative,
+        } = expr
+        {
+            if let Expression::Infix(left, op, right) = &**condition {
+                if let Expression::Identifier(ident) = &**left {
+                    assert_eq!(ident.0, "x");
+                } else {
+                    panic!("expected identifier, got {:?}", left);
+                }
+                assert_eq!(*op, Token::LessThan);
+                if let Expression::Identifier(ident) = &**right {
+                    assert_eq!(ident.0, "y");
+                } else {
+                    panic!("expected identifier, got {:?}", right);
+                }
+            } else {
+                panic!("expected infix expression, got {:?}", condition);
+            }
+
+            assert_eq!(consequence.statements.len(), 1);
+            if let Statement::Expression(expr) = &consequence.statements[0] {
+                if let Expression::Identifier(ident) = expr {
+                    assert_eq!(ident.0, "x");
+                } else {
+                    panic!("expected identifier, got {:?}", expr);
+                }
+            } else {
+                panic!(
+                    "expected expression statement, got {:?}",
+                    consequence.statements[0]
+                );
+            }
+
+            assert!(alternative.is_none());
+        } else {
+            panic!("expected if expression, got {:?}", expr);
+        }
+    } else {
+        panic!("expected expression statement, got {:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_if_else_expression() {
+    let input = "if (x < y) { x } else { y }".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::Expression(expr) = &program.statements[0] {
+        if let Expression::If {
+            condition,
+            consequence,
+            alternative,
+        } = expr
+        {
+            if let Expression::Infix(left, op, right) = &**condition {
+                if let Expression::Identifier(ident) = &**left {
+                    assert_eq!(ident.0, "x");
+                } else {
+                    panic!("expected identifier, got {:?}", left);
+                }
+                assert_eq!(*op, Token::LessThan);
+                if let Expression::Identifier(ident) = &**right {
+                    assert_eq!(ident.0, "y");
+                } else {
+                    panic!("expected identifier, got {:?}", right);
+                }
+            } else {
+                panic!("expected infix expression, got {:?}", condition);
+            }
+
+            assert_eq!(consequence.statements.len(), 1);
+            if let Statement::Expression(expr) = &consequence.statements[0] {
+                if let Expression::Identifier(ident) = expr {
+                    assert_eq!(ident.0, "x");
+                } else {
+                    panic!("expected identifier, got {:?}", expr);
+                }
+            } else {
+                panic!(
+                    "expected expression statement, got {:?}",
+                    consequence.statements[0]
+                );
+            }
+
+            assert!(alternative.is_some());
+            let alternative = alternative.clone().unwrap();
+            assert_eq!(alternative.statements.len(), 1);
+            if let Statement::Expression(expr) = &alternative.statements[0] {
+                if let Expression::Identifier(ident) = expr {
+                    assert_eq!(ident.0, "y");
+                } else {
+                    panic!("expected identifier, got {:?}", expr);
+                }
+            } else {
+                panic!(
+                    "expected expression statement, got {:?}",
+                    alternative.statements[0]
+                );
+            }
+        } else {
+            panic!("expected if expression, got {:?}", expr);
+        }
+    } else {
+        panic!("expected expression statement, got {:?}", program.statements[0]);
+    }
+}
