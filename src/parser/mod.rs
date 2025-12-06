@@ -1,10 +1,10 @@
 //! The Parser for the Chtholly language.
 
-use crate::ast::{self, Node, Program, Statement, LetStatement, Identifier, Expression, IntegerLiteral, FloatLiteral, StringLiteral, Boolean};
+use crate::ast::{self, Node, Program, Statement, LetStatement, Identifier, Expression, IntegerLiteral, FloatLiteral, StringLiteral, Boolean, ExpressionStatement, PrefixExpression, InfixExpression};
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
 
-#[derive(PartialEq, PartialOrd)]
+#[derive(PartialEq, PartialOrd, Clone, Copy)]
 enum Precedence {
     Lowest,
     Equals,      // ==
@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.cur_token {
             Token::Let => self.parse_let_statement().map(Statement::Let),
-            _ => None,
+            _ => self.parse_expression_statement().map(Statement::Expression),
         }
     }
 
@@ -98,13 +98,38 @@ impl<'a> Parser<'a> {
         Some(LetStatement { token, name, value })
     }
 
-    fn parse_expression(&mut self, _precedence: Precedence) -> Option<Expression> {
-        match &self.cur_token {
+    fn parse_expression_statement(&mut self) -> Option<ExpressionStatement> {
+        let stmt = ExpressionStatement {
+            token: self.cur_token.clone(),
+            expression: self.parse_expression(Precedence::Lowest)?,
+        };
+
+        if self.peek_token_is(&Token::Semicolon) {
+            self.next_token();
+        }
+
+        Some(stmt)
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
+        let mut left_exp = match &self.cur_token {
             Token::Ident(_) => self.parse_identifier(),
             Token::Int(_) => self.parse_integer_literal(),
-            // Add other expression types here
+            Token::Bang | Token::Minus => self.parse_prefix_expression(),
             _ => None,
+        }?;
+
+        while !self.peek_token_is(&Token::Semicolon) && precedence < self.peek_precedence() {
+            match self.peek_token {
+                Token::Plus | Token::Minus | Token::Slash | Token::Asterisk | Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
+                    self.next_token();
+                    left_exp = self.parse_infix_expression(left_exp)?;
+                }
+                _ => return Some(left_exp),
+            }
         }
+
+        Some(left_exp)
     }
 
     fn parse_identifier(&mut self) -> Option<Expression> {
@@ -127,6 +152,35 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_prefix_expression(&mut self) -> Option<Expression> {
+        let token = self.cur_token.clone();
+        let operator = self.cur_token.to_string();
+
+        self.next_token();
+
+        let right = self.parse_expression(Precedence::Prefix)?;
+
+        Some(Expression::Prefix(PrefixExpression {
+            token,
+            operator,
+            right: Box::new(right),
+        }))
+    }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
+        let token = self.cur_token.clone();
+        let operator = self.cur_token.to_string();
+        let precedence = self.cur_precedence();
+        self.next_token();
+        let right = self.parse_expression(precedence)?;
+
+        Some(Expression::Infix(InfixExpression {
+            token,
+            left: Box::new(left),
+            operator,
+            right: Box::new(right),
+        }))
+    }
 
     fn peek_token_is(&self, t: &Token) -> bool {
         std::mem::discriminant(&self.peek_token) == std::mem::discriminant(t)
@@ -149,6 +203,24 @@ impl<'a> Parser<'a> {
         );
         self.errors.push(msg);
     }
+
+    fn get_precedence(token: &Token) -> Precedence {
+        match token {
+            Token::Eq | Token::NotEq => Precedence::Equals,
+            Token::Lt | Token::Gt => Precedence::LessGreater,
+            Token::Plus | Token::Minus => Precedence::Sum,
+            Token::Slash | Token::Asterisk => Precedence::Product,
+            _ => Precedence::Lowest,
+        }
+    }
+
+    fn peek_precedence(&self) -> Precedence {
+        Self::get_precedence(&self.peek_token)
+    }
+
+    fn cur_precedence(&self) -> Precedence {
+        Self::get_precedence(&self.cur_token)
+    }
 }
 
 #[cfg(test)]
@@ -164,18 +236,14 @@ let x = 5;
 let y = 10;
 let foobar = 838383;
 ";
-
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
-
-        check_parser_errors(&parser);
+        let program = parse_program(input);
+        check_parser_errors(program.1);
 
         assert_eq!(
-            program.statements.len(),
+            program.0.statements.len(),
             3,
             "program.statements does not contain 3 statements. got={}",
-            program.statements.len()
+            program.0.statements.len()
         );
 
         let tests = vec![
@@ -185,13 +253,97 @@ let foobar = 838383;
         ];
 
         for (i, (expected_ident, expected_val)) in tests.iter().enumerate() {
-            let stmt = &program.statements[i];
+            let stmt = &program.0.statements[i];
             assert_let_statement(stmt, expected_ident);
 
             if let Statement::Let(let_stmt) = stmt {
                 assert_literal_expression(&let_stmt.value, expected_val);
             }
         }
+    }
+
+    #[test]
+    fn test_expression_statement() {
+        let input = "foobar;";
+        let program = parse_program(input);
+        check_parser_errors(program.1);
+
+        assert_eq!(program.0.statements.len(), 1);
+
+        if let Statement::Expression(exp_stmt) = &program.0.statements[0] {
+            if let Expression::Identifier(ident) = &exp_stmt.expression {
+                assert_eq!(ident.value, "foobar");
+                assert_eq!(ident.token_literal(), "foobar");
+            } else {
+                panic!("expression not Identifier. got={:?}", exp_stmt.expression);
+            }
+        } else {
+            panic!("statement not ExpressionStatement. got={:?}", program.0.statements[0]);
+        }
+    }
+
+    #[test]
+    fn test_prefix_expressions() {
+        let prefix_tests = vec![
+            ("!5;", "!", 5),
+            ("-15;", "-", 15),
+        ];
+
+        for (input, operator, value) in prefix_tests {
+            let program = parse_program(input);
+            check_parser_errors(program.1);
+
+            assert_eq!(program.0.statements.len(), 1);
+            if let Statement::Expression(exp_stmt) = &program.0.statements[0] {
+                if let Expression::Prefix(prefix_exp) = &exp_stmt.expression {
+                    assert_eq!(prefix_exp.operator, operator);
+                    assert_literal_expression(&prefix_exp.right, value);
+                } else {
+                    panic!("expression not PrefixExpression. got={:?}", exp_stmt.expression);
+                }
+            } else {
+                panic!("statement not ExpressionStatement. got={:?}", program.0.statements[0]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_infix_expressions() {
+        let infix_tests = vec![
+            ("5 + 5;", 5, "+", 5),
+            ("5 - 5;", 5, "-", 5),
+            ("5 * 5;", 5, "*", 5),
+            ("5 / 5;", 5, "/", 5),
+            ("5 > 5;", 5, ">", 5),
+            ("5 < 5;", 5, "<", 5),
+            ("5 == 5;", 5, "==", 5),
+            ("5 != 5;", 5, "!=", 5),
+        ];
+
+        for (input, left_val, operator, right_val) in infix_tests {
+            let program = parse_program(input);
+            check_parser_errors(program.1);
+
+            assert_eq!(program.0.statements.len(), 1);
+            if let Statement::Expression(exp_stmt) = &program.0.statements[0] {
+                if let Expression::Infix(infix_exp) = &exp_stmt.expression {
+                    assert_literal_expression(&infix_exp.left, left_val);
+                    assert_eq!(infix_exp.operator, operator);
+                    assert_literal_expression(&infix_exp.right, right_val);
+                } else {
+                    panic!("expression not InfixExpression. got={:?}", exp_stmt.expression);
+                }
+            } else {
+                panic!("statement not ExpressionStatement. got={:?}", program.0.statements[0]);
+            }
+        }
+    }
+
+    fn parse_program(input: &str) -> (Program, Parser) {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        (program, parser)
     }
 
     fn assert_let_statement(s: &Statement, name: &str) {
@@ -218,7 +370,7 @@ let foobar = 838383;
         }
     }
 
-    fn check_parser_errors(parser: &Parser) {
+    fn check_parser_errors(parser: Parser) {
         let errors = parser.errors();
         if errors.is_empty() {
             return;

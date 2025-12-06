@@ -1,6 +1,7 @@
 //! Abstract Syntax Tree representation for the Chtholly language.
 
 use crate::lexer::token::Token;
+use std::fmt;
 
 /// A node in the Abstract Syntax Tree.
 pub trait Node {
@@ -14,18 +15,20 @@ pub trait Node {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let(LetStatement),
-    // Other statements like Return, ExpressionStatement, etc., will be added here.
+    Expression(ExpressionStatement),
 }
 
 impl Node for Statement {
     fn token_literal(&self) -> String {
         match self {
             Statement::Let(s) => s.token_literal(),
+            Statement::Expression(s) => s.token_literal(),
         }
     }
     fn string(&self) -> String {
         match self {
             Statement::Let(s) => s.string(),
+            Statement::Expression(s) => s.string(),
         }
     }
 }
@@ -38,6 +41,8 @@ pub enum Expression {
     FloatLiteral(FloatLiteral),
     StringLiteral(StringLiteral),
     Boolean(Boolean),
+    Prefix(PrefixExpression),
+    Infix(InfixExpression),
 }
 
 impl Node for Expression {
@@ -48,6 +53,8 @@ impl Node for Expression {
             Expression::FloatLiteral(f) => f.token_literal(),
             Expression::StringLiteral(s) => s.token_literal(),
             Expression::Boolean(b) => b.token_literal(),
+            Expression::Prefix(p) => p.token_literal(),
+            Expression::Infix(i) => i.token_literal(),
         }
     }
     fn string(&self) -> String {
@@ -57,6 +64,8 @@ impl Node for Expression {
             Expression::FloatLiteral(f) => f.string(),
             Expression::StringLiteral(s) => s.string(),
             Expression::Boolean(b) => b.string(),
+            Expression::Prefix(p) => p.string(),
+            Expression::Infix(i) => i.string(),
         }
     }
 }
@@ -86,11 +95,8 @@ impl Node for Program {
 /// Represents a `let` statement: `let <name> = <value>;`
 #[derive(Debug, PartialEq, Clone)]
 pub struct LetStatement {
-    /// The `let` token.
     pub token: Token,
-    /// The identifier being bound.
     pub name: Identifier,
-    /// The expression producing the value.
     pub value: Expression,
 }
 
@@ -108,12 +114,26 @@ impl Node for LetStatement {
     }
 }
 
+/// Represents a statement that consists of a single expression.
+#[derive(Debug, PartialEq, Clone)]
+pub struct ExpressionStatement {
+    pub token: Token,
+    pub expression: Expression,
+}
+
+impl Node for ExpressionStatement {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+    fn string(&self) -> String {
+        self.expression.string()
+    }
+}
+
 /// Represents an identifier.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Identifier {
-    /// The `Ident` token.
     pub token: Token,
-    /// The name of the identifier.
     pub value: String,
 }
 
@@ -187,5 +207,45 @@ impl Node for Boolean {
     }
     fn string(&self) -> String {
         self.value.to_string()
+    }
+}
+
+/// Represents a prefix expression, like `!5` or `-15`.
+#[derive(Debug, PartialEq, Clone)]
+pub struct PrefixExpression {
+    pub token: Token, // The prefix token, e.g., `!` or `-`
+    pub operator: String,
+    pub right: Box<Expression>,
+}
+
+impl Node for PrefixExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+    fn string(&self) -> String {
+        format!("({}{})", self.operator, self.right.string())
+    }
+}
+
+/// Represents an infix expression, like `5 + 5`.
+#[derive(Debug, PartialEq, Clone)]
+pub struct InfixExpression {
+    pub token: Token, // The operator token, e.g., `+`
+    pub left: Box<Expression>,
+    pub operator: String,
+    pub right: Box<Expression>,
+}
+
+impl Node for InfixExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+    fn string(&self) -> String {
+        format!(
+            "({} {} {})",
+            self.left.string(),
+            self.operator,
+            self.right.string()
+        )
     }
 }
