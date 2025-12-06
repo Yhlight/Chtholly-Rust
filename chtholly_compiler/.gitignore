@@ -1,0 +1,22 @@
+# Rust artifacts
+/target
+Cargo.lock
+
+# IDE settings
+.idea/
+.vscode/
+
+# Build files
+*.o
+*.a
+*.so
+*.rlib
+*.dylib
+*.dll
+*.exe
+*.pdb
+
+# Other
+**/__pycache__/
+*.swp
+*.swo
