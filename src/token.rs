@@ -34,6 +34,8 @@ pub enum Token {
     Gt,       // >
     Eq,       // ==
     NotEq,    // !=
+    And,      // &&
+    Or,       // ||
 
     // Delimiters
     Comma,     // ,
@@ -72,6 +74,8 @@ impl fmt::Display for Token {
             Token::Gt => write!(f, ">"),
             Token::Eq => write!(f, "=="),
             Token::NotEq => write!(f, "!="),
+            Token::And => write!(f, "&&"),
+            Token::Or => write!(f, "||"),
             Token::Comma => write!(f, ","),
             Token::Semicolon => write!(f, ";"),
             Token::LParen => write!(f, "("),

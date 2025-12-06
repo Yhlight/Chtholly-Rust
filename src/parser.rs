@@ -5,6 +5,7 @@ use crate::ast::{self, Program, Statement, Expression};
 #[derive(PartialEq, PartialOrd, Clone, Copy)]
 enum Precedence {
     Lowest,
+    Logical,     // && or ||
     Equals,      // ==
     LessGreater, // > or <
     Sum,         // +
@@ -20,6 +21,7 @@ fn token_to_precedence(token: &Token) -> Precedence {
         Token::Plus | Token::Minus => Precedence::Sum,
         Token::Slash | Token::Asterisk => Precedence::Product,
         Token::LParen => Precedence::Call,
+        Token::And | Token::Or => Precedence::Logical,
         _ => Precedence::Lowest,
     }
 }
@@ -230,7 +232,7 @@ impl<'a> Parser<'a> {
 
         while !matches!(self.peek_token, Token::Semicolon) && precedence < self.peek_precedence() {
             match self.peek_token {
-                Token::Plus | Token::Minus | Token::Slash | Token::Asterisk | Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
+                Token::Plus | Token::Minus | Token::Slash | Token::Asterisk | Token::Eq | Token::NotEq | Token::Lt | Token::Gt | Token::And | Token::Or => {
                     self.next_token();
                     if let Some(left) = left_exp {
                         left_exp = self.parse_infix_expression(left);
@@ -768,6 +770,11 @@ mod tests {
             ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
             ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
             ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
+            ("true && false", "(true && false)"),
+            ("true || false", "(true || false)"),
+            ("a + b && c - d", "((a + b) && (c - d))"),
+            ("a + b || c - d", "((a + b) || (c - d))"),
+            ("a + b && c - d || e * f", "(((a + b) && (c - d)) || (e * f))"),
             ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
             ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
             ("(5 + 5) * 2", "((5 + 5) * 2)"),
