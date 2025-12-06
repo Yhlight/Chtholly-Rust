@@ -157,6 +157,18 @@ impl<'a> Lexer<'a> {
                 self.read_char(); // Consume the closing quote
                 return Token::new(TokenKind::String, literal);
             }
+            b'\'' => {
+                self.read_char(); // consume opening quote, self.ch is now the char
+                let literal = (self.ch as char).to_string();
+                if self.peek_char() != b'\'' {
+                    // Unclosed or multi-char literal
+                    self.read_char(); // consume the character
+                    Token::new(TokenKind::Illegal, "'".to_string() + &literal)
+                } else {
+                    self.read_char(); // consume the char, self.ch is now the closing quote
+                    Token::new(TokenKind::Char, literal)
+                }
+            }
             b'0'..=b'9' => {
                 let literal = self.read_number();
                 return Token::new(TokenKind::Int, literal);

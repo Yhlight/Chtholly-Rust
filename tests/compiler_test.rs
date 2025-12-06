@@ -424,3 +424,21 @@ fn test_string_literal_compiler() {
     let module_ir = module.print_to_string().to_string();
     assert!(module_ir.contains("@.str = private unnamed_addr constant [12 x i8] c\"hello world\\00\""));
 }
+
+#[test]
+fn test_char_literal_compiler() {
+    let input = "'a'";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let context = Context::create();
+    let module = context.create_module("main");
+    let builder = context.create_builder();
+    let mut compiler = Compiler::new(&context, &builder, &module);
+    let result = compiler.compile(program);
+
+    assert!(result.is_ok());
+    let function = result.unwrap();
+    assert!(function.print_to_string().to_string().contains("ret i8 97"));
+}

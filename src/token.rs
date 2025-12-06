@@ -7,6 +7,7 @@ pub enum TokenKind {
     Ident, // add, foobar, x, y, ...
     Int,   // 1343456
     String,
+    Char,
 
     // Operators
     Assign,

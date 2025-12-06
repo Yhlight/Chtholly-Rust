@@ -115,3 +115,23 @@ let var1 = 5;
         assert_eq!(tok.literal, expected_literal);
     }
 }
+
+#[test]
+fn test_char_literal() {
+    let input = "'a' 'b' ' '";
+
+    let tests = vec![
+        (TokenKind::Char, "a"),
+        (TokenKind::Char, "b"),
+        (TokenKind::Char, " "),
+        (TokenKind::Eof, ""),
+    ];
+
+    let mut lexer = Lexer::new(input);
+
+    for (expected_kind, expected_literal) in tests {
+        let tok = lexer.next_token();
+        assert_eq!(tok.kind, expected_kind);
+        assert_eq!(tok.literal, expected_literal);
+    }
+}

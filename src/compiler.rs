@@ -13,6 +13,7 @@ pub enum CompilerValue<'ctx> {
     Int(IntValue<'ctx>),
     Bool(IntValue<'ctx>),
     String(PointerValue<'ctx>),
+    Char(IntValue<'ctx>),
 }
 
 impl<'ctx> CompilerValue<'ctx> {
@@ -20,6 +21,7 @@ impl<'ctx> CompilerValue<'ctx> {
         match self {
             CompilerValue::Int(iv) => Ok(iv),
             CompilerValue::Bool(iv) => Ok(iv),
+            CompilerValue::Char(iv) => Ok(iv),
             _ => Err("Expected an integer value"),
         }
     }
@@ -215,6 +217,12 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     .build_global_string_ptr(value, ".str")
                     .map_err(|_| "Failed to build global string")?;
                 Ok(CompilerValue::String(ptr.as_pointer_value()))
+            }
+            Expression::CharLiteral { value, .. } => {
+                let i8_type = self.context.i8_type();
+                Ok(CompilerValue::Char(
+                    i8_type.const_int(*value as u64, false),
+                ))
             }
             Expression::PrefixExpression {
                 operator, right, ..
