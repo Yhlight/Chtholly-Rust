@@ -28,6 +28,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [ ] Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
     - [ ] Assignment: `=` (Lexer support only)
     - [x] Unary: `++`, `--` (Parser support for `-`)
+    - [x] Grouped (parenthesized) expressions
 - [ ] **Functions:**
     - [ ] Function definition and calls.
     - [ ] Function as a variable.

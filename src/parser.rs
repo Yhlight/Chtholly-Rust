@@ -173,6 +173,7 @@ impl<'a> Parser<'a> {
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
+            Token::LParen => self.parse_grouped_expression(),
             _ => {
                 self.no_prefix_parse_fn_error(&token_clone);
                 return None;
@@ -319,6 +320,21 @@ impl<'a> Parser<'a> {
             alternative,
         }))
     }
+
+    fn parse_grouped_expression(&mut self) -> Option<Box<dyn Expression>> {
+        self.next_token();
+
+        let exp = self.parse_expression(Precedence::Lowest);
+
+        if !matches!(self.peek_token, Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return None;
+        }
+        self.next_token();
+
+        exp
+    }
+
 
     fn parse_block_statement(&mut self) -> ast::BlockStatement {
         let token = self.current_token.clone();
@@ -540,6 +556,11 @@ mod tests {
             ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
             ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
             ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+            ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+            ("(5 + 5) * 2", "((5 + 5) * 2)"),
+            ("2 / (5 + 5)", "(2 / (5 + 5))"),
+            ("-(5 + 5)", "(-(5 + 5))"),
+            ("!(true == true)", "(!(true == true))"),
         ];
 
         for (input, expected) in tests {
