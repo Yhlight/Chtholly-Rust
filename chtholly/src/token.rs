@@ -13,6 +13,14 @@ pub enum Token {
     False,
     Null,
 
+    // Types
+    IntType,
+    DoubleType,
+    CharType,
+    StringType,
+    BoolType,
+    VoidType,
+
     // Identifiers and literals
     Identifier(String),
     Int(i64),

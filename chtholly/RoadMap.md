@@ -13,14 +13,14 @@ This document outlines the development plan for the Chtholly compiler.
 ## Milestone 2: Basic Language Features
 
 - [x] **Variable Declarations:** Support for `let` and `mut`.
-- [ ] **Data Types:** Implement basic data types like `int`, `double`, `char`, `string`, `bool`.
-- [ ] **Operators:** Implement arithmetic, comparison, and logical operators.
+- [ ] **Data Types:** Implement basic data types like `int`, `double`, `char`, `string`, `bool` (In Progress).
+- [x] **Operators:** Implement arithmetic, comparison, and logical operators.
 - [x] **Control Flow:** Implement `if-else`.
 
 ## Milestone 3: Functions and Scope
 
-- [ ] **Function Definitions:** Support for `fn` declarations (In Progress).
-- [ ] **Function Calls:** Implement function call expressions (In Progress).
+- [x] **Function Definitions:** Support for `fn` declarations.
+- [x] **Function Calls:** Implement function call expressions.
 - [ ] **Scope Management:** Implement a symbol table to manage variable scopes.
 
 ## Milestone 4: Advanced Language Features

@@ -91,6 +91,12 @@ impl Lexer {
                     "return" => Token::Return,
                     "true" => Token::True,
                     "false" => Token::False,
+                    "int" => Token::IntType,
+                    "double" => Token::DoubleType,
+                    "char" => Token::CharType,
+                    "string" => Token::StringType,
+                    "bool" => Token::BoolType,
+                    "void" => Token::VoidType,
                     _ => Token::Identifier(ident),
                 };
             }

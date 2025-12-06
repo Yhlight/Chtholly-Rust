@@ -1,4 +1,4 @@
-use crate::ast::{self, Expression, Program, Statement};
+use crate::ast::{self, Expression, Program, Statement, Type};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::token::Token;
@@ -6,9 +6,9 @@ use crate::token::Token;
 #[test]
 fn test_let_statements() {
     let input = "
-        let x = 5;
-        let y = 10;
-        let foobar = 838383;
+        let x: int = 5;
+        let y: double = 10;
+        let foobar: bool = true;
     "
     .to_string();
 
@@ -19,11 +19,13 @@ fn test_let_statements() {
     assert_eq!(program.statements.len(), 3);
 
     let names = vec!["x", "y", "foobar"];
+    let types = vec![Type::Int, Type::Double, Type::Bool];
 
-    for (i, name) in names.iter().enumerate() {
+    for (i, (name, type_)) in names.iter().zip(types.iter()).enumerate() {
         let stmt = &program.statements[i];
-        if let Statement::Let(ident, _) = stmt {
+        if let Statement::Let(ident, t, _) = stmt {
             assert_eq!(ident.0, *name);
+            assert_eq!(t.as_ref().unwrap(), type_);
         } else {
             panic!("expected let statement, got {:?}", stmt);
         }
@@ -33,9 +35,9 @@ fn test_let_statements() {
 #[test]
 fn test_mut_statements() {
     let input = "
-        mut x = 5;
-        mut y = 10;
-        mut foobar = 838383;
+        mut x: int = 5;
+        mut y: double = 10;
+        mut foobar: bool = true;
     "
     .to_string();
 
@@ -46,11 +48,13 @@ fn test_mut_statements() {
     assert_eq!(program.statements.len(), 3);
 
     let names = vec!["x", "y", "foobar"];
+    let types = vec![Type::Int, Type::Double, Type::Bool];
 
-    for (i, name) in names.iter().enumerate() {
+    for (i, (name, type_)) in names.iter().zip(types.iter()).enumerate() {
         let stmt = &program.statements[i];
-        if let Statement::Mut(ident, _) = stmt {
+        if let Statement::Mut(ident, t, _) = stmt {
             assert_eq!(ident.0, *name);
+            assert_eq!(t.as_ref().unwrap(), type_);
         } else {
             panic!("expected mut statement, got {:?}", stmt);
         }
@@ -381,7 +385,7 @@ fn test_if_else_expression() {
 
 #[test]
 fn test_function_literal_parsing() {
-    let input = "fn(x, y) { x + y; }".to_string();
+    let input = "fn(x: int, y: int) { x + y; }".to_string();
     let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
@@ -391,8 +395,10 @@ fn test_function_literal_parsing() {
     if let Statement::Expression(expr) = &program.statements[0] {
         if let Expression::FunctionLiteral { parameters, body } = expr {
             assert_eq!(parameters.len(), 2);
-            assert_eq!(parameters[0].0, "x");
-            assert_eq!(parameters[1].0, "y");
+            assert_eq!(parameters[0].0.0, "x");
+            assert_eq!(parameters[0].1, Type::Int);
+            assert_eq!(parameters[1].0.0, "y");
+            assert_eq!(parameters[1].1, Type::Int);
 
             assert_eq!(body.statements.len(), 1);
             if let Statement::Expression(expr) = &body.statements[0] {
@@ -453,4 +459,14 @@ fn test_call_expression_parsing() {
     } else {
         panic!("expected expression statement, got {:?}", program.statements[0]);
     }
+}
+
+#[test]
+fn test_invalid_type_annotation() {
+    let input = "let x: 123 = 5;".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    parser.parse_program();
+
+    assert_eq!(parser.errors().len(), 1);
 }

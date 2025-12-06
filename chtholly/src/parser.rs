@@ -1,4 +1,4 @@
-use crate::ast::{self, BlockStatement, Program};
+use crate::ast::{self, BlockStatement, Program, Type};
 use crate::lexer::Lexer;
 use crate::token::Token;
 
@@ -238,7 +238,7 @@ impl Parser {
             return None;
         }
 
-        let parameters = self.parse_function_parameters();
+        let parameters = self.parse_function_parameters()?;
 
         if !self.expect_peek(&Token::LBrace) {
             return None;
@@ -249,33 +249,69 @@ impl Parser {
         Some(ast::Expression::FunctionLiteral { parameters, body })
     }
 
-    fn parse_function_parameters(&mut self) -> Vec<ast::Identifier> {
+    fn parse_function_parameters(&mut self) -> Option<Vec<(ast::Identifier, Type)>> {
         let mut identifiers = Vec::new();
 
         if self.peek_token_is(&Token::RParen) {
             self.next_token();
-            return identifiers;
+            return Some(identifiers);
         }
 
         self.next_token();
 
-        if let Token::Identifier(name) = &self.current_token {
-            identifiers.push(ast::Identifier(name.clone()));
+        let ident = if let Token::Identifier(name) = &self.current_token {
+            ast::Identifier(name.clone())
+        } else {
+            return None;
+        };
+
+        if !self.expect_peek(&Token::Colon) {
+            return None;
         }
+
+        self.next_token();
+        let type_ = self.parse_type()?;
+        identifiers.push((ident, type_));
 
         while self.peek_token_is(&Token::Comma) {
             self.next_token();
             self.next_token();
-            if let Token::Identifier(name) = &self.current_token {
-                identifiers.push(ast::Identifier(name.clone()));
+            let ident = if let Token::Identifier(name) = &self.current_token {
+                ast::Identifier(name.clone())
+            } else {
+                return None;
+            };
+
+            if !self.expect_peek(&Token::Colon) {
+                return None;
             }
+
+            self.next_token();
+            let type_ = self.parse_type()?;
+            identifiers.push((ident, type_));
         }
 
         if !self.expect_peek(&Token::RParen) {
-            return Vec::new();
+            return None;
         }
 
-        identifiers
+        Some(identifiers)
+    }
+
+    fn parse_type(&mut self) -> Option<Type> {
+        match self.current_token {
+            Token::IntType => Some(Type::Int),
+            Token::DoubleType => Some(Type::Double),
+            Token::CharType => Some(Type::Char),
+            Token::StringType => Some(Type::String),
+            Token::BoolType => Some(Type::Bool),
+            Token::VoidType => Some(Type::Void),
+            _ => {
+                let msg = format!("expected a type, got {:?}", self.current_token);
+                self.errors.push(msg);
+                None
+            }
+        }
     }
 
     fn parse_call_expression(&mut self, function: ast::Expression) -> Option<ast::Expression> {
@@ -324,6 +360,13 @@ impl Parser {
             _ => return None,
         };
 
+        let mut type_ = None;
+        if self.peek_token_is(&Token::Colon) {
+            self.next_token();
+            self.next_token();
+            type_ = self.parse_type();
+        }
+
         if !self.expect_peek(&Token::Assign) {
             return None;
         }
@@ -336,7 +379,7 @@ impl Parser {
             self.next_token();
         }
 
-        value.map(|v| ast::Statement::Let(name, v))
+        value.map(|v| ast::Statement::Let(name, type_, v))
     }
 
     fn parse_mut_statement(&mut self) -> Option<ast::Statement> {
@@ -349,6 +392,13 @@ impl Parser {
             _ => return None,
         };
 
+        let mut type_ = None;
+        if self.peek_token_is(&Token::Colon) {
+            self.next_token();
+            self.next_token();
+            type_ = self.parse_type();
+        }
+
         if !self.expect_peek(&Token::Assign) {
             return None;
         }
@@ -361,7 +411,7 @@ impl Parser {
             self.next_token();
         }
 
-        value.map(|v| ast::Statement::Mut(name, v))
+        value.map(|v| ast::Statement::Mut(name, type_, v))
     }
 
     fn expect_peek(&mut self, t: &Token) -> bool {

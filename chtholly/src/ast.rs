@@ -2,8 +2,8 @@ use crate::token::Token;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-    Let(Identifier, Expression),
-    Mut(Identifier, Expression),
+    Let(Identifier, Option<Type>, Expression),
+    Mut(Identifier, Option<Type>, Expression),
     Return(Expression),
     Expression(Expression),
     Block(BlockStatement),
@@ -24,13 +24,23 @@ pub enum Expression {
         alternative: Option<BlockStatement>,
     },
     FunctionLiteral {
-        parameters: Vec<Identifier>,
+        parameters: Vec<(Identifier, Type)>,
         body: BlockStatement,
     },
     Call {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Type {
+    Int,
+    Double,
+    Char,
+    String,
+    Bool,
+    Void,
 }
 
 #[derive(Debug, PartialEq, Clone)]
