@@ -122,12 +122,12 @@ Chtholly有如下内置数据类型：
   * 精细划分的整数类型：`i8, i16, i32, i64` (有符号)；`u8, u16, u32, u64` (无符号)。
   * `char`: 字符类型。
   * `double`: 默认使用的浮点数类型，对应 **64 位浮点数 (f64)**。
-  * 精细划分的浮点数类型：`float` (32 位浮点数，也可以使用f32)，`double` (64 位浮点数，也可以使用f64)。
+  * 精细划分的浮点数类型：`f32`，`f64`。
   * `void`: 表示空类型，通常用于函数不返回任何值的情况。
   * `bool`: 布尔类型。
   * `string`: 表示动态字符串，默认使用 **UTF-8 编码**。
   * 数组：`int[]` (动态数组，所有权在堆上)，`int[4]` (静态数组，大小编译期确定，通常在栈上)。
-  * 函数：`function`，(int, int): void
+  * 函数：`function`，`(int, int): void`
 
 这部分的类型注解使用定义时的标识符：
 
@@ -719,7 +719,7 @@ class container requier iterator
 
 那么一旦类请求了create_iterator_move约束，就必须请求iterator_move约束。
 
-create_iterator_move和iterator_move可以相互请求，这不会导致问题的产生，但为了间接性，我们始终推荐开发者进行线性的规划。
+create_iterator_move和iterator_move可以相互请求，这不会导致问题的产生，但为了简洁性，我们始终推荐开发者进行线性的规划。
 
 ```Chtholly
 request iterator_move require create_iterator_move
