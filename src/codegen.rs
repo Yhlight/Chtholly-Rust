@@ -8,11 +8,50 @@ use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue, ValueKind};
 use std::collections::HashMap;
 
+struct Symbol<'ctx> {
+    pointer: PointerValue<'ctx>,
+    symbol_type: ast::Type,
+    is_mutable: bool,
+}
+
+struct SymbolTable<'ctx> {
+    scopes: Vec<HashMap<String, Symbol<'ctx>>>,
+}
+
+impl<'ctx> SymbolTable<'ctx> {
+    fn new() -> Self {
+        SymbolTable {
+            scopes: vec![HashMap::new()],
+        }
+    }
+
+    fn enter_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn leave_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn add_symbol(&mut self, name: String, symbol: Symbol<'ctx>) {
+        self.scopes.last_mut().unwrap().insert(name, symbol);
+    }
+
+    fn get_symbol(&self, name: &str) -> Option<&Symbol<'ctx>> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(symbol) = scope.get(name) {
+                return Some(symbol);
+            }
+        }
+        None
+    }
+}
+
 pub struct CodeGen<'ctx> {
     context: &'ctx Context,
     pub module: Module<'ctx>,
     builder: Builder<'ctx>,
-    variables: HashMap<String, PointerValue<'ctx>>,
+    symbol_table: SymbolTable<'ctx>,
     fn_value_opt: Option<FunctionValue<'ctx>>,
 }
 
@@ -24,7 +63,7 @@ impl<'ctx> CodeGen<'ctx> {
             context,
             module,
             builder,
-            variables: HashMap::new(),
+            symbol_table: SymbolTable::new(),
             fn_value_opt: None,
         }
     }
@@ -43,9 +82,13 @@ impl<'ctx> CodeGen<'ctx> {
         let entry = self.context.append_basic_block(fn_value, "entry");
         self.builder.position_at_end(entry);
 
+        self.symbol_table.enter_scope();
+
         for statement in &function.body {
             self.codegen_statement(statement)?;
         }
+
+        self.symbol_table.leave_scope();
 
         // Add a default return if the function doesn't have one
         if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
@@ -92,7 +135,30 @@ impl<'ctx> CodeGen<'ctx> {
                 self.codegen_expression(expr)?;
                 Ok(())
             }
+            ast::Statement::VariableDeclaration(var_decl) => {
+                self.codegen_variable_declaration(var_decl)
+            }
         }
+    }
+
+    fn codegen_variable_declaration(&mut self, var_decl: &ast::VariableDeclaration) -> Result<(), String> {
+        let var_type = var_decl.var_type.as_ref().ok_or_else(|| "Variable type must be specified for now".to_string())?;
+        let llvm_type = self.to_basic_type(var_type);
+        let alloca = self.builder.build_alloca(llvm_type, &var_decl.name).unwrap();
+
+        if let Some(initializer) = &var_decl.initializer {
+            let initial_value = self.codegen_expression(initializer)?;
+            self.builder.build_store(alloca, initial_value).unwrap();
+        }
+
+        let symbol = Symbol {
+            pointer: alloca,
+            symbol_type: var_type.clone(),
+            is_mutable: var_decl.is_mutable,
+        };
+        self.symbol_table.add_symbol(var_decl.name.clone(), symbol);
+
+        Ok(())
     }
 
     fn codegen_expression(&mut self, expr: &ast::Expression) -> Result<BasicValueEnum<'ctx>, String> {
@@ -103,6 +169,11 @@ impl<'ctx> CodeGen<'ctx> {
             ast::Expression::StringLiteral(val) => {
                 let ptr = self.builder.build_global_string_ptr(val, ".str").unwrap();
                 Ok(ptr.as_pointer_value().into())
+            }
+            ast::Expression::Variable(name) => {
+                let symbol = self.symbol_table.get_symbol(name).ok_or_else(|| format!("Variable '{}' not found", name))?;
+                let llvm_type = self.to_basic_type(&symbol.symbol_type);
+                Ok(self.builder.build_load(llvm_type,symbol.pointer, name).unwrap())
             }
             ast::Expression::FunctionCall { name, args } => {
                  let callee = self.module.get_function(name).ok_or(format!("Function '{}' not found in module", name))
@@ -139,9 +210,9 @@ impl<'ctx> CodeGen<'ctx> {
                 _ => unimplemented!("Type '{}' not yet supported", name),
             },
             ast::Type::Array(t) => {
-                 let inner_type = self.to_basic_type(t);
+                 let _inner_type = self.to_basic_type(t);
                  let addr_space = inkwell::AddressSpace::default();
-                 inner_type.ptr_type(addr_space).into()
+                 self.context.ptr_type(addr_space).into()
             },
             ast::Type::Generic(name, _) => {
                 if name == "Result" {

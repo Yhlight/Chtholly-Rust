@@ -29,7 +29,15 @@ pub enum Type {
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Expression(Expression),
-    // Future statements: Let, Return, If, etc.
+    VariableDeclaration(VariableDeclaration),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct VariableDeclaration {
+    pub is_mutable: bool,
+    pub name: String,
+    pub var_type: Option<Type>,
+    pub initializer: Option<Expression>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -40,5 +48,5 @@ pub enum Expression {
     },
     StringLiteral(String),
     IntegerLiteral(i64),
-    // Future expressions: Variable, BinaryOp, etc.
+    Variable(String),
 }

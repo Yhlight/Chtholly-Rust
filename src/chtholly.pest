@@ -35,7 +35,12 @@ parameter_list = { parameter ~ ("," ~ parameter)* }
 parameter = { ident ~ ":" ~ type }
 
 
+variable_declaration = {
+    (let_kw | mut_kw) ~ ident ~ (":" ~ type)? ~ ("=" ~ expression)? ~ ";"
+}
+
 statement = {
+    variable_declaration |
     expression_statement
 }
 
@@ -43,6 +48,7 @@ expression_statement = { expression ~ ";" }
 
 expression = {
     function_call |
+    ident |
     string |
     integer
 }

@@ -1,0 +1,115 @@
+   Compiling chtholly_compiler v0.1.0 (/app)
+warning: use of deprecated method `inkwell::types::BasicType::ptr_type`: Starting from version 15.0, LLVM doesn't differentiate between pointer types. Use Context::ptr_type instead.
+   --> src/codegen.rs:215:29
+    |
+215 |                  inner_type.ptr_type(addr_space).into()
+    |                             ^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: field `is_mutable` is never read
+  --> src/codegen.rs:14:5
+   |
+11 | struct Symbol<'ctx> {
+   |        ------ field in this struct
+...
+14 |     is_mutable: bool,
+   |     ^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `chtholly_compiler` (bin "chtholly_compiler") generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.79s
+     Running `target/debug/chtholly_compiler test.cns`
+正在编译文件：test.cns
+--- 源代码 ---
+fn main(args: string[]): Result<i32, SystemError>
+{
+    // 这是一个测试文件。
+    let a: string = "Hello, Chtholly!";
+    puts(a);
+}
+
+-------------------
+--- 抽象语法树 ---
+Program {
+    functions: [
+        FunctionDefinition {
+            name: "main",
+            params: [
+                Parameter {
+                    name: "args",
+                    param_type: Array(
+                        Simple(
+                            "string",
+                        ),
+                    ),
+                },
+            ],
+            return_type: Generic(
+                "Result",
+                [
+                    Simple(
+                        "i32",
+                    ),
+                    Simple(
+                        "SystemError",
+                    ),
+                ],
+            ),
+            body: [
+                VariableDeclaration(
+                    VariableDeclaration {
+                        is_mutable: false,
+                        name: "a",
+                        var_type: Some(
+                            Simple(
+                                "string",
+                            ),
+                        ),
+                        initializer: Some(
+                            StringLiteral(
+                                "Hello, Chtholly!",
+                            ),
+                        ),
+                    },
+                ),
+                Expression(
+                    FunctionCall {
+                        name: "puts",
+                        args: [
+                            Variable(
+                                "a",
+                            ),
+                        ],
+                    },
+                ),
+            ],
+        },
+    ],
+}
+-------------------
+--- LLVM IR ---
+; ModuleID = 'chtholly_module'
+source_filename = "chtholly_module"
+
+@.str = private unnamed_addr constant [17 x i8] c"Hello, Chtholly!\00", align 1
+
+define i32 @main(ptr %args) {
+entry:
+  %a = alloca ptr, align 8
+  store ptr @.str, ptr %a, align 8
+  %a1 = load ptr, ptr %a, align 8
+  %calltmp = call i32 @puts(ptr %a1)
+  ret i32 0
+}
+
+declare i32 @puts(ptr)
+
+-----------------
+LLVM IR 已保存到 output.ll
+Clang 编译成功！
+--- 程序输出 ---
+Hello, Chtholly!
+
+--------------------

@@ -87,7 +87,46 @@ fn build_statement(pair: Pair<Rule>) -> ast::Statement {
             let expr = build_expression(inner.into_inner().next().unwrap());
             Statement::Expression(expr)
         }
+        Rule::variable_declaration => {
+            Statement::VariableDeclaration(build_variable_declaration(inner))
+        }
         _ => unreachable!("Unexpected rule in build_statement: {:?}", inner.as_rule()),
+    }
+}
+
+fn build_variable_declaration(pair: Pair<Rule>) -> ast::VariableDeclaration {
+    let mut inner = pair.into_inner();
+    let kw = inner.next().unwrap();
+    let is_mutable = kw.as_rule() == Rule::mut_kw;
+
+    let name = inner.next().unwrap().as_str().to_string();
+
+    let mut var_type = None;
+    let mut initializer = None;
+
+    if let Some(next_pair) = inner.next() {
+        match next_pair.as_rule() {
+            Rule::r#type => {
+                var_type = Some(build_type(next_pair));
+                if let Some(expr_pair) = inner.next() {
+                    initializer = Some(build_expression(expr_pair));
+                }
+            }
+            Rule::expression => {
+                initializer = Some(build_expression(next_pair));
+            }
+            _ => unreachable!(
+                "Unexpected rule in variable_declaration: {:?}",
+                next_pair.as_rule()
+            ),
+        }
+    }
+
+    ast::VariableDeclaration {
+        is_mutable,
+        name,
+        var_type,
+        initializer,
     }
 }
 
@@ -97,6 +136,7 @@ fn build_expression(pair: Pair<Rule>) -> ast::Expression {
         Rule::integer => {
             Expression::IntegerLiteral(inner.as_str().parse().expect("Failed to parse integer"))
         }
+        Rule::ident => Expression::Variable(inner.as_str().to_string()),
         Rule::string => {
             // Remove quotes from the string literal
             let literal = inner.as_str();

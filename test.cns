@@ -1,5 +1,6 @@
 fn main(args: string[]): Result<i32, SystemError>
 {
     // 这是一个测试文件。
-    puts("Hello, Chtholly!");
+    let a: string = "Hello, Chtholly!";
+    puts(a);
 }
