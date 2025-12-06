@@ -172,6 +172,7 @@ impl<'a> Parser<'a> {
             Token::Int(_) => self.parse_integer_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean(),
+            Token::If => self.parse_if_expression(),
             _ => {
                 self.no_prefix_parse_fn_error(&token_clone);
                 return None;
@@ -182,7 +183,11 @@ impl<'a> Parser<'a> {
             match self.peek_token {
                 Token::Plus | Token::Minus | Token::Slash | Token::Asterisk | Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
                     self.next_token();
-                    left_exp = self.parse_infix_expression(left_exp.unwrap());
+                    if let Some(left) = left_exp {
+                        left_exp = self.parse_infix_expression(left);
+                    } else {
+                        return None;
+                    }
                 }
                 _ => return left_exp,
             }
@@ -196,14 +201,17 @@ impl<'a> Parser<'a> {
         let operator = self.current_token.to_string();
         let precedence = self.cur_precedence();
         self.next_token();
-        let right = self.parse_expression(precedence).unwrap();
 
-        Some(Box::new(ast::InfixExpression {
-            token,
-            left,
-            operator,
-            right,
-        }))
+        if let Some(right) = self.parse_expression(precedence) {
+            Some(Box::new(ast::InfixExpression {
+                token,
+                left,
+                operator,
+                right,
+            }))
+        } else {
+            None
+        }
     }
 
     fn cur_precedence(&self) -> Precedence {
@@ -260,6 +268,72 @@ impl<'a> Parser<'a> {
         } else {
             None
         }
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+
+        if !matches!(self.peek_token, Token::LParen) {
+            self.peek_error(&Token::LParen);
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let condition = if let Some(cond) = self.parse_expression(Precedence::Lowest) {
+            cond
+        } else {
+            return None;
+        };
+
+        if !matches!(self.peek_token, Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return None;
+        }
+        self.next_token();
+
+        if !matches!(self.peek_token, Token::LBrace) {
+            self.peek_error(&Token::LBrace);
+            return None;
+        }
+        self.next_token();
+
+        let consequence = self.parse_block_statement();
+
+        let alternative = if matches!(self.peek_token, Token::Else) {
+            self.next_token();
+            if !matches!(self.peek_token, Token::LBrace) {
+                self.peek_error(&Token::LBrace);
+                return None;
+            }
+            self.next_token();
+            Some(self.parse_block_statement())
+        } else {
+            None
+        };
+
+        Some(Box::new(ast::IfExpression {
+            token,
+            condition,
+            consequence,
+            alternative,
+        }))
+    }
+
+    fn parse_block_statement(&mut self) -> ast::BlockStatement {
+        let token = self.current_token.clone();
+        let mut statements = Vec::new();
+
+        self.next_token();
+
+        while !matches!(self.current_token, Token::RBrace) && !matches!(self.current_token, Token::Eof) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        ast::BlockStatement { token, statements }
     }
 }
 
@@ -476,6 +550,62 @@ mod tests {
 
             let actual = program.to_string();
             assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_if_expression() {
+        let input = "if (x < y) { x }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let exp = stmt.expression.as_any().downcast_ref::<ast::IfExpression>().expect("expression not IfExpression");
+        assert_eq!(exp.condition.to_string(), "(x < y)");
+        assert_eq!(exp.consequence.statements.len(), 1);
+        let consequence = exp.consequence.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        assert_eq!(consequence.expression.to_string(), "x");
+        assert!(exp.alternative.is_none());
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let input = "if (x < y) { x } else { y }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let exp = stmt.expression.as_any().downcast_ref::<ast::IfExpression>().expect("expression not IfExpression");
+        assert_eq!(exp.condition.to_string(), "(x < y)");
+        assert_eq!(exp.consequence.statements.len(), 1);
+        let consequence = exp.consequence.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        assert_eq!(consequence.expression.to_string(), "x");
+        assert!(exp.alternative.is_some());
+        let alternative = exp.alternative.as_ref().unwrap();
+        assert_eq!(alternative.statements.len(), 1);
+        let alt_stmt = alternative.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        assert_eq!(alt_stmt.expression.to_string(), "y");
+    }
+
+    #[test]
+    fn test_parser_panics() {
+        let tests = vec![
+            ("if () {}", 3),
+            ("5 + ;", 1),
+        ];
+
+        for (input, error_count) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            parser.parse_program();
+
+            assert_eq!(parser.errors().len(), error_count, "Expected {} error(s) for input '{}', but got {} {:?}", error_count, input, parser.errors().len(), parser.errors());
         }
     }
 }

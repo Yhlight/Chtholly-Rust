@@ -86,6 +86,59 @@ impl Expression for Identifier {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct BlockStatement {
+    pub token: Token, // the { token
+    pub statements: Vec<Box<dyn Statement>>,
+}
+
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for s in &self.statements {
+            write!(f, "{}", s)?;
+        }
+        Ok(())
+    }
+}
+
+impl Node for BlockStatement {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Statement for BlockStatement {
+    fn statement_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+pub struct IfExpression {
+    pub token: Token, // The 'if' token
+    pub condition: Box<dyn Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl fmt::Display for IfExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "if {} {}", self.condition, self.consequence)?;
+        if let Some(alt) = &self.alternative {
+            write!(f, "else {}", alt)?;
+        }
+        Ok(())
+    }
+}
+
+impl Node for IfExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for IfExpression {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 pub struct InfixExpression {
     pub token: Token, // The operator token, e.g. +
     pub left: Box<dyn Expression>,

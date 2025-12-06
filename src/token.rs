@@ -50,6 +50,8 @@ pub enum Token {
     Return,   // return
     True,     // true
     False,    // false
+    If,       // if
+    Else,     // else
 }
 
 impl fmt::Display for Token {
@@ -82,6 +84,8 @@ impl fmt::Display for Token {
             Token::Return => write!(f, "return"),
             Token::True => write!(f, "true"),
             Token::False => write!(f, "false"),
+            Token::If => write!(f, "if"),
+            Token::Else => write!(f, "else"),
         }
     }
 }
@@ -95,6 +99,8 @@ pub fn from_literal(literal: &str) -> Token {
         "return" => Token::Return,
         "true" => Token::True,
         "false" => Token::False,
+        "if" => Token::If,
+        "else" => Token::Else,
         _ => Token::Identifier(literal.to_string()),
     }
 }
