@@ -54,6 +54,10 @@ pub enum Expression {
         token: Token,
         value: bool,
     },
+    StringLiteral {
+        token: Token,
+        value: String,
+    },
     PrefixExpression {
         token: Token,
         operator: String,
@@ -90,6 +94,7 @@ impl Node for Expression {
             Expression::Identifier(ident) => ident.token.literal.clone(),
             Expression::IntegerLiteral { token, .. } => token.literal.clone(),
             Expression::BooleanLiteral { token, .. } => token.literal.clone(),
+            Expression::StringLiteral { token, .. } => token.literal.clone(),
             Expression::PrefixExpression { token, .. } => token.literal.clone(),
             Expression::InfixExpression { token, .. } => token.literal.clone(),
             Expression::IfExpression { token, .. } => token.literal.clone(),

@@ -440,3 +440,23 @@ fn test_break_statement() {
         panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
     }
 }
+
+#[test]
+fn test_string_literal_expression() {
+    let input = r#""hello world";"#;
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        if let Expression::StringLiteral { value, .. } = expression {
+            assert_eq!(value, "hello world");
+        } else {
+            panic!("expression not StringLiteral. got={:?}", expression);
+        }
+    } else {
+        panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+    }
+}

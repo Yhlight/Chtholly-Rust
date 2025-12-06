@@ -406,3 +406,21 @@ fn test_nested_while_loop_compiler() {
     assert_eq!(re_body.find_iter(&output).count(), 2);
     assert_eq!(re_end.find_iter(&output).count(), 2);
 }
+
+#[test]
+fn test_string_literal_compiler() {
+    let input = r#"fn main() { "hello world" }"#;
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let context = Context::create();
+    let module = context.create_module("main");
+    let builder = context.create_builder();
+    let mut compiler = Compiler::new(&context, &builder, &module);
+    let result = compiler.compile(program);
+
+    assert!(result.is_ok());
+    let module_ir = module.print_to_string().to_string();
+    assert!(module_ir.contains("@.str = private unnamed_addr constant [12 x i8] c\"hello world\\00\""));
+}

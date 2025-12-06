@@ -91,6 +91,12 @@ impl<'a> Parser<'a> {
                 value: false,
             })
         });
+        p.register_prefix(TokenKind::String, |parser| {
+            Some(Expression::StringLiteral {
+                token: parser.current_token.clone(),
+                value: parser.current_token.literal.clone(),
+            })
+        });
         p.register_prefix(TokenKind::Bang, |parser| {
             let token = parser.current_token.clone();
             parser.next_token();

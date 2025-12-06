@@ -152,6 +152,11 @@ impl<'a> Lexer<'a> {
                 };
                 return Token::new(kind, literal);
             }
+            b'"' => {
+                let literal = self.read_string();
+                self.read_char(); // Consume the closing quote
+                return Token::new(TokenKind::String, literal);
+            }
             b'0'..=b'9' => {
                 let literal = self.read_number();
                 return Token::new(TokenKind::Int, literal);
@@ -161,6 +166,17 @@ impl<'a> Lexer<'a> {
         };
         self.read_char();
         tok
+    }
+
+    fn read_string(&mut self) -> String {
+        let position = self.position + 1;
+        loop {
+            self.read_char();
+            if self.ch == b'"' || self.ch == 0 {
+                break;
+            }
+        }
+        self.input[position..self.position].to_string()
     }
 
     fn read_identifier(&mut self) -> String {

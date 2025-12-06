@@ -19,7 +19,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **Basic Language Features**
   - [x] `main` function entry point
   - [x] Integer literals
-  - [ ] String literals
+  - [x] String literals
   - [ ] Character literals
 
 ## Phase 2: Variables and Data Types
