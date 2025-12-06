@@ -1,0 +1,51 @@
+// Chtholly Grammar v2
+// ===================
+
+// Silent rules for whitespace and comments
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT    = _{ "//" ~ (!("\r" | "\n") ~ ANY)* | "/*" ~ (COMMENT | !"*/" ~ ANY)* ~ "*/" }
+
+// Tokens
+ident   = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+integer = @{ ASCII_DIGIT+ }
+string  = @{ "\"" ~ ( "\\" ~ ANY | !"\"" ~ ANY)* ~ "\"" }
+
+// Keywords (as atomic rules)
+fn_kw    = @{ "fn" }
+let_kw   = @{ "let" }
+mut_kw   = @{ "mut" }
+
+// Types
+// Simplified to handle `string[]` and `Result<i32, SystemError>`
+type_ident = { ident } // eg: i32, SystemError, string
+generic_type = { type_ident ~ "<" ~ type ~ ("," ~ type)* ~ ">" }
+array_type = { type_ident ~ "[]" }
+type = { generic_type | array_type | type_ident }
+
+
+// Main grammar rules
+program = { SOI ~ (function_definition | statement)* ~ EOI }
+
+function_definition = {
+    fn_kw ~ ident ~ "(" ~ parameter_list? ~ ")" ~ ":" ~ type ~ "{" ~
+        (statement)* ~
+    "}"
+}
+parameter_list = { parameter ~ ("," ~ parameter)* }
+parameter = { ident ~ ":" ~ type }
+
+
+statement = {
+    expression_statement
+}
+
+expression_statement = { expression ~ ";" }
+
+expression = {
+    function_call |
+    string |
+    integer
+}
+
+function_call = { ident ~ "(" ~ argument_list? ~ ")" }
+argument_list = { expression ~ ("," ~ expression)* }

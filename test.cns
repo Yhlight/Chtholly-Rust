@@ -1,0 +1,5 @@
+fn main(args: string[]): Result<i32, SystemError>
+{
+    // 这是一个测试文件。
+    println("Hello, Chtholly!");
+}
