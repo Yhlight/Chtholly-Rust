@@ -55,6 +55,30 @@ fn test_mut_statements() {
     }
 }
 
+#[test]
+fn test_infix_expressions() {
+    let infix_tests = vec![
+        ("5 + 5;", 5, "+", 5),
+        ("5 - 5;", 5, "-", 5),
+        ("5 * 5;", 5, "*", 5),
+        ("5 / 5;", 5, "/", 5),
+    ];
+
+    for (input, left, operator, right) in infix_tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1, "program.statements has not enough statements. got={}", program.statements.len());
+
+        if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+            assert_infix_expression(expression, left, operator, right);
+        } else {
+            panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+        }
+    }
+}
+
 fn assert_let_statement(stmt: &Statement, name: &str, value: i64) {
     assert_eq!(stmt.token_literal(), "let", "stmt.token_literal not 'let'. got={}", stmt.token_literal());
 
@@ -84,5 +108,15 @@ fn assert_integer_literal(expr: &Expression, value: i64) {
         assert_eq!(*v, value, "IntegerLiteral value not {}. got={}", value, v);
     } else {
         panic!("expr not IntegerLiteral. got={:?}", expr);
+    }
+}
+
+fn assert_infix_expression(expr: &Expression, left: i64, op: &str, right: i64) {
+    if let Expression::InfixExpression { left: l, operator, right: r, .. } = expr {
+        assert_integer_literal(l, left);
+        assert_eq!(operator, op, "exp.Operator is not '{}'. got={}", op, operator);
+        assert_integer_literal(r, right);
+    } else {
+        panic!("expr is not InfixExpression. got={:?}", expr);
     }
 }

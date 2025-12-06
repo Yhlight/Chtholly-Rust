@@ -47,6 +47,12 @@ pub enum Expression {
         token: Token,
         value: i64,
     },
+    InfixExpression {
+        token: Token,
+        left: Box<Expression>,
+        operator: String,
+        right: Box<Expression>,
+    },
     FunctionLiteral {
         token: Token, // The 'fn' token
         parameters: Vec<Identifier>,
@@ -59,6 +65,7 @@ impl Node for Expression {
         match self {
             Expression::Identifier(ident) => ident.token.literal.clone(),
             Expression::IntegerLiteral { token, .. } => token.literal.clone(),
+            Expression::InfixExpression { token, .. } => token.literal.clone(),
             Expression::FunctionLiteral { token, .. } => token.literal.clone(),
         }
     }

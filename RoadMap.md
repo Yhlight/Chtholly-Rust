@@ -41,8 +41,9 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 3: Operators and Expressions
 
-- [ ] **Arithmetic Operators**
-  - [ ] `+`, `-`, `*`, `/`, `%`
+- [x] **Arithmetic Operators**
+  - [x] `+`, `-`, `*`, `/`
+  - [ ] `%`
 - [ ] **Comparison Operators**
   - [ ] `==`, `!=`, `>`, `>=`, `<`, `<=`
 - [ ] **Logical Operators**

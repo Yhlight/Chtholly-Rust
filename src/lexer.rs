@@ -68,12 +68,9 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
         let tok = match self.ch {
             b'=' => Token::new(TokenKind::Assign, "=".to_string()),
-            b';' => Token::new(TokenKind::Semicolon, ";".to_string()),
-            b'(' => Token::new(TokenKind::LParen, "(".to_string()),
-            b')' => Token::new(TokenKind::RParen, ")".to_string()),
-            b',' => Token::new(TokenKind::Comma, ",".to_string()),
-            b'{' => Token::new(TokenKind::LBrace, "{".to_string()),
-            b'}' => Token::new(TokenKind::RBrace, "}".to_string()),
+            b'+' => Token::new(TokenKind::Plus, "+".to_string()),
+            b'-' => Token::new(TokenKind::Minus, "-".to_string()),
+            b'*' => Token::new(TokenKind::Asterisk, "*".to_string()),
             b'/' => {
                 if self.peek_char() == b'/' {
                     self.read_char();
@@ -84,8 +81,14 @@ impl<'a> Lexer<'a> {
                     self.skip_multi_line_comment();
                     return self.next_token();
                 }
-                Token::new(TokenKind::Illegal, "/".to_string())
+                Token::new(TokenKind::Slash, "/".to_string())
             }
+            b';' => Token::new(TokenKind::Semicolon, ";".to_string()),
+            b'(' => Token::new(TokenKind::LParen, "(".to_string()),
+            b')' => Token::new(TokenKind::RParen, ")".to_string()),
+            b',' => Token::new(TokenKind::Comma, ",".to_string()),
+            b'{' => Token::new(TokenKind::LBrace, "{".to_string()),
+            b'}' => Token::new(TokenKind::RBrace, "}".to_string()),
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
                 let literal = self.read_identifier();
                 let kind = match literal.as_str() {

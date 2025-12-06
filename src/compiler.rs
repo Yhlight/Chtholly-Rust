@@ -29,6 +29,21 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
     pub fn compile(&mut self, program: Program) -> Result<FunctionValue<'ctx>, &'static str> {
         let mut last_fn = None;
+        if program.statements.len() == 1 {
+            if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+                 if !matches!(expression, Expression::FunctionLiteral { .. }) {
+                    let i32_type = self.context.i32_type();
+                    let fn_type = i32_type.fn_type(&[], false);
+                    let function = self.module.add_function("main", fn_type, None);
+                    let basic_block = self.context.append_basic_block(function, "entry");
+                    self.builder.position_at_end(basic_block);
+                    let value = self.compile_expression_in_function(expression)?;
+                    self.builder.build_return(Some(&value)).unwrap();
+                    return Ok(function);
+                }
+            }
+        }
+
         for statement in program.statements {
             self.compile_statement(&statement, &mut last_fn)?;
         }
@@ -70,9 +85,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             self.compile_block_statement(body)?;
 
             if basic_block.get_terminator().is_none() {
-                 self.builder
-                .build_return(Some(&i32_type.const_int(0, false)))
-                .unwrap();
+                self.builder
+                    .build_return(Some(&i32_type.const_int(0, false)))
+                    .unwrap();
             }
 
             Ok(function)
@@ -119,6 +134,22 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             Expression::IntegerLiteral { value, .. } => {
                 let i32_type = self.context.i32_type();
                 Ok(i32_type.const_int(*value as u64, false))
+            }
+            Expression::InfixExpression {
+                left,
+                operator,
+                right,
+                ..
+            } => {
+                let left = self.compile_expression_in_function(left)?;
+                let right = self.compile_expression_in_function(right)?;
+                match operator.as_str() {
+                    "+" => Ok(self.builder.build_int_add(left, right, "addtmp").unwrap()),
+                    "-" => Ok(self.builder.build_int_sub(left, right, "subtmp").unwrap()),
+                    "*" => Ok(self.builder.build_int_mul(left, right, "multmp").unwrap()),
+                    "/" => Ok(self.builder.build_int_signed_div(left, right, "divtmp").unwrap()),
+                    _ => Err("Unknown operator"),
+                }
             }
             _ => Err("Unsupported expression inside function"),
         }
