@@ -272,4 +272,12 @@ mod tests {
             assert_eq!(token, expected_token);
         }
     }
+
+    #[test]
+    fn test_while_keyword() {
+        let input = "while";
+        let mut lexer = Lexer::new(input);
+        let token = lexer.next_token();
+        assert_eq!(token, Token::While);
+    }
 }

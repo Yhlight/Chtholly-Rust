@@ -109,6 +109,29 @@ impl Expression for Identifier {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct WhileExpression {
+    pub token: Token, // The 'while' token
+    pub condition: Box<dyn Expression>,
+    pub body: BlockStatement,
+}
+
+impl fmt::Display for WhileExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "while {} {}", self.condition, self.body)
+    }
+}
+
+impl Node for WhileExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for WhileExpression {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 pub struct ArrayLiteral {
     pub token: Token, // the '[' token
     pub elements: Vec<Box<dyn Expression>>,

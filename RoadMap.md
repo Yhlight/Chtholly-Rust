@@ -36,7 +36,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [ ] **Control Flow:**
     - [x] `if-else` statements.
     - [ ] `switch-case` statements.
-    - [ ] `while` loops.
+    - [x] `while` loops. (Parser support)
     - [ ] `for` loops.
     - [ ] `do-while` loops.
     - [ ] `foreach` loops.

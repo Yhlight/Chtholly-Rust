@@ -224,6 +224,7 @@ impl<'a> Parser<'a> {
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
+            Token::While => self.parse_while_expression(),
             Token::LParen => self.parse_grouped_expression(),
             Token::LBracket => self.parse_array_literal(),
             Token::Function => self.parse_function_literal(),
@@ -584,6 +585,43 @@ impl<'a> Parser<'a> {
             token,
             left,
             index: index.unwrap(),
+        }))
+    }
+
+    fn parse_while_expression(&mut self) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+
+        if !matches!(self.peek_token, Token::LParen) {
+            self.peek_error(&Token::LParen);
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let condition = if let Some(cond) = self.parse_expression(Precedence::Lowest) {
+            cond
+        } else {
+            return None;
+        };
+
+        if !matches!(self.peek_token, Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return None;
+        }
+        self.next_token();
+
+        if !matches!(self.peek_token, Token::LBrace) {
+            self.peek_error(&Token::LBrace);
+            return None;
+        }
+        self.next_token();
+
+        let body = self.parse_block_statement();
+
+        Some(Box::new(ast::WhileExpression {
+            token,
+            condition,
+            body,
         }))
     }
 }
@@ -1009,5 +1047,23 @@ mod tests {
 
         assert_eq!(index_exp.left.to_string(), "my_array");
         assert_eq!(index_exp.index.to_string(), "(1 + 1)");
+    }
+
+    #[test]
+    fn test_while_expression_parsing() {
+        let input = "while (x < y) { x }";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let exp = stmt.expression.as_any().downcast_ref::<ast::WhileExpression>().expect("expression not WhileExpression");
+
+        assert_eq!(exp.condition.to_string(), "(x < y)");
+        assert_eq!(exp.body.statements.len(), 1);
+        let body_stmt = exp.body.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        assert_eq!(body_stmt.expression.to_string(), "x");
     }
 }
