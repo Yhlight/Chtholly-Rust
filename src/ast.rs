@@ -19,7 +19,13 @@ pub enum Expression {
     If(Box<Expression>, BlockStatement, Option<BlockStatement>),
     Call(Box<Expression>, Vec<Expression>),
     While(Box<Expression>, BlockStatement),
+    Prefix(PrefixOperator, Box<Expression>),
     // Other expressions will be added here
+}
+
+#[derive(Debug, PartialEq)]
+pub enum PrefixOperator {
+    Bang,
 }
 
 #[derive(Debug, PartialEq)]
@@ -28,7 +34,12 @@ pub enum Operator {
     Minus,
     Star,
     Slash,
+    Eq,
+    NotEq,
     Lt,
+    Gt,
+    GtEq,
+    LtEq,
 }
 
 #[derive(Debug, PartialEq)]

@@ -25,7 +25,13 @@ pub enum Token {
     Star,
     Slash,
     Assign,
+    Bang,
+    Eq,
+    NotEq,
     Lt,
+    Gt,
+    GtEq,
+    LtEq,
 
     // Delimiters
     LParen,
@@ -96,11 +102,41 @@ impl<'a> Lexer<'a> {
                     Token::Slash
                 }
             }
-            b'=' => Token::Assign,
             b'+' => Token::Plus,
             b'-' => Token::Minus,
             b'*' => Token::Star,
-            b'<' => Token::Lt,
+            b'!' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::NotEq
+                } else {
+                    Token::Bang
+                }
+            }
+            b'=' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::Eq
+                } else {
+                    Token::Assign
+                }
+            }
+            b'<' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::LtEq
+                } else {
+                    Token::Lt
+                }
+            }
+            b'>' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::GtEq
+                } else {
+                    Token::Gt
+                }
+            }
             b'(' => Token::LParen,
             b')' => Token::RParen,
             b'{' => Token::LBrace,
@@ -215,6 +251,12 @@ mod tests {
             false;
             'a';
             while (x < y) { x };
+            !true;
+            1 == 1;
+            1 != 2;
+            1 > 2;
+            1 >= 2;
+            1 <= 2;
         "#;
 
         let tests = vec![
@@ -266,6 +308,29 @@ mod tests {
             Token::LBrace,
             Token::Ident("x".to_string()),
             Token::RBrace,
+            Token::Semicolon,
+            Token::Bang,
+            Token::True,
+            Token::Semicolon,
+            Token::Int(1),
+            Token::Eq,
+            Token::Int(1),
+            Token::Semicolon,
+            Token::Int(1),
+            Token::NotEq,
+            Token::Int(2),
+            Token::Semicolon,
+            Token::Int(1),
+            Token::Gt,
+            Token::Int(2),
+            Token::Semicolon,
+            Token::Int(1),
+            Token::GtEq,
+            Token::Int(2),
+            Token::Semicolon,
+            Token::Int(1),
+            Token::LtEq,
+            Token::Int(2),
             Token::Semicolon,
             Token::Eof,
         ];

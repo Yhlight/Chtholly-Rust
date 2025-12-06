@@ -8,7 +8,10 @@
     - [x] `let` declarations
     - [x] `mut` declarations
 - [x] **Data Types:** Implement basic data types: `int`, `double`, `char`, `string`, `bool`.
-- [x] **Operators:** Implement basic arithmetic, comparison, and logical operators.
+- [x] **Operators:**
+    - [x] Basic arithmetic
+    - [x] Comparison
+    - [x] Logical
 - [x] **Control Flow:**
     - [x] `if-else` statements
     - [x] `while` loops

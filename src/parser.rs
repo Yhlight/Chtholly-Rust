@@ -1,4 +1,4 @@
-use crate::ast::{BlockStatement, Expression, Literal, Operator, Program, Statement};
+use crate::ast::{BlockStatement, Expression, Literal, Operator, PrefixOperator, Program, Statement};
 use crate::lexer::{Lexer, Token};
 
 #[derive(PartialEq, PartialOrd)]
@@ -8,6 +8,7 @@ enum Precedence {
     LessGreater,
     Sum,
     Product,
+    Prefix,
     Call,
 }
 
@@ -131,8 +132,22 @@ impl<'a> Parser<'a> {
             Token::False => Some(Expression::Literal(Literal::Bool(false))),
             Token::If => self.parse_if_expression(),
             Token::While => self.parse_while_expression(),
+            Token::Bang => self.parse_prefix_expression(),
             _ => None,
         }
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<Expression> {
+        let operator = match self.current_token {
+            Token::Bang => PrefixOperator::Bang,
+            _ => return None,
+        };
+
+        self.next_token();
+
+        let right = self.parse_expression(Precedence::Prefix)?;
+
+        Some(Expression::Prefix(operator, Box::new(right)))
     }
 
     fn parse_binary_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -141,7 +156,12 @@ impl<'a> Parser<'a> {
             Token::Minus => Operator::Minus,
             Token::Star => Operator::Star,
             Token::Slash => Operator::Slash,
+            Token::Eq => Operator::Eq,
+            Token::NotEq => Operator::NotEq,
             Token::Lt => Operator::Lt,
+            Token::Gt => Operator::Gt,
+            Token::LtEq => Operator::LtEq,
+            Token::GtEq => Operator::GtEq,
             _ => return None,
         };
 
@@ -189,9 +209,16 @@ impl<'a> Parser<'a> {
 
     fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
         match self.current_token {
-            Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Lt => {
-                self.parse_binary_expression(left)
-            }
+            Token::Plus
+            | Token::Minus
+            | Token::Star
+            | Token::Slash
+            | Token::Eq
+            | Token::NotEq
+            | Token::Lt
+            | Token::Gt
+            | Token::LtEq
+            | Token::GtEq => self.parse_binary_expression(left),
             Token::LParen => self.parse_call_expression(left),
             _ => None,
         }
@@ -199,9 +226,10 @@ impl<'a> Parser<'a> {
 
     fn peek_precedence(&self) -> Precedence {
         match self.peek_token {
+            Token::Eq | Token::NotEq => Precedence::Equals,
+            Token::Lt | Token::Gt | Token::LtEq | Token::GtEq => Precedence::LessGreater,
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Star | Token::Slash => Precedence::Product,
-            Token::Lt => Precedence::LessGreater,
             Token::LParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
@@ -209,9 +237,10 @@ impl<'a> Parser<'a> {
 
     fn current_precedence(&self) -> Precedence {
         match self.current_token {
+            Token::Eq | Token::NotEq => Precedence::Equals,
+            Token::Lt | Token::Gt | Token::LtEq | Token::GtEq => Precedence::LessGreater,
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Star | Token::Slash => Precedence::Product,
-            Token::Lt => Precedence::LessGreater,
             Token::LParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
@@ -534,6 +563,79 @@ mod tests {
                     "x".to_string(),
                 ))],
             },
+        ));
+
+        assert_eq!(program.statements[0], expected);
+    }
+
+    #[test]
+    fn test_prefix_expression() {
+        let input = "!true";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+
+        let expected = Statement::ExpressionStatement(Expression::Prefix(
+            PrefixOperator::Bang,
+            Box::new(Expression::Literal(Literal::Bool(true))),
+        ));
+
+        assert_eq!(program.statements[0], expected);
+    }
+
+    #[test]
+    fn test_comparison_operators() {
+        let tests = vec![
+            ("1 == 1", Operator::Eq),
+            ("1 != 2", Operator::NotEq),
+            ("1 < 2", Operator::Lt),
+            ("1 > 2", Operator::Gt),
+            ("1 <= 2", Operator::LtEq),
+            ("1 >= 2", Operator::GtEq),
+        ];
+
+        for (input, operator) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            assert_eq!(program.statements.len(), 1);
+
+            let expected = Statement::ExpressionStatement(Expression::Binary(
+                operator,
+                Box::new(Expression::Literal(Literal::Int(1))),
+                Box::new(Expression::Literal(Literal::Int(
+                    input.chars().last().unwrap().to_digit(10).unwrap() as i64
+                ))),
+            ));
+
+            assert_eq!(program.statements[0], expected);
+        }
+    }
+
+    #[test]
+    fn test_complex_operator_precedence() {
+        let input = "1 * 2 > 3 == false";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+
+        let expected = Statement::ExpressionStatement(Expression::Binary(
+            Operator::Eq,
+            Box::new(Expression::Binary(
+                Operator::Gt,
+                Box::new(Expression::Binary(
+                    Operator::Star,
+                    Box::new(Expression::Literal(Literal::Int(1))),
+                    Box::new(Expression::Literal(Literal::Int(2))),
+                )),
+                Box::new(Expression::Literal(Literal::Int(3))),
+            )),
+            Box::new(Expression::Literal(Literal::Bool(false))),
         ));
 
         assert_eq!(program.statements[0], expected);
