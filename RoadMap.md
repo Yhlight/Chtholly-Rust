@@ -17,23 +17,23 @@
 ### Sprint 0: 项目奠基与“Hello, World!”
 
 *   **目标**: 搭建完整的开发环境与项目骨架，完成最简程序的编译与执行。
-*   **状态**: ⏳ **进行中**
+*   **状态**: ✅ **已完成**
 *   **任务列表**:
-    *   [ ] **环境配置**: 确认 Rust 与 LLVM 17 环境已按 `agents.md` 要求配置完毕。
-    *   [ ] **项目初始化**: 使用 `cargo new chtholly_compiler` 创建 Rust 项目。
-    *   [ ] **版本控制**: 创建 `.gitignore` 文件，忽略 `target/` 目录及其他构建产物。
-    *   [ ] **依赖引入**: 在 `Cargo.toml` 中添加 `llvm-sys` 等必要的 LLVM 依赖。
-    *   [ ] **模块化结构**: 创建编译器核心模块目录：`src/lexer`, `src/parser`, `src/ast`, `src/codegen`, `src/errors`。
-    *   [ ] **最小化实现**:
+    *   [x] **环境配置**: 确认 Rust 与 LLVM 17 环境已按 `agents.md` 要求配置完毕。
+    *   [x] **项目初始化**: 使用 `cargo new chtholly_compiler` 创建 Rust 项目。
+    *   [x] **版本控制**: 创建 `.gitignore` 文件，忽略 `target/` 目录及其他构建产物。
+    *   [x] **依赖引入**: 在 `Cargo.toml` 中添加 `llvm-sys` 等必要的 LLVM 依赖。
+    *   [x] **模块化结构**: 创建编译器核心模块目录：`src/lexer`, `src/parser`, `src/ast`, `src/codegen`, `src/errors`。
+    *   [x] **最小化实现**:
         *   硬编码一个代表 `fn main(): i32 { return 0; }` 的 AST。
         *   实现一个最基础的 CodeGen，将此 AST 翻译为 LLVM IR。
         *   实现编译流程，生成可执行文件并验证其返回值为 0。
-    *   [ ] **测试框架**: 搭建单元测试和集成测试环境。
+    *   [x] **测试框架**: 搭建单元测试和集成测试环境。
 
 ### Sprint 1: 词法分析器 (Lexer)
 
 *   **目标**: 实现一个能够将 Chtholly 源代码正确分解为 Token 流的词法分析器。
-*   **状态**: 📋 **待办**
+*   **状态**: ⏳ **进行中**
 *   **任务列表**:
     *   [ ] **Token 定义**: 定义语言的所有 Token 类型（关键字, 标识符, 字面量, 运算符, 分隔符）。
     *   [ ] **核心 Tokenizer**: 实现对数字、标识符和各种符号的识别。

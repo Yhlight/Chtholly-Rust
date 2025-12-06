@@ -20,3 +20,6 @@ Cargo.lock
 **/__pycache__/
 *.swp
 *.swo
+
+# Chtholly build artifacts
+output/
