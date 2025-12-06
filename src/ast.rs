@@ -86,6 +86,73 @@ impl Expression for Identifier {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct ExpressionStatement {
+    pub token: Token, // the first token of the expression
+    pub expression: Box<dyn Expression>,
+}
+
+impl fmt::Display for ExpressionStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.expression)
+    }
+}
+
+impl Node for ExpressionStatement {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Statement for ExpressionStatement {
+    fn statement_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+pub struct BooleanLiteral {
+    pub token: Token,
+    pub value: bool,
+}
+
+impl fmt::Display for BooleanLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
+impl Node for BooleanLiteral {
+    fn token_literal(&self) -> String {
+        self.value.to_string()
+    }
+}
+
+impl Expression for BooleanLiteral {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+pub struct PrefixExpression {
+    pub token: Token, // The prefix token, e.g. !
+    pub operator: String,
+    pub right: Box<dyn Expression>,
+}
+
+impl fmt::Display for PrefixExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}{})", self.operator, self.right)
+    }
+}
+
+impl Node for PrefixExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for PrefixExpression {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 pub struct ReturnStatement {
     pub token: Token, // the 'return' token
     pub return_value: Box<dyn Expression>,

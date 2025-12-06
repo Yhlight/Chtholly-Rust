@@ -44,13 +44,14 @@ impl<'a> Lexer<'a> {
             b'-' => Token::Minus,
             b'*' => Token::Asterisk,
             b'/' => Token::Slash,
+            b'!' => Token::Bang,
             0 => Token::Eof,
             _ => {
                 if is_letter(self.ch) {
                     let literal = self.read_identifier();
                     return token::from_literal(&literal);
                 } else if is_digit(self.ch) {
-                    return Token::Int(self.read_number());
+                    return self.read_number();
                 } else {
                     Token::Illegal(self.ch.to_string())
                 }
@@ -69,13 +70,16 @@ impl<'a> Lexer<'a> {
         self.input[position..self.position].to_string()
     }
 
-    fn read_number(&mut self) -> i64 {
+    fn read_number(&mut self) -> Token {
         let position = self.position;
         while is_digit(self.ch) {
             self.read_char();
         }
-        // This is safe because we know it's a number from the is_digit check
-        self.input[position..self.position].parse().unwrap()
+        let number_str = &self.input[position..self.position];
+        match number_str.parse() {
+            Ok(val) => Token::Int(val),
+            Err(_) => Token::Illegal(number_str.to_string()),
+        }
     }
 
     fn skip_whitespace(&mut self) {
@@ -178,5 +182,13 @@ mod tests {
             let token = lexer.next_token();
             assert_eq!(token, expected_token);
         }
+    }
+
+    #[test]
+    fn test_integer_overflow() {
+        let input = "99999999999999999999999999999999999999";
+        let mut lexer = Lexer::new(input);
+        let token = lexer.next_token();
+        assert!(matches!(token, Token::Illegal(_)));
     }
 }

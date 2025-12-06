@@ -18,16 +18,16 @@ This document outlines the development plan for the Chtholly programming languag
     - [x] `int` (Parser support for i64 literals)
     - [ ] `double`, `float`
     - [ ] `char`
-    - [ ] `bool`
+    - [x] `bool` (Parser support for true/false literals)
     - [ ] `void`
     - [ ] `string`
 - [ ] **Operators:**
     - [ ] Arithmetic: `+`, `-`, `*`, `/` (Lexer support only)
     - [ ] Comparison: `==`, `!=`, `>`, `>=`, `<`, `<=`
-    - [ ] Logical: `!`, `&&`, `||`
+    - [x] Logical: `!`, `&&`, `||` (Parser support for `!`)
     - [ ] Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
     - [ ] Assignment: `=` (Lexer support only)
-    - [ ] Unary: `++`, `--`
+    - [x] Unary: `++`, `--` (Parser support for `-`)
 - [ ] **Functions:**
     - [ ] Function definition and calls.
     - [ ] Function as a variable.

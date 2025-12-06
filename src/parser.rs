@@ -1,7 +1,6 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::ast::{self, Program, Statement, Expression};
-use std::mem;
 
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
@@ -38,7 +37,7 @@ impl<'a> Parser<'a> {
         &self.errors
     }
 
-    fn peek_error(&mut self, t: Token) {
+    fn peek_error(&mut self, t: &Token) {
         let msg = format!("expected next token to be {:?}, got {:?} instead", t, self.peek_token);
         self.errors.push(msg);
     }
@@ -59,7 +58,7 @@ impl<'a> Parser<'a> {
             statements: Vec::new(),
         };
 
-        while !self.current_token_is(Token::Eof) {
+        while !matches!(self.current_token, Token::Eof) {
             if let Some(stmt) = self.parse_statement() {
                 program.statements.push(stmt);
             }
@@ -73,16 +72,33 @@ impl<'a> Parser<'a> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
-            _ => None,
+            _ => self.parse_expression_statement(),
         }
     }
+
+    fn parse_expression_statement(&mut self) -> Option<Box<dyn Statement>> {
+        let token = self.current_token.clone();
+
+        match self.parse_expression(Precedence::Lowest) {
+            Some(expression) => {
+                if matches!(self.peek_token, Token::Semicolon) {
+                    self.next_token();
+                }
+                Some(Box::new(ast::ExpressionStatement { token, expression }))
+            },
+            None => None,
+        }
+    }
+
 
     fn parse_let_statement(&mut self) -> Option<Box<dyn Statement>> {
         let let_token = self.current_token.clone();
 
-        if !self.expect_peek_variant(Token::Identifier("".to_string())) {
+        if !matches!(self.peek_token, Token::Identifier(_)) {
+            self.peek_error(&Token::Identifier("".to_string()));
             return None;
         }
+        self.next_token();
 
         let name = match self.current_token.clone() {
             Token::Identifier(s) => ast::Identifier {
@@ -92,10 +108,11 @@ impl<'a> Parser<'a> {
             _ => unreachable!(),
         };
 
-        if !self.expect_peek_variant(Token::Assign) {
+        if !matches!(self.peek_token, Token::Assign) {
+            self.peek_error(&Token::Assign);
             return None;
         }
-
+        self.next_token();
         self.next_token();
 
         let value = match self.parse_expression(Precedence::Lowest) {
@@ -105,7 +122,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if self.peek_token_is(Token::Semicolon) {
+        if matches!(self.peek_token, Token::Semicolon) {
             self.next_token();
         }
 
@@ -124,16 +141,10 @@ impl<'a> Parser<'a> {
 
         let return_value = match self.parse_expression(Precedence::Lowest) {
             Some(expr) => expr,
-            None => {
-                // Create a dummy expression if parsing fails, error is already recorded
-                Box::new(ast::Identifier {
-                    token: Token::Illegal("dummy".to_string()),
-                    value: "dummy".to_string(),
-                })
-            }
+            None => return None,
         };
 
-        if self.peek_token_is(Token::Semicolon) {
+        if matches!(self.peek_token, Token::Semicolon) {
             self.next_token();
         }
 
@@ -148,6 +159,8 @@ impl<'a> Parser<'a> {
         let prefix = match token_clone {
             Token::Identifier(_) => Self::parse_identifier,
             Token::Int(_) => Self::parse_integer_literal,
+            Token::Bang | Token::Minus => Self::parse_prefix_expression,
+            Token::True | Token::False => Self::parse_boolean,
             _ => {
                 self.no_prefix_parse_fn_error(&token_clone);
                 return None;
@@ -155,6 +168,31 @@ impl<'a> Parser<'a> {
         };
 
         prefix(self)
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<Box<dyn Expression>> {
+        let token = self.current_token.clone();
+        let operator = self.current_token.to_string();
+
+        self.next_token();
+
+        let right = match self.parse_expression(Precedence::Prefix) {
+            Some(expr) => expr,
+            None => return None,
+        };
+
+        Some(Box::new(ast::PrefixExpression {
+            token,
+            operator,
+            right,
+        }))
+    }
+
+    fn parse_boolean(&mut self) -> Option<Box<dyn Expression>> {
+        Some(Box::new(ast::BooleanLiteral {
+            token: self.current_token.clone(),
+            value: matches!(self.current_token, Token::True),
+        }))
     }
 
     fn parse_identifier(&mut self) -> Option<Box<dyn Expression>> {
@@ -176,24 +214,6 @@ impl<'a> Parser<'a> {
             }))
         } else {
             None
-        }
-    }
-
-    fn current_token_is(&self, t: Token) -> bool {
-        mem::discriminant(&self.current_token) == mem::discriminant(&t)
-    }
-
-    fn peek_token_is(&self, t: Token) -> bool {
-        mem::discriminant(&self.peek_token) == mem::discriminant(&t)
-    }
-
-    fn expect_peek_variant(&mut self, t: Token) -> bool {
-        if mem::discriminant(&self.peek_token) == mem::discriminant(&t) {
-            self.next_token();
-            true
-        } else {
-            self.peek_error(t);
-            false
         }
     }
 }
@@ -284,5 +304,81 @@ mod tests {
             assert_eq!(stmt.token_literal(), "return");
             let _return_stmt = stmt.as_any().downcast_ref::<ast::ReturnStatement>().expect("statement not ReturnStatement");
         }
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        let input = "foobar;";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+        let ident = stmt.expression.as_any().downcast_ref::<ast::Identifier>().expect("expression not Identifier");
+        assert_eq!(ident.value, "foobar");
+        assert_eq!(ident.token_literal(), "foobar");
+    }
+
+    #[test]
+    fn test_parsing_prefix_expressions() {
+        let prefix_tests = vec![
+            ("!5;", "!", 5),
+            ("-15;", "-", 15),
+        ];
+
+        for (input, operator, value) in prefix_tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            assert_eq!(program.statements.len(), 1);
+            let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+            let exp = stmt.expression.as_any().downcast_ref::<ast::PrefixExpression>().expect("expression not PrefixExpression");
+            assert_eq!(exp.operator, operator);
+            test_integer_literal(&exp.right, value);
+        }
+    }
+
+    #[test]
+    fn test_boolean_expression() {
+        let tests = vec![
+            ("true;", true),
+            ("false;", false),
+        ];
+
+        for (input, expected_value) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            assert_eq!(program.statements.len(), 1);
+            let stmt = program.statements[0].as_any().downcast_ref::<ast::ExpressionStatement>().expect("statement not ExpressionStatement");
+            let boolean = stmt.expression.as_any().downcast_ref::<ast::BooleanLiteral>().expect("expression not BooleanLiteral");
+            assert_eq!(boolean.value, expected_value);
+        }
+    }
+
+    #[test]
+    fn test_prefix_expression_error_handling() {
+        let input = "!;";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        parser.parse_program();
+
+        assert_eq!(parser.errors().len(), 1, "Expected 1 error, but got {} {:?}", parser.errors().len(), parser.errors());
+    }
+
+    #[test]
+    fn test_return_statement_error_handling() {
+        let input = "return ;";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        parser.parse_program();
+
+        assert_eq!(parser.errors().len(), 1, "Expected 1 error, but got {} {:?}", parser.errors().len(), parser.errors());
     }
 }
