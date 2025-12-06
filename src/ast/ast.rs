@@ -29,6 +29,11 @@ pub enum Expression {
         consequence: BlockStatement,
         alternative: Option<BlockStatement>,
     },
+    SwitchExpression {
+        token: Token,
+        condition: Box<Expression>,
+        cases: Vec<Statement>,
+    },
 }
 
 impl Display for Expression {
@@ -60,6 +65,17 @@ impl Display for Expression {
                 }
                 Ok(())
             }
+            Expression::SwitchExpression {
+                condition,
+                cases,
+                ..
+            } => {
+                write!(f, "switch ({}) {{ ", condition)?;
+                for case in cases {
+                    write!(f, "{} ", case)?;
+                }
+                write!(f, "}}")
+            }
         }
     }
 }
@@ -79,6 +95,17 @@ pub enum Statement {
         token: Token,
         expression: Expression,
     },
+    CaseStatement {
+        token: Token,
+        value: Expression,
+        body: BlockStatement,
+    },
+    BreakStatement {
+        token: Token,
+    },
+    FallthroughStatement {
+        token: Token,
+    },
 }
 
 impl Display for Statement {
@@ -88,9 +115,14 @@ impl Display for Statement {
                 write!(f, "let {} = {};", name, value)
             }
             Statement::ReturnStatement { return_value, .. } => {
-                write!(f, "return {};", return_value)
+                write!(f, "return {}", return_value)
             }
             Statement::ExpressionStatement { expression, .. } => write!(f, "{}", expression),
+            Statement::CaseStatement { value, body, .. } => {
+                write!(f, "case {}: {}", value, body)
+            }
+            Statement::BreakStatement { .. } => write!(f, "break"),
+            Statement::FallthroughStatement { .. } => write!(f, "fallthrough"),
         }
     }
 }

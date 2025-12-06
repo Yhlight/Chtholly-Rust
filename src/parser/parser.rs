@@ -48,6 +48,8 @@ impl Parser {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
+            Token::Break => self.parse_break_statement(),
+            Token::Fallthrough => self.parse_fallthrough_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -139,6 +141,7 @@ impl Parser {
             Token::True | Token::False => self.parse_boolean(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::If => self.parse_if_expression(),
+            Token::Switch => self.parse_switch_expression(),
             Token::LParen => self.parse_grouped_expression(),
             _ => None,
         }
@@ -336,5 +339,84 @@ impl Parser {
 
     pub fn errors(&self) -> &Vec<String> {
         &self.errors
+    }
+
+    fn parse_switch_expression(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+
+        if !self.expect_peek(&Token::LParen) {
+            return None;
+        }
+
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let mut cases = Vec::new();
+        while !matches!(self.peek_token, Token::RBrace) && !matches!(self.peek_token, Token::Eof) {
+            self.next_token();
+            if let Some(case) = self.parse_case_statement() {
+                cases.push(case);
+            }
+        }
+
+        if !self.expect_peek(&Token::RBrace) {
+            return None;
+        }
+
+        Some(Expression::SwitchExpression {
+            token,
+            condition: Box::new(condition),
+            cases,
+        })
+    }
+
+    fn parse_case_statement(&mut self) -> Option<Statement> {
+        if !matches!(self.current_token, Token::Case) {
+            return None;
+        }
+        let token = self.current_token.clone();
+
+        self.next_token();
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Statement::CaseStatement {
+            token,
+            value,
+            body,
+        })
+    }
+
+    fn parse_break_statement(&mut self) -> Option<Statement> {
+        let token = self.current_token.clone();
+        if self.peek_token_is(&Token::Semicolon) {
+            self.next_token();
+        }
+        Some(Statement::BreakStatement { token })
+    }
+
+    fn parse_fallthrough_statement(&mut self) -> Option<Statement> {
+        let token = self.current_token.clone();
+        if self.peek_token_is(&Token::Semicolon) {
+            self.next_token();
+        }
+        Some(Statement::FallthroughStatement { token })
+    }
+
+    fn peek_token_is(&self, token: &Token) -> bool {
+        self.peek_token == *token
     }
 }

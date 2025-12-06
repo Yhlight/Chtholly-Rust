@@ -9,6 +9,10 @@ pub enum Token {
     Return,
     True,
     False,
+    Switch,
+    Case,
+    Break,
+    Fallthrough,
 
     // Operators
     Plus,

@@ -193,6 +193,10 @@ fn lookup_ident(ident: &str) -> Token {
         "return" => Token::Return,
         "true" => Token::True,
         "false" => Token::False,
+        "switch" => Token::Switch,
+        "case" => Token::Case,
+        "break" => Token::Break,
+        "fallthrough" => Token::Fallthrough,
         _ => Token::Identifier(ident.to_string()),
     }
 }

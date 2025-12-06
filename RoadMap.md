@@ -20,7 +20,7 @@ This document outlines the development plan and progress for the Chtholly progra
     - [ ] Type inference and explicit type annotations.
 - [x] **Basic Control Flow**:
     - [x] `if-else` expressions.
-    - [ ] `switch-case` statements.
+    - [x] `switch-case` statements.
 
 ## Phase 3: Functions, Scope, and Memory Management
 

@@ -51,6 +51,73 @@ fn test_identifier_expression() {
 }
 
 #[test]
+fn test_switch_case_expression() {
+    let input = r#"
+        switch (x) {
+            case 1 {
+                return true;
+            }
+            case 2 {
+                fallthrough;
+            }
+            case 3 {
+                break;
+            }
+        }
+    "#;
+
+    let lexer = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+    let stmt = &program.statements[0];
+
+    if let Statement::ExpressionStatement { expression, .. } = stmt {
+        if let Expression::SwitchExpression {
+            condition,
+            cases,
+            ..
+        } = expression
+        {
+            assert_eq!(condition.to_string(), "x");
+            assert_eq!(cases.len(), 3);
+
+            // Test case 1
+            if let Statement::CaseStatement { value, body, .. } = &cases[0] {
+                assert_eq!(value.to_string(), "1");
+                assert_eq!(body.statements.len(), 1);
+                assert_eq!(body.statements[0].to_string(), "return true");
+            } else {
+                panic!("Expected CaseStatement, got {:?}", cases[0]);
+            }
+
+            // Test case 2
+            if let Statement::CaseStatement { value, body, .. } = &cases[1] {
+                assert_eq!(value.to_string(), "2");
+                assert_eq!(body.statements.len(), 1);
+                assert_eq!(body.statements[0].to_string(), "fallthrough");
+            } else {
+                panic!("Expected CaseStatement, got {:?}", cases[1]);
+            }
+
+            // Test case 3
+            if let Statement::CaseStatement { value, body, .. } = &cases[2] {
+                assert_eq!(value.to_string(), "3");
+                assert_eq!(body.statements.len(), 1);
+                assert_eq!(body.statements[0].to_string(), "break");
+            } else {
+                panic!("Expected CaseStatement, got {:?}", cases[2]);
+            }
+        } else {
+            panic!("Expected SwitchExpression, got {:?}", expression);
+        }
+    } else {
+        panic!("Expected ExpressionStatement, got {:?}", stmt);
+    }
+}
+
+#[test]
 fn test_integer_literal_expression() {
     let input = "5;";
     let lexer = Lexer::new(input.to_string());
