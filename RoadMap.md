@@ -15,7 +15,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [ ] Type inference.
     - [ ] Type annotations.
 - [ ] **Data Types:**
-    - [ ] `int` (Lexer support for i64 only)
+    - [x] `int` (Parser support for i64 literals)
     - [ ] `double`, `float`
     - [ ] `char`
     - [ ] `bool`

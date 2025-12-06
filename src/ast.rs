@@ -1,25 +1,33 @@
 use crate::token::Token;
 use std::any::Any;
+use std::fmt;
 
-// Every node in our AST will implement this trait
-pub trait Node {
+// A trait for displaying the AST for debugging
+pub trait Node: fmt::Display {
     fn token_literal(&self) -> String;
 }
 
-// A statement is a block of code that does not produce a value (e.g., let x = 5;)
 pub trait Statement: Node {
     fn statement_node(&self);
     fn as_any(&self) -> &dyn Any;
 }
 
-// An expression is a block of code that produces a value (e.g., 5, x + 10)
 pub trait Expression: Node {
     fn expression_node(&self);
+    fn as_any(&self) -> &dyn Any;
 }
 
-// The root node of every AST our parser produces
 pub struct Program {
     pub statements: Vec<Box<dyn Statement>>,
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for s in &self.statements {
+            write!(f, "{}", s)?;
+        }
+        Ok(())
+    }
 }
 
 impl Node for Program {
@@ -32,11 +40,16 @@ impl Node for Program {
     }
 }
 
-// Represents a 'let' statement: let <Identifier> = <Expression>;
 pub struct LetStatement {
     pub token: Token, // the 'let' token
     pub name: Identifier,
     pub value: Box<dyn Expression>,
+}
+
+impl fmt::Display for LetStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {} = {};", self.token_literal(), self.name, self.value)
+    }
 }
 
 impl Node for LetStatement {
@@ -50,10 +63,16 @@ impl Statement for LetStatement {
     fn as_any(&self) -> &dyn Any { self }
 }
 
-// Represents an identifier
+#[derive(Clone)]
 pub struct Identifier {
     pub token: Token, // the 'Identifier' token
     pub value: String,
+}
+
+impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
 }
 
 impl Node for Identifier {
@@ -64,4 +83,29 @@ impl Node for Identifier {
 
 impl Expression for Identifier {
     fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+
+pub struct IntegerLiteral {
+    pub token: Token,
+    pub value: i64,
+}
+
+impl fmt::Display for IntegerLiteral {
+     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
+impl Node for IntegerLiteral {
+    fn token_literal(&self) -> String {
+        // Corrected from self.token.to_string()
+        self.value.to_string()
+    }
+}
+
+impl Expression for IntegerLiteral {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
 }

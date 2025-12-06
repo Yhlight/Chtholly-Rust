@@ -1,7 +1,18 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::ast::{self, Program, Statement};
+use crate::ast::{self, Program, Statement, Expression};
 use std::mem;
+
+#[derive(PartialEq, PartialOrd)]
+enum Precedence {
+    Lowest,
+    Equals,      // ==
+    LessGreater, // > or <
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
+    Call,        // myFunction(X)
+}
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -31,6 +42,12 @@ impl<'a> Parser<'a> {
         let msg = format!("expected next token to be {:?}, got {:?} instead", t, self.peek_token);
         self.errors.push(msg);
     }
+
+    fn no_prefix_parse_fn_error(&mut self, t: &Token) {
+        let msg = format!("no prefix parse function for {:?} found", t);
+        self.errors.push(msg);
+    }
+
 
     fn next_token(&mut self) {
         self.current_token = self.peek_token.clone();
@@ -78,37 +95,72 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        // For TDD, skip the expression part for now as the test doesn't check it.
-        while !self.current_token_is(Token::Semicolon) {
-            self.next_token();
-            if self.current_token_is(Token::Eof) {
-                 self.errors.push("unexpected EOF while parsing let statement".to_string());
-                 return None;
-            }
-        }
+        self.next_token();
 
-        // Create a dummy expression to satisfy the struct definition
-        let dummy_value = Box::new(ast::Identifier {
-            token: Token::Identifier("dummy".to_string()),
-            value: "dummy".to_string(),
-        });
+        let value = match self.parse_expression(Precedence::Lowest) {
+            Some(expr) => expr,
+            None => {
+                return None;
+            }
+        };
+
+        if self.peek_token_is(Token::Semicolon) {
+            self.next_token();
+        }
 
         let stmt = ast::LetStatement {
             token: let_token,
             name,
-            value: dummy_value,
+            value,
         };
 
         Some(Box::new(stmt))
+    }
+
+    fn parse_expression(&mut self, _precedence: Precedence) -> Option<Box<dyn Expression>> {
+        let token_clone = self.current_token.clone();
+        let prefix = match token_clone {
+            Token::Identifier(_) => Self::parse_identifier,
+            Token::Int(_) => Self::parse_integer_literal,
+            _ => {
+                self.no_prefix_parse_fn_error(&token_clone);
+                return None;
+            }
+        };
+
+        prefix(self)
+    }
+
+    fn parse_identifier(&mut self) -> Option<Box<dyn Expression>> {
+        if let Token::Identifier(s) = self.current_token.clone() {
+            Some(Box::new(ast::Identifier {
+                token: self.current_token.clone(),
+                value: s,
+            }))
+        } else {
+            None
+        }
+    }
+
+    fn parse_integer_literal(&mut self) -> Option<Box<dyn Expression>> {
+        if let Token::Int(val) = self.current_token {
+            Some(Box::new(ast::IntegerLiteral {
+                token: self.current_token.clone(),
+                value: val,
+            }))
+        } else {
+            None
+        }
     }
 
     fn current_token_is(&self, t: Token) -> bool {
         mem::discriminant(&self.current_token) == mem::discriminant(&t)
     }
 
-    // Asserts the variant of the peek_token.
-    // If it matches, it advances the tokens and returns true.
-    // Otherwise, it adds an error and returns false.
+    fn peek_token_is(&self, t: Token) -> bool {
+        mem::discriminant(&self.peek_token) == mem::discriminant(&t)
+    }
+
     fn expect_peek_variant(&mut self, t: Token) -> bool {
         if mem::discriminant(&self.peek_token) == mem::discriminant(&t) {
             self.next_token();
@@ -123,31 +175,28 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{LetStatement, Node, Statement};
+    use crate::ast::{LetStatement, Node, Statement, Expression, IntegerLiteral};
     use crate::lexer::Lexer;
-
 
     #[test]
     fn test_let_statements() {
-        let input = r#"
-            let x = 5;
-            let y = 10;
-            let foobar = 838383;
-        "#;
+        let tests = vec![
+            ("let x = 5;", "x", 5),
+            ("let y = 10;", "y", 10),
+            ("let foobar = 838383;", "foobar", 838383),
+        ];
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
+        for (input, expected_identifier, expected_value) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
 
-        check_parser_errors(&parser);
-
-        assert_eq!(program.statements.len(), 3, "program.statements does not contain 3 statements. got={}", program.statements.len());
-
-        let expected_identifiers = vec!["x", "y", "foobar"];
-
-        for (i, expected_identifier) in expected_identifiers.iter().enumerate() {
-            let stmt = &program.statements[i];
+            assert_eq!(program.statements.len(), 1);
+            let stmt = &program.statements[0];
             test_let_statement(stmt, expected_identifier);
+            let let_stmt = stmt.as_any().downcast_ref::<LetStatement>().unwrap();
+            test_integer_literal(&let_stmt.value, expected_value);
         }
     }
 
@@ -160,6 +209,14 @@ mod tests {
         assert_eq!(let_stmt.name.token_literal(), name, "let_stmt.name.token_literal() not '{}'. got={}", name, let_stmt.name.token_literal());
     }
 
+    fn test_integer_literal(expr: &Box<dyn Expression>, value: i64) {
+        let integ = expr.as_any().downcast_ref::<IntegerLiteral>().expect("expr not IntegerLiteral");
+
+        assert_eq!(integ.value, value);
+        assert_eq!(integ.token_literal(), value.to_string());
+    }
+
+
     fn check_parser_errors(parser: &Parser) {
         if parser.errors().is_empty() {
             return;
@@ -170,5 +227,15 @@ mod tests {
             eprintln!("Parser error: {}", msg);
         }
         panic!("Parser has errors");
+    }
+
+    #[test]
+    fn test_let_statement_error_handling() {
+        let input = "let x = ;";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        parser.parse_program();
+
+        assert_eq!(parser.errors().len(), 1, "Expected 1 error, but got {} {:?}", parser.errors().len(), parser.errors());
     }
 }

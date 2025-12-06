@@ -1,3 +1,4 @@
+// TODO: Integrate Position into Tokens to provide better error messages.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Position {
     pub line: usize,

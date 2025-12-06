@@ -105,8 +105,10 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip_multi_line_comment(&mut self) {
-        self.read_char(); // consume '*'
-        self.read_char(); // consume '/'
+        // The initial '/*' has already been partially consumed.
+        // self.ch is currently '/' and peek_char() is '*'.
+        self.read_char(); // Advance past '/' to '*'
+        self.read_char(); // Advance past '*'
 
         loop {
             if self.ch == b'*' && self.peek_char() == b'/' {
