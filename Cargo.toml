@@ -1,0 +1,23 @@
+[package]
+name = "chtholly"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "chtholly"
+path = "src/lib.rs"
+
+[[test]]
+name = "lexer_test"
+path = "tests/lexer_test.rs"
+
+[[test]]
+name = "parser_test"
+path = "tests/parser_test.rs"
+
+[[test]]
+name = "compiler_test"
+path = "tests/compiler_test.rs"
+
+[dependencies]
+inkwell = { git = "https://github.com/TheDan64/inkwell", rev = "b9c53276e30935ccec841d12c9687a17e9199958", features = ["llvm18-1-force-dynamic"] }
