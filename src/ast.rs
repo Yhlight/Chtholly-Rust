@@ -47,14 +47,30 @@ pub enum Expression {
         token: Token,
         value: i64,
     },
+    BooleanLiteral {
+        token: Token,
+        value: bool,
+    },
+    PrefixExpression {
+        token: Token,
+        operator: String,
+        right: Box<Expression>,
+    },
     InfixExpression {
         token: Token,
         left: Box<Expression>,
         operator: String,
         right: Box<Expression>,
     },
+    IfExpression {
+        token: Token, // The 'if' token
+        condition: Box<Expression>,
+        consequence: Box<Statement>,
+        alternative: Option<Box<Statement>>,
+    },
     FunctionLiteral {
         token: Token, // The 'fn' token
+        name: Identifier,
         parameters: Vec<Identifier>,
         body: Box<Statement>, // BlockStatement
     },
@@ -65,7 +81,10 @@ impl Node for Expression {
         match self {
             Expression::Identifier(ident) => ident.token.literal.clone(),
             Expression::IntegerLiteral { token, .. } => token.literal.clone(),
+            Expression::BooleanLiteral { token, .. } => token.literal.clone(),
+            Expression::PrefixExpression { token, .. } => token.literal.clone(),
             Expression::InfixExpression { token, .. } => token.literal.clone(),
+            Expression::IfExpression { token, .. } => token.literal.clone(),
             Expression::FunctionLiteral { token, .. } => token.literal.clone(),
         }
     }

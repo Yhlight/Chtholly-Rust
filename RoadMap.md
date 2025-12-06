@@ -33,7 +33,7 @@ This document outlines the development plan for the Chtholly programming languag
   - [x] `int` (i32)
   - [ ] `double` (f64) and `float` (f32)
   - [ ] `char`
-  - [ ] `bool`
+  - [x] `bool`
   - [ ] `string`
   - [ ] `void`
 - [ ] **Type Casting**
@@ -44,10 +44,12 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **Arithmetic Operators**
   - [x] `+`, `-`, `*`, `/`
   - [ ] `%`
-- [ ] **Comparison Operators**
-  - [ ] `==`, `!=`, `>`, `>=`, `<`, `<=`
-- [ ] **Logical Operators**
-  - [ ] `!`, `&&`, `||`
+- [x] **Comparison Operators**
+  - [x] `==`, `!=`, `>`, `<`
+  - [ ] `>=`, `<=`
+- [x] **Logical Operators**
+  - [x] `!`
+  - [ ] `&&`, `||`
 - [ ] **Bitwise Operators**
   - [ ] `&`, `|`, `^`, `~`, `<<`, `>>`
 - [ ] **Assignment Operators**
@@ -57,8 +59,8 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 4: Control Flow
 
-- [ ] **Conditional Statements**
-  - [ ] `if-else`
+- [x] **Conditional Statements**
+  - [x] `if-else`
   - [ ] `switch-case` with `break` and `fallthrough`
 - [ ] **Loops**
   - [ ] `while` loop

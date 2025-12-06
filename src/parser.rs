@@ -10,12 +10,19 @@ type InfixParseFn = fn(&mut Parser, Expression) -> Option<Expression>;
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
+    Equals, // ==
+    LessGreater, // > or <
     Sum,     // +
     Product, // *
+    Prefix, // -X or !X
 }
 
 fn precedents(token_kind: &TokenKind) -> Precedence {
     match token_kind {
+        TokenKind::Eq => Precedence::Equals,
+        TokenKind::NotEq => Precedence::Equals,
+        TokenKind::Lt => Precedence::LessGreater,
+        TokenKind::Gt => Precedence::LessGreater,
         TokenKind::Plus => Precedence::Sum,
         TokenKind::Minus => Precedence::Sum,
         TokenKind::Slash => Precedence::Product,
@@ -45,11 +52,74 @@ impl<'a> Parser<'a> {
             prefix_parse_fns: HashMap::new(),
             infix_parse_fns: HashMap::new(),
         };
+        p.register_prefix(TokenKind::Ident, |parser| {
+            Some(Expression::Identifier(Identifier {
+                token: parser.current_token.clone(),
+                value: parser.current_token.literal.clone(),
+            }))
+        });
         p.register_prefix(TokenKind::Int, |parser| {
-            let value = parser.current_token.literal.parse::<i64>().unwrap();
+            let value = match parser.current_token.literal.parse::<i64>() {
+                Ok(v) => v,
+                Err(_) => {
+                    parser.errors.push(format!("could not parse {} as integer", parser.current_token.literal));
+                    return None;
+                }
+            };
             Some(Expression::IntegerLiteral {
                 token: parser.current_token.clone(),
                 value,
+            })
+        });
+        p.register_prefix(TokenKind::True, |parser| {
+            Some(Expression::BooleanLiteral {
+                token: parser.current_token.clone(),
+                value: true,
+            })
+        });
+        p.register_prefix(TokenKind::False, |parser| {
+            Some(Expression::BooleanLiteral {
+                token: parser.current_token.clone(),
+                value: false,
+            })
+        });
+        p.register_prefix(TokenKind::Bang, |parser| {
+            let token = parser.current_token.clone();
+            parser.next_token();
+            let right = parser.parse_expression(Precedence::Prefix)?;
+            Some(Expression::PrefixExpression {
+                token,
+                operator: "!".to_string(),
+                right: Box::new(right),
+            })
+        });
+        p.register_prefix(TokenKind::If, |parser| {
+            let token = parser.current_token.clone();
+            if !parser.expect_peek(TokenKind::LParen) {
+                return None;
+            }
+            parser.next_token();
+            let condition = parser.parse_expression(Precedence::Lowest)?;
+            if !parser.expect_peek(TokenKind::RParen) {
+                return None;
+            }
+            if !parser.expect_peek(TokenKind::LBrace) {
+                return None;
+            }
+            let consequence = parser.parse_block_statement()?;
+            let mut alternative = None;
+            if parser.peek_token.kind == TokenKind::Else {
+                parser.next_token();
+                if !parser.expect_peek(TokenKind::LBrace) {
+                    return None;
+                }
+                alternative = Some(Box::new(parser.parse_block_statement()?));
+            }
+            Some(Expression::IfExpression {
+                token,
+                condition: Box::new(condition),
+                consequence: Box::new(consequence),
+                alternative,
             })
         });
 
@@ -104,6 +174,59 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             })
         });
+
+        p.register_infix(TokenKind::Eq, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: "==".to_string(),
+                right: Box::new(right),
+            })
+        });
+
+        p.register_infix(TokenKind::NotEq, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: "!=".to_string(),
+                right: Box::new(right),
+            })
+        });
+
+        p.register_infix(TokenKind::Lt, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: "<".to_string(),
+                right: Box::new(right),
+            })
+        });
+
+        p.register_infix(TokenKind::Gt, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: ">".to_string(),
+                right: Box::new(right),
+            })
+        });
+
         p
     }
 
@@ -228,7 +351,7 @@ impl<'a> Parser<'a> {
         if !self.expect_peek(TokenKind::Ident) {
             return None;
         }
-        let _name = Identifier {
+        let name = Identifier {
             token: self.current_token.clone(),
             value: self.current_token.literal.clone(),
         };
@@ -242,6 +365,7 @@ impl<'a> Parser<'a> {
         let body = self.parse_block_statement()?;
         Some(Expression::FunctionLiteral {
             token,
+            name,
             parameters,
             body: Box::new(body),
         })

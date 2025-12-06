@@ -86,3 +86,169 @@ fn test_integer_arithmetic() {
         assert!(function.print_to_string().to_string().contains(expected));
     }
 }
+
+#[test]
+fn test_boolean_expressions_compiler() {
+    let tests = vec![
+        ("true", "ret i1 true"),
+        ("false", "ret i1 false"),
+    ];
+
+    for (input, expected) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        let context = Context::create();
+        let module = context.create_module("main");
+        let builder = context.create_builder();
+        let mut compiler = Compiler::new(&context, &builder, &module);
+        let result = compiler.compile(program);
+
+        assert!(result.is_ok());
+        let function = result.unwrap();
+        assert!(function.print_to_string().to_string().contains(expected));
+    }
+}
+
+#[test]
+fn test_comparison_expressions_compiler() {
+    let tests = vec![
+        ("1 < 2", "ret i1 true"),
+        ("1 > 2", "ret i1 false"),
+        ("1 == 2", "ret i1 false"),
+        ("1 != 2", "ret i1 true"),
+    ];
+
+    for (input, expected) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        let context = Context::create();
+        let module = context.create_module("main");
+        let builder = context.create_builder();
+        let mut compiler = Compiler::new(&context, &builder, &module);
+        let result = compiler.compile(program);
+
+        assert!(result.is_ok());
+        let function = result.unwrap();
+        assert!(function.print_to_string().to_string().contains(expected));
+    }
+}
+
+#[test]
+fn test_bang_operator_compiler() {
+    let tests = vec![
+        ("!true", "ret i1 false"),
+        ("!false", "ret i1 true"),
+    ];
+
+    for (input, expected) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        let context = Context::create();
+        let module = context.create_module("main");
+        let builder = context.create_builder();
+        let mut compiler = Compiler::new(&context, &builder, &module);
+        let result = compiler.compile(program);
+
+        assert!(result.is_ok());
+        let function = result.unwrap();
+        assert!(function.print_to_string().to_string().contains(expected));
+    }
+}
+
+#[test]
+fn test_if_expression_compiler() {
+    let input = "if (true) { 10 }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let context = Context::create();
+    let module = context.create_module("main");
+    let builder = context.create_builder();
+    let mut compiler = Compiler::new(&context, &builder, &module);
+    let result = compiler.compile(program);
+
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_if_else_expression_compiler() {
+    let input = "if (true) { 10 } else { 20 }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let context = Context::create();
+    let module = context.create_module("main");
+    let builder = context.create_builder();
+    let mut compiler = Compiler::new(&context, &builder, &module);
+    let result = compiler.compile(program);
+
+    assert!(result.is_ok());
+    let function = result.unwrap();
+    assert!(function.print_to_string().to_string().contains("phi i32 [ 10, %then ], [ 20, %else ]"));
+}
+
+#[test]
+fn test_variable_use() {
+    let input = "fn main() { let x = 5; x }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let context = Context::create();
+    let module = context.create_module("main");
+    let builder = context.create_builder();
+    let mut compiler = Compiler::new(&context, &builder, &module);
+    let result = compiler.compile(program);
+
+    assert!(result.is_ok());
+    let function = result.unwrap();
+    assert!(function.print_to_string().to_string().contains("load i32, ptr %x"));
+}
+
+#[test]
+fn test_function_name() {
+    let input = "fn myFunction() {}";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let context = Context::create();
+    let module = context.create_module("main");
+    let builder = context.create_builder();
+    let mut compiler = Compiler::new(&context, &builder, &module);
+    let result = compiler.compile(program);
+
+    assert!(result.is_ok());
+    let function = result.unwrap();
+    assert!(function.print_to_string().to_string().contains("define i32 @myFunction()"));
+}
+
+#[test]
+fn test_multiple_functions() {
+    let input = r#"
+        fn anotherFunction() {}
+        fn main() {}
+    "#;
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let context = Context::create();
+    let module = context.create_module("main");
+    let builder = context.create_builder();
+    let mut compiler = Compiler::new(&context, &builder, &module);
+    let result = compiler.compile(program);
+
+    assert!(result.is_ok());
+    let function = result.unwrap();
+    assert!(function.print_to_string().to_string().contains("define i32 @main()"));
+    assert!(module.get_function("anotherFunction").is_some());
+}

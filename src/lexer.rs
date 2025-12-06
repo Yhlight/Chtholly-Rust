@@ -67,7 +67,24 @@ impl<'a> Lexer<'a> {
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
         let tok = match self.ch {
-            b'=' => Token::new(TokenKind::Assign, "=".to_string()),
+            b'=' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::new(TokenKind::Eq, "==".to_string())
+                } else {
+                    Token::new(TokenKind::Assign, "=".to_string())
+                }
+            }
+            b'!' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::new(TokenKind::NotEq, "!=".to_string())
+                } else {
+                    Token::new(TokenKind::Bang, "!".to_string())
+                }
+            }
+            b'<' => Token::new(TokenKind::Lt, "<".to_string()),
+            b'>' => Token::new(TokenKind::Gt, ">".to_string()),
             b'+' => Token::new(TokenKind::Plus, "+".to_string()),
             b'-' => Token::new(TokenKind::Minus, "-".to_string()),
             b'*' => Token::new(TokenKind::Asterisk, "*".to_string()),
@@ -95,6 +112,10 @@ impl<'a> Lexer<'a> {
                     "let" => TokenKind::Let,
                     "mut" => TokenKind::Mut,
                     "fn" => TokenKind::Function,
+                    "true" => TokenKind::True,
+                    "false" => TokenKind::False,
+                    "if" => TokenKind::If,
+                    "else" => TokenKind::Else,
                     _ => TokenKind::Ident,
                 };
                 return Token::new(kind, literal);
@@ -124,18 +145,5 @@ impl<'a> Lexer<'a> {
             self.read_char();
         }
         self.input[position..self.position].to_string()
-    }
-
-    pub fn lex(&mut self) -> Vec<Token> {
-        let mut tokens = Vec::new();
-        loop {
-            let tok = self.next_token();
-            if tok.kind == TokenKind::Eof {
-                tokens.push(tok);
-                break;
-            }
-            tokens.push(tok);
-        }
-        tokens
     }
 }

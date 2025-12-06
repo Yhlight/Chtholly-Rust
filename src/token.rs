@@ -14,6 +14,11 @@ pub enum TokenKind {
     Minus,
     Asterisk,
     Slash,
+    Bang,
+    Eq,
+    NotEq,
+    Lt,
+    Gt,
 
     // Delimiters
     Semicolon,
@@ -27,6 +32,10 @@ pub enum TokenKind {
     Let,
     Mut,
     Function,
+    True,
+    False,
+    If,
+    Else,
 }
 
 #[derive(Debug, PartialEq, Clone)]

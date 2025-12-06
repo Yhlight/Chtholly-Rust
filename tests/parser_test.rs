@@ -79,6 +79,117 @@ fn test_infix_expressions() {
     }
 }
 
+#[test]
+fn test_boolean_expressions() {
+    let tests = vec![
+        ("true", true),
+        ("false", false),
+    ];
+
+    for (input, expected) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1, "program.statements has not enough statements. got={}", program.statements.len());
+
+        if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+            assert_boolean_literal(expression, expected);
+        } else {
+            panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+        }
+    }
+}
+
+#[test]
+fn test_comparison_expressions() {
+    let tests = vec![
+        ("1 < 2", 1, "<", 2),
+        ("1 > 2", 1, ">", 2),
+        ("1 == 2", 1, "==", 2),
+        ("1 != 2", 1, "!=", 2),
+    ];
+
+    for (input, left, operator, right) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1, "program.statements has not enough statements. got={}", program.statements.len());
+
+        if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+            assert_infix_expression(expression, left, operator, right);
+        } else {
+            panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+        }
+    }
+}
+
+#[test]
+fn test_bang_operator() {
+    let tests = vec![
+        ("!true", "!", true),
+        ("!false", "!", false),
+    ];
+
+    for (input, operator, value) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1, "program.statements has not enough statements. got={}", program.statements.len());
+
+        if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+            assert_prefix_expression(expression, operator, value);
+        } else {
+            panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+        }
+    }
+}
+
+#[test]
+fn test_if_expression() {
+    let input = "if (x < y) { x }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1, "program.statements has not enough statements. got={}", program.statements.len());
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        if let Expression::IfExpression { alternative, .. } = expression {
+            // For now, we'll just check that the alternative is None.
+            assert!(alternative.is_none());
+        } else {
+            panic!("expression is not IfExpression. got={:?}", expression);
+        }
+    } else {
+        panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_if_else_expression() {
+    let input = "if (x < y) { x } else { y }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1, "program.statements has not enough statements. got={}", program.statements.len());
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        if let Expression::IfExpression { alternative, .. } = expression {
+            // For now, we'll just check that the alternative is Some.
+            assert!(alternative.is_some());
+        } else {
+            panic!("expression is not IfExpression. got={:?}", expression);
+        }
+    } else {
+        panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+    }
+}
+
+
 fn assert_let_statement(stmt: &Statement, name: &str, value: i64) {
     assert_eq!(stmt.token_literal(), "let", "stmt.token_literal not 'let'. got={}", stmt.token_literal());
 
@@ -111,6 +222,14 @@ fn assert_integer_literal(expr: &Expression, value: i64) {
     }
 }
 
+fn assert_boolean_literal(expr: &Expression, value: bool) {
+    if let Expression::BooleanLiteral { value: v, .. } = expr {
+        assert_eq!(*v, value, "BooleanLiteral value not {}. got={}", value, v);
+    } else {
+        panic!("expr not BooleanLiteral. got={:?}", expr);
+    }
+}
+
 fn assert_infix_expression(expr: &Expression, left: i64, op: &str, right: i64) {
     if let Expression::InfixExpression { left: l, operator, right: r, .. } = expr {
         assert_integer_literal(l, left);
@@ -118,5 +237,14 @@ fn assert_infix_expression(expr: &Expression, left: i64, op: &str, right: i64) {
         assert_integer_literal(r, right);
     } else {
         panic!("expr is not InfixExpression. got={:?}", expr);
+    }
+}
+
+fn assert_prefix_expression(expr: &Expression, op: &str, right: bool) {
+    if let Expression::PrefixExpression { operator, right: r, .. } = expr {
+        assert_eq!(operator, op, "exp.Operator is not '{}'. got={}", op, operator);
+        assert_boolean_literal(r, right);
+    } else {
+        panic!("expr is not PrefixExpression. got={:?}", expr);
     }
 }
