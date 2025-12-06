@@ -86,6 +86,28 @@ impl Expression for Identifier {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct ReturnStatement {
+    pub token: Token, // the 'return' token
+    pub return_value: Box<dyn Expression>,
+}
+
+impl fmt::Display for ReturnStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {};", self.token_literal(), self.return_value)
+    }
+}
+
+impl Node for ReturnStatement {
+    fn token_literal(&self) -> String {
+        "return".to_string()
+    }
+}
+
+impl Statement for ReturnStatement {
+    fn statement_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 
 pub struct IntegerLiteral {
     pub token: Token,

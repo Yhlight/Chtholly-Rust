@@ -72,6 +72,7 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Box<dyn Statement>> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
+            Token::Return => self.parse_return_statement(),
             _ => None,
         }
     }
@@ -115,6 +116,31 @@ impl<'a> Parser<'a> {
         };
 
         Some(Box::new(stmt))
+    }
+
+    fn parse_return_statement(&mut self) -> Option<Box<dyn Statement>> {
+        let return_token = self.current_token.clone();
+        self.next_token();
+
+        let return_value = match self.parse_expression(Precedence::Lowest) {
+            Some(expr) => expr,
+            None => {
+                // Create a dummy expression if parsing fails, error is already recorded
+                Box::new(ast::Identifier {
+                    token: Token::Illegal("dummy".to_string()),
+                    value: "dummy".to_string(),
+                })
+            }
+        };
+
+        if self.peek_token_is(Token::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Box::new(ast::ReturnStatement {
+            token: return_token,
+            return_value,
+        }))
     }
 
     fn parse_expression(&mut self, _precedence: Precedence) -> Option<Box<dyn Expression>> {
@@ -175,7 +201,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{LetStatement, Node, Statement, Expression, IntegerLiteral};
+    use crate::ast::{self, LetStatement, Node, Statement, Expression, IntegerLiteral};
     use crate::lexer::Lexer;
 
     #[test]
@@ -237,5 +263,26 @@ mod tests {
         parser.parse_program();
 
         assert_eq!(parser.errors().len(), 1, "Expected 1 error, but got {} {:?}", parser.errors().len(), parser.errors());
+    }
+
+    #[test]
+    fn test_return_statements() {
+        let input = r#"
+            return 5;
+            return 10;
+            return 993322;
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 3);
+
+        for stmt in program.statements {
+            assert_eq!(stmt.token_literal(), "return");
+            let _return_stmt = stmt.as_any().downcast_ref::<ast::ReturnStatement>().expect("statement not ReturnStatement");
+        }
     }
 }

@@ -40,6 +40,7 @@ pub enum Token {
     Function, // fn
     Let,      // let
     Mut,      // mut
+    Return,   // return
 }
 
 pub fn from_literal(literal: &str) -> Token {
@@ -47,6 +48,7 @@ pub fn from_literal(literal: &str) -> Token {
         "fn" => Token::Function,
         "let" => Token::Let,
         "mut" => Token::Mut,
+        "return" => Token::Return,
         _ => Token::Identifier(literal.to_string()),
     }
 }

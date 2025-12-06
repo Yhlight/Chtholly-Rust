@@ -31,6 +31,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [ ] **Functions:**
     - [ ] Function definition and calls.
     - [ ] Function as a variable.
+    - [x] Return statements.
 - [ ] **Control Flow:**
     - [ ] `if-else` statements.
     - [ ] `switch-case` statements.
