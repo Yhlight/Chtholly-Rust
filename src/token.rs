@@ -1,5 +1,5 @@
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum TokenKind {
     Eof,
     Illegal,
@@ -17,9 +17,11 @@ pub enum TokenKind {
     RParen,
     LBrace,
     RBrace,
+    Comma,
 
     // Keywords
     Let,
+    Mut,
     Function,
 }
 

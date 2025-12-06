@@ -2,24 +2,37 @@
 use crate::ast::{Expression, Identifier, Program, Statement};
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
+use std::collections::HashMap;
+
+type PrefixParseFn = fn(&mut Parser) -> Option<Expression>;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Token,
     peek_token: Token,
     errors: Vec<String>,
+    prefix_parse_fns: HashMap<TokenKind, PrefixParseFn>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(mut lexer: Lexer<'a>) -> Self {
         let current_token = lexer.next_token();
         let peek_token = lexer.next_token();
-        Self {
+        let mut p = Self {
             lexer,
             current_token,
             peek_token,
             errors: Vec::new(),
-        }
+            prefix_parse_fns: HashMap::new(),
+        };
+        p.register_prefix(TokenKind::Int, |parser| {
+            let value = parser.current_token.literal.parse::<i64>().unwrap();
+            Some(Expression::IntegerLiteral {
+                token: parser.current_token.clone(),
+                value,
+            })
+        });
+        p
     }
 
     pub fn errors(&self) -> &Vec<String> {
@@ -49,6 +62,7 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.current_token.kind {
             TokenKind::Let => self.parse_let_statement(),
+            TokenKind::Mut => self.parse_mut_statement(),
             TokenKind::Function => self.parse_function_statement(),
             _ => self.parse_expression_statement(),
         }
@@ -70,20 +84,42 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        // TODO: We're skipping the expression until we have a parser for it
-        while self.current_token.kind != TokenKind::Semicolon {
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token.kind == TokenKind::Semicolon {
             self.next_token();
         }
 
-        Some(Statement::Let {
-            token,
-            name,
-            // TODO: Fill this in
-            value: Expression::Identifier(Identifier {
-                token: Token::new(TokenKind::Ident, "dummy".to_string()),
-                value: "dummy".to_string(),
-            }),
-        })
+        Some(Statement::Let { token, name, value })
+    }
+
+    fn parse_mut_statement(&mut self) -> Option<Statement> {
+        let token = self.current_token.clone();
+
+        if !self.expect_peek(TokenKind::Ident) {
+            return None;
+        }
+
+        let name = Identifier {
+            token: self.current_token.clone(),
+            value: self.current_token.literal.clone(),
+        };
+
+        if !self.expect_peek(TokenKind::Assign) {
+            return None;
+        }
+
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token.kind == TokenKind::Semicolon {
+            self.next_token();
+        }
+
+        Some(Statement::Mut { token, name, value })
     }
 
     fn parse_function_statement(&mut self) -> Option<Statement> {
@@ -101,10 +137,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, _precedence: Precedence) -> Option<Expression> {
-        match self.current_token.kind {
-            TokenKind::Function => self.parse_function_literal(),
-            _ => None,
-        }
+        let prefix = self.prefix_parse_fns.get(&self.current_token.kind)?;
+        prefix(self)
     }
 
     fn parse_function_literal(&mut self) -> Option<Expression> {
@@ -143,7 +177,7 @@ impl<'a> Parser<'a> {
             value: self.current_token.literal.clone(),
         };
         identifiers.push(ident);
-        while self.peek_token.kind == TokenKind::Semicolon {
+        while self.peek_token.kind == TokenKind::Comma {
             self.next_token();
             self.next_token();
             let ident = Identifier {
@@ -186,6 +220,10 @@ impl<'a> Parser<'a> {
             t, self.peek_token.kind
         );
         self.errors.push(msg);
+    }
+
+    fn register_prefix(&mut self, token_kind: TokenKind, f: PrefixParseFn) {
+        self.prefix_parse_fns.insert(token_kind, f);
     }
 }
 

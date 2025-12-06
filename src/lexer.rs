@@ -71,6 +71,7 @@ impl<'a> Lexer<'a> {
             b';' => Token::new(TokenKind::Semicolon, ";".to_string()),
             b'(' => Token::new(TokenKind::LParen, "(".to_string()),
             b')' => Token::new(TokenKind::RParen, ")".to_string()),
+            b',' => Token::new(TokenKind::Comma, ",".to_string()),
             b'{' => Token::new(TokenKind::LBrace, "{".to_string()),
             b'}' => Token::new(TokenKind::RBrace, "}".to_string()),
             b'/' => {
@@ -89,6 +90,7 @@ impl<'a> Lexer<'a> {
                 let literal = self.read_identifier();
                 let kind = match literal.as_str() {
                     "let" => TokenKind::Let,
+                    "mut" => TokenKind::Mut,
                     "fn" => TokenKind::Function,
                     _ => TokenKind::Ident,
                 };

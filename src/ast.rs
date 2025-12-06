@@ -12,6 +12,11 @@ pub enum Statement {
         name: Identifier,
         value: Expression,
     },
+    Mut {
+        token: Token, // the 'mut' token
+        name: Identifier,
+        value: Expression,
+    },
     ExpressionStatement {
         expression: Expression,
     },
@@ -22,6 +27,7 @@ impl Node for Statement {
     fn token_literal(&self) -> String {
         match self {
             Statement::Let { token, .. } => token.literal.clone(),
+            Statement::Mut { token, .. } => token.literal.clone(),
             Statement::ExpressionStatement { expression } => expression.token_literal(),
             Statement::Block(statements) => {
                 if statements.is_empty() {
@@ -37,6 +43,10 @@ impl Node for Statement {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Identifier(Identifier),
+    IntegerLiteral {
+        token: Token,
+        value: i64,
+    },
     FunctionLiteral {
         token: Token, // The 'fn' token
         parameters: Vec<Identifier>,
@@ -48,6 +58,7 @@ impl Node for Expression {
     fn token_literal(&self) -> String {
         match self {
             Expression::Identifier(ident) => ident.token.literal.clone(),
+            Expression::IntegerLiteral { token, .. } => token.literal.clone(),
             Expression::FunctionLiteral { token, .. } => token.literal.clone(),
         }
     }

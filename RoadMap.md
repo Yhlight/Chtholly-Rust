@@ -8,29 +8,29 @@ This document outlines the development plan for the Chtholly programming languag
   - [x] Initialize Rust project with Cargo.
   - [x] Configure `.gitignore`.
   - [x] Set up LLVM 18 environment.
-- [ ] **Compiler Infrastructure**
-  - [ ] Lexer (Tokenizer)
-  - [ ] Abstract Syntax Tree (AST)
-  - [ ] Parser
-  - [ ] LLVM Code Generator
-- [ ] **Comments**
-  - [ ] Single-line comments (`//`)
-  - [ ] Multi-line comments (`/* */`)
-- [ ] **Basic Language Features**
-  - [ ] `main` function entry point
-  - [ ] Integer and floating-point literals
+- [x] **Compiler Infrastructure**
+  - [x] Lexer (Tokenizer)
+  - [x] Abstract Syntax Tree (AST)
+  - [x] Parser
+  - [x] LLVM Code Generator
+- [x] **Comments**
+  - [x] Single-line comments (`//`)
+  - [x] Multi-line comments (`/* */`)
+- [x] **Basic Language Features**
+  - [x] `main` function entry point
+  - [x] Integer literals
   - [ ] String literals
   - [ ] Character literals
 
 ## Phase 2: Variables and Data Types
 
-- [ ] **Variable Declarations**
-  - [ ] Immutable variables (`let`)
-  - [ ] Mutable variables (`mut`)
+- [x] **Variable Declarations**
+  - [x] Immutable variables (`let`)
+  - [x] Mutable variables (`mut`)
   - [ ] Type inference
   - [ ] Type annotations
-- [ ] **Data Types**
-  - [ ] `int` (i32) and other integer types (`i8`, `i16`, `i64`, `u8`, `u16`, `u32`, `u64`)
+- [x] **Data Types**
+  - [x] `int` (i32)
   - [ ] `double` (f64) and `float` (f32)
   - [ ] `char`
   - [ ] `bool`
