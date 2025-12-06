@@ -117,6 +117,21 @@ let var1 = 5;
 }
 
 #[test]
+fn test_modulo_operator() {
+    let input = "%";
+
+    let tests = vec![(TokenKind::Modulo, "%")];
+
+    let mut lexer = Lexer::new(input);
+
+    for (expected_kind, expected_literal) in tests {
+        let tok = lexer.next_token();
+        assert_eq!(tok.kind, expected_kind);
+        assert_eq!(tok.literal, expected_literal);
+    }
+}
+
+#[test]
 fn test_float_literal() {
     let input = "3.14 0.5";
 

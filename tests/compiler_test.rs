@@ -82,6 +82,7 @@ fn test_integer_arithmetic() {
         ("5 - 5", "ret i32 0"),
         ("5 * 5", "ret i32 25"),
         ("5 / 5", "ret i32 1"),
+        ("5 % 5", "ret i32 0"),
     ];
 
     for (input, expected) in tests {

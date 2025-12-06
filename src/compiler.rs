@@ -307,6 +307,11 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                             .build_int_signed_div(left, right, "divtmp")
                             .map_err(|_| "Failed to build int signed div")?,
                     )),
+                    "%" => Ok(CompilerValue::Int(
+                        self.builder
+                            .build_int_signed_rem(left, right, "remtmp")
+                            .map_err(|_| "Failed to build int signed rem")?,
+                    )),
                     "<" => Ok(CompilerValue::Bool(
                         self.builder
                             .build_int_compare(IntPredicate::SLT, left, right, "cmptmp")

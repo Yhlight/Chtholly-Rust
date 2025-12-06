@@ -16,6 +16,7 @@ pub enum TokenKind {
     Minus,
     Asterisk,
     Slash,
+    Modulo,
     Bang,
     Eq,
     NotEq,
