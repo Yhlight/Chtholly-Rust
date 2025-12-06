@@ -8,6 +8,10 @@ pub enum Expression {
         token: Token,
         value: i64,
     },
+    Boolean {
+        token: Token,
+        value: bool,
+    },
     PrefixExpression {
         token: Token,
         operator: String,
@@ -19,6 +23,12 @@ pub enum Expression {
         operator: String,
         right: Box<Expression>,
     },
+    IfExpression {
+        token: Token,
+        condition: Box<Expression>,
+        consequence: BlockStatement,
+        alternative: Option<BlockStatement>,
+    },
 }
 
 impl Display for Expression {
@@ -26,6 +36,7 @@ impl Display for Expression {
         match self {
             Expression::Identifier(ident) => write!(f, "{}", ident.value),
             Expression::IntegerLiteral { value, .. } => write!(f, "{}", value),
+            Expression::Boolean { value, .. } => write!(f, "{}", value),
             Expression::PrefixExpression { operator, right, .. } => {
                 write!(f, "({}{})", operator, right)
             }
@@ -37,16 +48,32 @@ impl Display for Expression {
             } => {
                 write!(f, "({} {} {})", left, operator, right)
             }
+            Expression::IfExpression {
+                condition,
+                consequence,
+                alternative,
+                ..
+            } => {
+                write!(f, "if {} {}", condition, consequence)?;
+                if let Some(alt) = alternative {
+                    write!(f, " else {}", alt)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     LetStatement {
         token: Token,
         name: Identifier,
         value: Expression,
+    },
+    ReturnStatement {
+        token: Token,
+        return_value: Expression,
     },
     ExpressionStatement {
         token: Token,
@@ -59,6 +86,9 @@ impl Display for Statement {
         match self {
             Statement::LetStatement { name, value, .. } => {
                 write!(f, "let {} = {};", name, value)
+            }
+            Statement::ReturnStatement { return_value, .. } => {
+                write!(f, "return {};", return_value)
             }
             Statement::ExpressionStatement { expression, .. } => write!(f, "{}", expression),
         }
@@ -74,6 +104,21 @@ pub struct Identifier {
 impl Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct BlockStatement {
+    pub token: Token,
+    pub statements: Vec<Statement>,
+}
+
+impl Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for stmt in &self.statements {
+            write!(f, "{}", stmt)?;
+        }
+        Ok(())
     }
 }
 

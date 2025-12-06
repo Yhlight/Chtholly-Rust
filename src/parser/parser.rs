@@ -1,6 +1,6 @@
 use crate::lexer::lexer::Lexer;
 use crate::lexer::token::Token;
-use crate::ast::ast::{Program, Statement, Expression, Identifier};
+use crate::ast::ast::{Program, Statement, Expression, Identifier, BlockStatement};
 
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
@@ -47,6 +47,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
+            Token::Return => self.parse_return_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -54,9 +55,11 @@ impl Parser {
     fn parse_let_statement(&mut self) -> Option<Statement> {
         let let_token = self.current_token.clone();
 
-        if !self.expect_peek(&Token::Identifier("".to_string())) {
+        if !matches!(self.peek_token, Token::Identifier(_)) {
+            self.peek_error(&Token::Identifier("identifier".to_string()));
             return None;
         }
+        self.next_token();
 
         let name = Identifier {
             token: self.current_token.clone(),
@@ -74,7 +77,7 @@ impl Parser {
 
         let value = self.parse_expression(Precedence::Lowest)?;
 
-        if self.peek_token_is(&Token::Semicolon) {
+        if matches!(self.peek_token, Token::Semicolon) {
             self.next_token();
         }
 
@@ -85,12 +88,29 @@ impl Parser {
         })
     }
 
+    fn parse_return_statement(&mut self) -> Option<Statement> {
+        let token = self.current_token.clone();
+
+        self.next_token();
+
+        let return_value = self.parse_expression(Precedence::Lowest)?;
+
+        if matches!(self.peek_token, Token::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Statement::ReturnStatement {
+            token,
+            return_value,
+        })
+    }
+
     fn parse_expression_statement(&mut self) -> Option<Statement> {
         let token = self.current_token.clone();
 
         let expression = self.parse_expression(Precedence::Lowest)?;
 
-        if self.peek_token_is(&Token::Semicolon) {
+        if matches!(self.peek_token, Token::Semicolon) {
             self.next_token();
         }
 
@@ -100,7 +120,7 @@ impl Parser {
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
         let mut left_exp = self.parse_prefix()?;
 
-        while !self.peek_token_is(&Token::Semicolon) && precedence < self.peek_precedence() {
+        while !matches!(self.peek_token, Token::Semicolon) && precedence < self.peek_precedence() {
             if let Some(infix_parser) = self.get_infix_parser() {
                 self.next_token();
                 left_exp = infix_parser(self, left_exp)?;
@@ -116,7 +136,10 @@ impl Parser {
         match self.current_token {
             Token::Identifier(_) => self.parse_identifier(),
             Token::Integer(_) => self.parse_integer_literal(),
+            Token::True | Token::False => self.parse_boolean(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            Token::If => self.parse_if_expression(),
+            Token::LParen => self.parse_grouped_expression(),
             _ => None,
         }
     }
@@ -142,6 +165,13 @@ impl Parser {
         }
     }
 
+    fn parse_boolean(&self) -> Option<Expression> {
+        Some(Expression::Boolean {
+            token: self.current_token.clone(),
+            value: matches!(self.current_token, Token::True),
+        })
+    }
+
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
         let token = self.current_token.clone();
         let operator = match &self.current_token {
@@ -159,6 +189,73 @@ impl Parser {
             operator: operator.to_string(),
             right: Box::new(right),
         })
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+
+        if !self.expect_peek(&Token::LParen) {
+            return None;
+        }
+
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let consequence = self.parse_block_statement();
+
+        let mut alternative = None;
+        if matches!(self.peek_token, Token::Else) {
+            self.next_token();
+
+            if !self.expect_peek(&Token::LBrace) {
+                return None;
+            }
+
+            alternative = Some(self.parse_block_statement());
+        }
+
+        Some(Expression::IfExpression {
+            token,
+            condition: Box::new(condition),
+            consequence,
+            alternative,
+        })
+    }
+
+    fn parse_grouped_expression(&mut self) -> Option<Expression> {
+        self.next_token();
+
+        let exp = self.parse_expression(Precedence::Lowest);
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        exp
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let token = self.current_token.clone();
+        let mut statements = Vec::new();
+
+        self.next_token();
+
+        while !matches!(self.current_token, Token::RBrace) && !matches!(self.current_token, Token::Eof) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        BlockStatement { token, statements }
     }
 
     fn get_infix_parser(&self) -> Option<fn(&mut Parser, Expression) -> Option<Expression>> {
@@ -214,12 +311,8 @@ impl Parser {
         }
     }
 
-    fn peek_token_is(&self, token_type: &Token) -> bool {
-        std::mem::discriminant(&self.peek_token) == std::mem::discriminant(token_type)
-    }
-
     fn expect_peek(&mut self, token_type: &Token) -> bool {
-        if self.peek_token_is(token_type) {
+        if self.peek_token == *token_type {
             self.next_token();
             true
         } else {
@@ -239,5 +332,9 @@ impl Parser {
     fn next_token(&mut self) {
         self.current_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
+    }
+
+    pub fn errors(&self) -> &Vec<String> {
+        &self.errors
     }
 }

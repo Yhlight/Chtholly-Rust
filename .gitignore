@@ -4,7 +4,6 @@
 /target/
 
 # Ignore lockfiles
-Cargo.lock
 
 # In case of partial builds, ignore the intermediate directory
 /build/

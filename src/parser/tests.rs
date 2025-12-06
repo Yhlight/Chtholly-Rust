@@ -72,6 +72,30 @@ fn test_integer_literal_expression() {
 }
 
 #[test]
+fn test_boolean_expression() {
+    let tests = vec![("true;", true), ("false;", false)];
+
+    for (input, expected) in tests {
+        let lexer = Lexer::new(input.to_string());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = &program.statements[0];
+
+        if let Statement::ExpressionStatement { expression, .. } = stmt {
+            if let Expression::Boolean { value, .. } = expression {
+                assert_eq!(*value, expected);
+            } else {
+                panic!("Expected Boolean, got {:?}", expression);
+            }
+        } else {
+            panic!("Expected ExpressionStatement, got {:?}", stmt);
+        }
+    }
+}
+
+#[test]
 fn test_parsing_prefix_expressions() {
     let prefix_tests = vec![("!5;", "!", 5), ("-15;", "-", 15)];
 
@@ -172,6 +196,15 @@ fn test_operator_precedence_parsing() {
             "3 + 4 * 5 == 3 * 1 + 4 * 5",
             "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
         ),
+        ("true", "true"),
+        ("false", "false"),
+        ("3 > 5 == false", "((3 > 5) == false)"),
+        ("3 < 5 == true", "((3 < 5) == true)"),
+        ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+        ("(5 + 5) * 2", "((5 + 5) * 2)"),
+        ("2 / (5 + 5)", "(2 / (5 + 5))"),
+        ("-(5 + 5)", "(-(5 + 5))"),
+        ("!(true == true)", "(!(true == true))"),
     ];
 
     for (input, expected) in tests {
@@ -181,5 +214,81 @@ fn test_operator_precedence_parsing() {
 
         let actual = program.statements[0].to_string();
         assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn test_if_expression() {
+    let input = "if (x < y) { x }";
+    let lexer = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+    let stmt = &program.statements[0];
+
+    if let Statement::ExpressionStatement { expression, .. } = stmt {
+        if let Expression::IfExpression {
+            condition,
+            consequence,
+            alternative,
+            ..
+        } = expression
+        {
+            assert_eq!(condition.to_string(), "(x < y)");
+            assert_eq!(consequence.statements.len(), 1);
+            let cons_stmt = &consequence.statements[0];
+            if let Statement::ExpressionStatement { expression, .. } = cons_stmt {
+                assert_eq!(expression.to_string(), "x");
+            } else {
+                panic!("Expected ExpressionStatement, got {:?}", cons_stmt);
+            }
+            assert!(alternative.is_none());
+        } else {
+            panic!("Expected IfExpression, got {:?}", expression);
+        }
+    } else {
+        panic!("Expected ExpressionStatement, got {:?}", stmt);
+    }
+}
+
+#[test]
+fn test_if_else_expression() {
+    let input = "if (x < y) { x } else { y }";
+    let lexer = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+    let stmt = &program.statements[0];
+
+    if let Statement::ExpressionStatement { expression, .. } = stmt {
+        if let Expression::IfExpression {
+            condition,
+            consequence,
+            alternative,
+            ..
+        } = expression
+        {
+            assert_eq!(condition.to_string(), "(x < y)");
+            assert_eq!(consequence.statements.len(), 1);
+            let cons_stmt = &consequence.statements[0];
+            if let Statement::ExpressionStatement { expression, .. } = cons_stmt {
+                assert_eq!(expression.to_string(), "x");
+            } else {
+                panic!("Expected ExpressionStatement, got {:?}", cons_stmt);
+            }
+            assert!(alternative.is_some());
+            let alt_stmt = &alternative.as_ref().unwrap().statements[0];
+            if let Statement::ExpressionStatement { expression, .. } = alt_stmt {
+                assert_eq!(expression.to_string(), "y");
+            } else {
+                panic!("Expected ExpressionStatement, got {:?}", alt_stmt);
+            }
+        } else {
+            panic!("Expected IfExpression, got {:?}", expression);
+        }
+    } else {
+        panic!("Expected ExpressionStatement, got {:?}", stmt);
     }
 }

@@ -88,94 +88,97 @@ impl Lexer {
     }
 
     pub fn next_token(&mut self) -> Token {
-        self.skip_whitespace();
+        loop {
+            self.skip_whitespace();
 
-        match self.ch {
-            b'=' => {
-                if self.peek_char() == b'=' {
-                    self.read_char();
-                    self.read_char();
-                    Token::Eq
-                } else {
-                    self.read_char();
-                    Token::Assign
-                }
-            }
-            b'!' => {
-                if self.peek_char() == b'=' {
-                    self.read_char();
-                    self.read_char();
-                    Token::NotEq
-                } else {
-                    self.read_char();
-                    Token::Bang
-                }
-            }
-            b'/' => {
-                if self.peek_char() == b'/' {
-                    while self.ch != b'\n' && self.ch != 0 {
+            let token = match self.ch {
+                b'=' => {
+                    if self.peek_char() == b'=' {
                         self.read_char();
-                    }
-                    self.next_token() // Recursively call to get next token after comment
-                } else if self.peek_char() == b'*' {
-                    self.read_char(); // consume '/'
-                    self.read_char(); // consume '*'
-                    while !(self.ch == b'*' && self.peek_char() == b'/') && self.ch != 0 {
                         self.read_char();
+                        Token::Eq
+                    } else {
+                        self.read_char();
+                        Token::Assign
                     }
-                    if self.ch != 0 {
-                        self.read_char(); // consume '*'
+                }
+                b'!' => {
+                    if self.peek_char() == b'=' {
+                        self.read_char();
+                        self.read_char();
+                        Token::NotEq
+                    } else {
+                        self.read_char();
+                        Token::Bang
+                    }
+                }
+                b'/' => {
+                    if self.peek_char() == b'/' {
+                        while self.ch != b'\n' && self.ch != 0 {
+                            self.read_char();
+                        }
+                        continue;
+                    } else if self.peek_char() == b'*' {
                         self.read_char(); // consume '/'
+                        self.read_char(); // consume '*'
+                        while !(self.ch == b'*' && self.peek_char() == b'/') && self.ch != 0 {
+                            self.read_char();
+                        }
+                        if self.ch != 0 {
+                            self.read_char(); // consume '*'
+                            self.read_char(); // consume '/'
+                        }
+                        continue;
+                    } else {
+                        self.read_char();
+                        Token::Slash
                     }
-                    self.next_token()
-                } else {
-                    self.read_char();
-                    Token::Slash
                 }
-            }
-            b'>' => {
-                if self.peek_char() == b'=' {
-                    self.read_char();
-                    self.read_char();
-                    Token::GtEq
-                } else {
-                    self.read_char();
-                    Token::Gt
+                b'>' => {
+                    if self.peek_char() == b'=' {
+                        self.read_char();
+                        self.read_char();
+                        Token::GtEq
+                    } else {
+                        self.read_char();
+                        Token::Gt
+                    }
                 }
-            }
-            b'<' => {
-                if self.peek_char() == b'=' {
-                    self.read_char();
-                    self.read_char();
-                    Token::LtEq
-                } else {
-                    self.read_char();
-                    Token::Lt
+                b'<' => {
+                    if self.peek_char() == b'=' {
+                        self.read_char();
+                        self.read_char();
+                        Token::LtEq
+                    } else {
+                        self.read_char();
+                        Token::Lt
+                    }
                 }
-            }
-            b'+' => { self.read_char(); Token::Plus }
-            b'-' => { self.read_char(); Token::Minus }
-            b'*' => { self.read_char(); Token::Asterisk }
-            b'(' => { self.read_char(); Token::LParen }
-            b')' => { self.read_char(); Token::RParen }
-            b'{' => { self.read_char(); Token::LBrace }
-            b'}' => { self.read_char(); Token::RBrace }
-            b',' => { self.read_char(); Token::Comma }
-            b';' => { self.read_char(); Token::Semicolon }
-            b'"' => self.read_string(),
-            b'\'' => self.read_char_literal(),
-            0 => Token::Eof,
-            _ => {
-                if self.ch.is_ascii_alphabetic() || self.ch == b'_' {
-                    let ident = self.read_identifier();
-                    lookup_ident(&ident)
-                } else if self.ch.is_ascii_digit() {
-                    self.read_number()
-                } else {
-                    self.read_char();
-                    Token::Illegal
+                b'+' => { self.read_char(); Token::Plus }
+                b'-' => { self.read_char(); Token::Minus }
+                b'*' => { self.read_char(); Token::Asterisk }
+                b'(' => { self.read_char(); Token::LParen }
+                b')' => { self.read_char(); Token::RParen }
+                b'{' => { self.read_char(); Token::LBrace }
+                b'}' => { self.read_char(); Token::RBrace }
+                b',' => { self.read_char(); Token::Comma }
+                b';' => { self.read_char(); Token::Semicolon }
+                b'"' => self.read_string(),
+                b'\'' => self.read_char_literal(),
+                0 => Token::Eof,
+                _ => {
+                    if self.ch.is_ascii_alphabetic() || self.ch == b'_' {
+                        let ident = self.read_identifier();
+                        lookup_ident(&ident)
+                    } else if self.ch.is_ascii_digit() {
+                        self.read_number()
+                    } else {
+                        self.read_char();
+                        Token::Illegal
+                    }
                 }
-            }
+            };
+            break token;
         }
     }
 }
