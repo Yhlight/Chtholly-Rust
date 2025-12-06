@@ -490,3 +490,47 @@ fn test_invalid_type_annotation() {
 
     assert_eq!(parser.errors().len(), 1);
 }
+
+#[test]
+fn test_struct_statement() {
+    let input = "struct Person { name: string, age: int }".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::Struct(stmt) = &program.statements[0] {
+        assert_eq!(stmt.name.0, "Person");
+        assert_eq!(stmt.fields.len(), 2);
+        assert_eq!(stmt.fields[0].0.0, "name");
+        assert_eq!(stmt.fields[0].1, Type::String);
+        assert_eq!(stmt.fields[1].0.0, "age");
+        assert_eq!(stmt.fields[1].1, Type::Int);
+    } else {
+        panic!("expected struct statement, got {:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_struct_literal_expression() {
+    let input = "Person { name: \"John\", age: 30 }".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::Expression(expr) = &program.statements[0] {
+        if let Expression::StructLiteral { name, fields } = expr {
+            assert_eq!(name.0, "Person");
+            assert_eq!(fields.len(), 2);
+            assert_eq!(fields[0].0.0, "name");
+            assert_eq!(fields[1].0.0, "age");
+        } else {
+            panic!("expected struct literal, got {:?}", expr);
+        }
+    } else {
+        panic!("expected expression statement, got {:?}", program.statements[0]);
+    }
+}

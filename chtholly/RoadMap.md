@@ -21,11 +21,11 @@ This document outlines the development plan for the Chtholly compiler.
 
 - [x] **Function Definitions:** Support for `fn` declarations.
 - [x] **Function Calls:** Implement function call expressions.
-- [ ] **Scope Management:** Implement a symbol table to manage variable scopes (In Progress).
+- [ ] **Scope Management:** Implement a symbol table to manage variable scopes.
 
 ## Milestone 4: Advanced Language Features
 
-- [ ] **Classes and Structs:** Implement `class` and `struct` definitions.
+- [ ] **Classes and Structs:** Implement `class` and `struct` definitions (Structs In Progress).
 - [ ] **Ownership and Borrowing:** Implement the ownership and borrowing system.
 - [ ] **Error Handling:** Implement `Result<T, E>` and the `?` operator.
 

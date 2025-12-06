@@ -2,11 +2,12 @@ use crate::token::Token;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-    Let(Identifier, Option<Type>, Expression),
-    Mut(Identifier, Option<Type>, Expression),
+    Let(Identifier, Option<Type>, Option<Expression>),
+    Mut(Identifier, Option<Type>, Option<Expression>),
     Return(Expression),
     Expression(Expression),
     Block(BlockStatement),
+    Struct(StructStatement),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -32,6 +33,10 @@ pub enum Expression {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+    StructLiteral {
+        name: Identifier,
+        fields: Vec<(Identifier, Expression)>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -50,6 +55,12 @@ pub struct Identifier(pub String);
 #[derive(Debug, PartialEq, Clone)]
 pub struct BlockStatement {
     pub statements: Vec<Statement>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct StructStatement {
+    pub name: Identifier,
+    pub fields: Vec<(Identifier, Type)>,
 }
 
 pub struct Program {

@@ -97,6 +97,7 @@ impl Lexer {
                     "string" => Token::StringType,
                     "bool" => Token::BoolType,
                     "void" => Token::VoidType,
+                    "struct" => Token::Struct,
                     _ => Token::Identifier(ident),
                 };
             }

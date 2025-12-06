@@ -12,6 +12,7 @@ pub enum Token {
     True,
     False,
     Null,
+    Struct,
 
     // Types
     IntType,
