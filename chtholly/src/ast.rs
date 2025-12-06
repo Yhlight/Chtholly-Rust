@@ -3,6 +3,7 @@ use crate::token::Token;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let(Identifier, Expression),
+    Mut(Identifier, Expression),
     Return(Expression),
     Expression(Expression),
     Block(BlockStatement),

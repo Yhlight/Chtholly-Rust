@@ -69,6 +69,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Option<ast::Statement> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
+            Token::Mut => self.parse_mut_statement(),
             Token::Return => self.parse_return_statement(),
             _ => self.parse_expression_statement(),
         }
@@ -249,6 +250,31 @@ impl Parser {
         }
 
         value.map(|v| ast::Statement::Let(name, v))
+    }
+
+    fn parse_mut_statement(&mut self) -> Option<ast::Statement> {
+        if !self.expect_peek(&Token::Identifier("".to_string())) {
+            return None;
+        }
+
+        let name = match &self.current_token {
+            Token::Identifier(name) => ast::Identifier(name.clone()),
+            _ => return None,
+        };
+
+        if !self.expect_peek(&Token::Assign) {
+            return None;
+        }
+
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest);
+
+        if self.peek_token_is(&Token::Semicolon) {
+            self.next_token();
+        }
+
+        value.map(|v| ast::Statement::Mut(name, v))
     }
 
     fn expect_peek(&mut self, t: &Token) -> bool {

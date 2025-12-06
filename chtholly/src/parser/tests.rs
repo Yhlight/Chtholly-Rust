@@ -31,6 +31,33 @@ fn test_let_statements() {
 }
 
 #[test]
+fn test_mut_statements() {
+    let input = "
+        mut x = 5;
+        mut y = 10;
+        mut foobar = 838383;
+    "
+    .to_string();
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 3);
+
+    let names = vec!["x", "y", "foobar"];
+
+    for (i, name) in names.iter().enumerate() {
+        let stmt = &program.statements[i];
+        if let Statement::Mut(ident, _) = stmt {
+            assert_eq!(ident.0, *name);
+        } else {
+            panic!("expected mut statement, got {:?}", stmt);
+        }
+    }
+}
+
+#[test]
 fn test_return_statements() {
     let input = "
         return 5;
