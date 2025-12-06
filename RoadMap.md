@@ -22,8 +22,8 @@ This document outlines the development plan for the Chtholly programming languag
     - [ ] `void`
     - [ ] `string`
 - [ ] **Operators:**
-    - [ ] Arithmetic: `+`, `-`, `*`, `/` (Lexer support only)
-    - [ ] Comparison: `==`, `!=`, `>`, `>=`, `<`, `<=`
+    - [x] Arithmetic: `+`, `-`, `*`, `/` (Parser support)
+    - [x] Comparison: `==`, `!=`, `>`, `<` (Parser support)
     - [x] Logical: `!`, `&&`, `||` (Parser support for `!`)
     - [ ] Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
     - [ ] Assignment: `=` (Lexer support only)

@@ -30,6 +30,10 @@ pub enum Token {
     Asterisk, // *
     Slash,    // /
     Bang,     // !
+    Lt,       // <
+    Gt,       // >
+    Eq,       // ==
+    NotEq,    // !=
 
     // Delimiters
     Comma,     // ,
@@ -62,6 +66,10 @@ impl fmt::Display for Token {
             Token::Asterisk => write!(f, "*"),
             Token::Slash => write!(f, "/"),
             Token::Bang => write!(f, "!"),
+            Token::Lt => write!(f, "<"),
+            Token::Gt => write!(f, ">"),
+            Token::Eq => write!(f, "=="),
+            Token::NotEq => write!(f, "!="),
             Token::Comma => write!(f, ","),
             Token::Semicolon => write!(f, ";"),
             Token::LParen => write!(f, "("),
