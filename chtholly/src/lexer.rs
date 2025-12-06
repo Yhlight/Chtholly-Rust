@@ -102,6 +102,7 @@ impl Lexer {
             }
             b'0'..=b'9' => return self.read_number(),
             b'"' => return self.read_string(),
+            b'\'' => return self.read_char_literal(),
             0 => Token::Eof,
             _ => Token::Illegal,
         };
@@ -153,6 +154,17 @@ impl Lexer {
         let s = self.input[position..self.position].to_string();
         self.read_char();
         Token::String(s)
+    }
+
+    fn read_char_literal(&mut self) -> Token {
+        self.read_char();
+        let ch = self.ch as char;
+        self.read_char();
+        if self.ch != b'\'' {
+            return Token::Illegal;
+        }
+        self.read_char();
+        Token::Char(ch)
     }
 
     fn peek_char(&self) -> u8 {

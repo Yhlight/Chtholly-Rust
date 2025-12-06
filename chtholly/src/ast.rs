@@ -15,6 +15,7 @@ pub enum Expression {
     IntLiteral(i64),
     FloatLiteral(f64),
     StringLiteral(String),
+    CharLiteral(char),
     Boolean(bool),
     Prefix(Token, Box<Expression>),
     Infix(Box<Expression>, Token, Box<Expression>),

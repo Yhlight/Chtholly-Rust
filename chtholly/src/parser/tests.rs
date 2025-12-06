@@ -165,6 +165,26 @@ fn test_string_literal_expression() {
 }
 
 #[test]
+fn test_char_literal_expression() {
+    let input = "'a';".to_string();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::Expression(expr) = &program.statements[0] {
+        if let Expression::CharLiteral(value) = expr {
+            assert_eq!(*value, 'a');
+        } else {
+            panic!("expected char literal, got {:?}", expr);
+        }
+    } else {
+        panic!("expected expression statement, got {:?}", program.statements[0]);
+    }
+}
+
+#[test]
 fn test_boolean_expression() {
     let input = "true;".to_string();
     let lexer = Lexer::new(input);

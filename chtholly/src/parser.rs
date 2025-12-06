@@ -104,6 +104,7 @@ impl Parser {
             Token::Int(_) => self.parse_integer_literal(),
             Token::Float(_) => self.parse_float_literal(),
             Token::String(_) => self.parse_string_literal(),
+            Token::Char(_) => self.parse_char_literal(),
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
             Token::Fn => self.parse_function_literal(),
@@ -155,6 +156,14 @@ impl Parser {
     fn parse_string_literal(&mut self) -> Option<ast::Expression> {
         if let Token::String(value) = &self.current_token {
             Some(ast::Expression::StringLiteral(value.clone()))
+        } else {
+            None
+        }
+    }
+
+    fn parse_char_literal(&mut self) -> Option<ast::Expression> {
+        if let Token::Char(value) = self.current_token {
+            Some(ast::Expression::CharLiteral(value))
         } else {
             None
         }
