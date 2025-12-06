@@ -5,28 +5,28 @@ This document outlines the development plan for the Chtholly programming languag
 ## Phase 1: Core Language Features
 
 - [x] **Lexer:** Implement the lexical analyzer to tokenize the source code.
-- [ ] **Parser:** Implement the parser to build an Abstract Syntax Tree (AST) from the tokens.
-- [ ] **AST:** Define the data structures for the AST.
+- [x] **Parser:** Implement the parser to build an Abstract Syntax Tree (AST) from the tokens.
+- [x] **AST:** Define the data structures for the AST.
 - [x] **Comments:** Implement support for single-line and multi-line comments.
 - [ ] **Main Function:** Implement the entry point of the program.
 - [ ] **Variables:**
-    - [x] Immutable variables (`let`).
-    - [x] Mutable variables (`mut`).
+    - [x] Immutable variables (`let`) (Parser support)
+    - [ ] Mutable variables (`mut`) (Lexer support only)
     - [ ] Type inference.
     - [ ] Type annotations.
 - [ ] **Data Types:**
-    - [x] `int`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`
+    - [ ] `int` (Lexer support for i64 only)
     - [ ] `double`, `float`
     - [ ] `char`
     - [ ] `bool`
     - [ ] `void`
     - [ ] `string`
 - [ ] **Operators:**
-    - [x] Arithmetic: `+`, `-`, `*`, `/`
+    - [ ] Arithmetic: `+`, `-`, `*`, `/` (Lexer support only)
     - [ ] Comparison: `==`, `!=`, `>`, `>=`, `<`, `<=`
     - [ ] Logical: `!`, `&&`, `||`
     - [ ] Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
-    - [x] Assignment: `=`
+    - [ ] Assignment: `=` (Lexer support only)
     - [ ] Unary: `++`, `--`
 - [ ] **Functions:**
     - [ ] Function definition and calls.
