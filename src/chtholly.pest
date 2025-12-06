@@ -46,12 +46,15 @@ statement = {
 
 expression_statement = { expression ~ ";" }
 
-expression = {
-    function_call |
-    ident |
-    string |
-    integer
-}
+expression = { term ~ ( (add_op | sub_op) ~ term )* }
+term = { factor ~ ( (mul_op | div_op | mod_op) ~ factor )* }
+factor = { integer | string | function_call | ident | "(" ~ expression ~ ")" }
+
+add_op = { "+" }
+sub_op = { "-" }
+mul_op = { "*" }
+div_op = { "/" }
+mod_op = { "%" }
 
 function_call = { ident ~ "(" ~ argument_list? ~ ")" }
 argument_list = { expression ~ ("," ~ expression)* }

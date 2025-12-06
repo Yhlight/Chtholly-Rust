@@ -41,6 +41,15 @@ pub struct VariableDeclaration {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulo,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     FunctionCall {
         name: String,
@@ -49,4 +58,9 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i64),
     Variable(String),
+    BinaryExpression {
+        op: BinaryOperator,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
 }

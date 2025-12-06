@@ -4,13 +4,14 @@ use crate::ast;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
+use inkwell::types::{BasicMetadataTypeEnum, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue, ValueKind};
 use std::collections::HashMap;
 
 struct Symbol<'ctx> {
     pointer: PointerValue<'ctx>,
     symbol_type: ast::Type,
+    // TODO: Enforce mutability
     is_mutable: bool,
 }
 
@@ -148,7 +149,8 @@ impl<'ctx> CodeGen<'ctx> {
 
         if let Some(initializer) = &var_decl.initializer {
             let initial_value = self.codegen_expression(initializer)?;
-            self.builder.build_store(alloca, initial_value).unwrap();
+            let casted_value = self.builder.build_int_cast(initial_value.into_int_value(), llvm_type.into_int_type(), "casttmp").unwrap();
+            self.builder.build_store(alloca, casted_value).unwrap();
         }
 
         let symbol = Symbol {
@@ -174,6 +176,19 @@ impl<'ctx> CodeGen<'ctx> {
                 let symbol = self.symbol_table.get_symbol(name).ok_or_else(|| format!("Variable '{}' not found", name))?;
                 let llvm_type = self.to_basic_type(&symbol.symbol_type);
                 Ok(self.builder.build_load(llvm_type,symbol.pointer, name).unwrap())
+            }
+            ast::Expression::BinaryExpression { op, left, right } => {
+                let left = self.codegen_expression(left)?.into_int_value();
+                let right = self.codegen_expression(right)?.into_int_value();
+
+                let result = match op {
+                    ast::BinaryOperator::Add => self.builder.build_int_add(left, right, "addtmp").unwrap(),
+                    ast::BinaryOperator::Subtract => self.builder.build_int_sub(left, right, "subtmp").unwrap(),
+                    ast::BinaryOperator::Multiply => self.builder.build_int_mul(left, right, "multmp").unwrap(),
+                    ast::BinaryOperator::Divide => self.builder.build_int_signed_div(left, right, "divtmp").unwrap(),
+                    ast::BinaryOperator::Modulo => self.builder.build_int_signed_rem(left, right, "modtmp").unwrap(),
+                };
+                Ok(result.into())
             }
             ast::Expression::FunctionCall { name, args } => {
                  let callee = self.module.get_function(name).ok_or(format!("Function '{}' not found in module", name))
