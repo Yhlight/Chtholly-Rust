@@ -216,6 +216,7 @@ impl<'a> Parser<'a> {
         let mut left_exp = match token_clone {
             Token::Identifier(_) => self.parse_identifier(),
             Token::Int(_) => self.parse_integer_literal(),
+            Token::String(_) => self.parse_string_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean(),
             Token::If => self.parse_if_expression(),
@@ -264,6 +265,17 @@ impl<'a> Parser<'a> {
                 left,
                 operator,
                 right,
+            }))
+        } else {
+            None
+        }
+    }
+
+    fn parse_string_literal(&mut self) -> Option<Box<dyn Expression>> {
+        if let Token::String(s) = self.current_token.clone() {
+            Some(Box::new(ast::StringLiteral {
+                token: self.current_token.clone(),
+                value: s,
             }))
         } else {
             None
@@ -641,6 +653,20 @@ mod tests {
         let ident = stmt.expression.as_any().downcast_ref::<ast::Identifier>().expect("expression not Identifier");
         assert_eq!(ident.value, "foobar");
         assert_eq!(ident.token_literal(), "foobar");
+    }
+
+    #[test]
+    fn test_string_literal_expression() {
+        let input = r#"let my_string = "hello world";"#;
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        let stmt = program.statements[0].as_any().downcast_ref::<ast::LetStatement>().expect("statement not LetStatement");
+        let literal = stmt.value.as_any().downcast_ref::<ast::StringLiteral>().expect("value not StringLiteral");
+
+        assert_eq!(literal.value, "hello world");
     }
 
     #[test]

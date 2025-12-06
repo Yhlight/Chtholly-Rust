@@ -20,7 +20,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [ ] `char`
     - [x] `bool` (Parser support for true/false literals)
     - [ ] `void`
-    - [ ] `string`
+    - [x] `string` (Parser support for string literals)
 - [ ] **Operators:**
     - [x] Arithmetic: `+`, `-`, `*`, `/` (Parser support)
     - [x] Comparison: `==`, `!=`, `>`, `<` (Parser support)

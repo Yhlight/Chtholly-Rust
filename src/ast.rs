@@ -109,6 +109,28 @@ impl Expression for Identifier {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+pub struct StringLiteral {
+    pub token: Token,
+    pub value: String,
+}
+
+impl fmt::Display for StringLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
+impl Node for StringLiteral {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+}
+
+impl Expression for StringLiteral {
+    fn expression_node(&self) {}
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 pub struct FunctionLiteral {
     pub token: Token, // The 'fn' token
     pub parameters: Vec<Identifier>,

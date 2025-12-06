@@ -61,6 +61,7 @@ impl<'a> Lexer<'a> {
             b'/' => Token::Slash,
             b'<' => Token::Lt,
             b'>' => Token::Gt,
+            b'"' => return self.read_string(),
             0 => Token::Eof,
             _ => {
                 if is_letter(self.ch) {
@@ -150,6 +151,17 @@ impl<'a> Lexer<'a> {
             self.input.as_bytes()[self.read_position]
         }
     }
+
+    fn read_string(&mut self) -> Token {
+        let position = self.position + 1;
+        loop {
+            self.read_char();
+            if self.ch == b'"' || self.ch == 0 {
+                break;
+            }
+        }
+        Token::String(self.input[position..self.position].to_string())
+    }
 }
 
 fn is_letter(ch: u8) -> bool {
@@ -211,5 +223,13 @@ mod tests {
         let mut lexer = Lexer::new(input);
         let token = lexer.next_token();
         assert!(matches!(token, Token::Illegal(_)));
+    }
+
+    #[test]
+    fn test_string_literal() {
+        let input = r#""hello world""#;
+        let mut lexer = Lexer::new(input);
+        let token = lexer.next_token();
+        assert_eq!(token, Token::String("hello world".to_string()));
     }
 }
