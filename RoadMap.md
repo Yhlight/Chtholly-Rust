@@ -61,8 +61,8 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **Conditional Statements**
   - [x] `if-else`
   - [ ] `switch-case` with `break` and `fallthrough`
-- [ ] **Loops**
-  - [ ] `while` loop
+- [x] **Loops**
+  - [x] `while` loop
   - [ ] `for` loop (C-style)
   - [ ] `do-while` loop
 

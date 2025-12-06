@@ -22,6 +22,7 @@ if (5 < 10) {
 
 10 == 10;
 10 != 9;
+let var1 = 5;
 ";
 
     let tests = vec![
@@ -97,6 +98,11 @@ if (5 < 10) {
         (TokenKind::Int, "10"),
         (TokenKind::NotEq, "!="),
         (TokenKind::Int, "9"),
+        (TokenKind::Semicolon, ";"),
+        (TokenKind::Let, "let"),
+        (TokenKind::Ident, "var1"),
+        (TokenKind::Assign, "="),
+        (TokenKind::Int, "5"),
         (TokenKind::Semicolon, ";"),
         (TokenKind::Eof, ""),
     ];

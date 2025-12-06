@@ -6,12 +6,16 @@ use inkwell::values::{FunctionValue, IntValue, PointerValue};
 use inkwell::IntPredicate;
 use std::collections::HashMap;
 
+use inkwell::basic_block::BasicBlock;
+
 pub struct Compiler<'a, 'ctx> {
     context: &'ctx Context,
     builder: &'a Builder<'ctx>,
     module: &'a Module<'ctx>,
     variables: HashMap<String, PointerValue<'ctx>>,
     function: Option<FunctionValue<'ctx>>,
+    loop_cond_bbs: Vec<BasicBlock<'ctx>>,
+    loop_end_bbs: Vec<BasicBlock<'ctx>>,
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
@@ -26,6 +30,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             module,
             variables: HashMap::new(),
             function: None,
+            loop_cond_bbs: Vec::new(),
+            loop_end_bbs: Vec::new(),
         }
     }
 
@@ -134,6 +140,24 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             Statement::ExpressionStatement { expression } => {
                 self.compile_expression_in_function(expression)?;
             }
+            Statement::Continue(_) => {
+                if let Some(cond_bb) = self.loop_cond_bbs.last() {
+                    self.builder
+                        .build_unconditional_branch(*cond_bb)
+                        .map_err(|_| "Failed to build unconditional branch")?;
+                } else {
+                    return Err("continue used outside of a loop");
+                }
+            }
+            Statement::Break(_) => {
+                if let Some(end_bb) = self.loop_end_bbs.last() {
+                    self.builder
+                        .build_unconditional_branch(*end_bb)
+                        .map_err(|_| "Failed to build unconditional branch")?;
+                } else {
+                    return Err("break used outside of a loop");
+                }
+            }
             _ => return Err("Unsupported statement inside function"),
         }
         Ok(())
@@ -218,6 +242,22 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                         .builder
                         .build_int_compare(IntPredicate::NE, left, right, "cmptmp")
                         .map_err(|_| "Failed to build int compare")?),
+                    ">=" => Ok(self
+                        .builder
+                        .build_int_compare(IntPredicate::SGE, left, right, "cmptmp")
+                        .map_err(|_| "Failed to build int compare")?),
+                    "<=" => Ok(self
+                        .builder
+                        .build_int_compare(IntPredicate::SLE, left, right, "cmptmp")
+                        .map_err(|_| "Failed to build int compare")?),
+                    "&&" => Ok(self
+                        .builder
+                        .build_and(left, right, "andtmp")
+                        .map_err(|_| "Failed to build and")?),
+                    "||" => Ok(self
+                        .builder
+                        .build_or(left, right, "ortmp")
+                        .map_err(|_| "Failed to build or")?),
                     _ => Err("Unknown operator"),
                 }
             }
@@ -227,8 +267,51 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 alternative,
                 ..
             } => self.compile_if_expression(condition, consequence, alternative),
+            Expression::WhileExpression {
+                condition, body, ..
+            } => self.compile_while_expression(condition, body),
             _ => Err("Unsupported expression inside function"),
         }
+    }
+
+    fn compile_while_expression(
+        &mut self,
+        condition: &Expression,
+        body: &Statement,
+    ) -> Result<IntValue<'ctx>, &'static str> {
+        let function = self.function.unwrap();
+        let cond_bb = self.context.append_basic_block(function, "loop_cond");
+        let body_bb = self.context.append_basic_block(function, "loop_body");
+        let end_bb = self.context.append_basic_block(function, "loop_end");
+
+        self.loop_cond_bbs.push(cond_bb);
+        self.loop_end_bbs.push(end_bb);
+
+        self.builder
+            .build_unconditional_branch(cond_bb)
+            .map_err(|_| "Failed to build unconditional branch")?;
+        self.builder.position_at_end(cond_bb);
+
+        let cond = self.compile_expression_in_function(condition)?;
+        self.builder
+            .build_conditional_branch(cond, body_bb, end_bb)
+            .map_err(|_| "Failed to build conditional branch")?;
+
+        self.builder.position_at_end(body_bb);
+        self.compile_block_statement(body)?;
+
+        if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            self.builder
+                .build_unconditional_branch(cond_bb)
+                .map_err(|_| "Failed to build unconditional branch")?;
+        }
+
+        self.builder.position_at_end(end_bb);
+
+        self.loop_cond_bbs.pop();
+        self.loop_end_bbs.pop();
+
+        Ok(self.context.i32_type().const_int(0, false))
     }
 
     fn compile_if_expression(

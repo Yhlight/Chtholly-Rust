@@ -304,11 +304,21 @@ fn assert_prefix_expression(expr: &Expression, op: &str, right: bool) {
     }
 }
 
+fn assert_identifier(expr: &Expression, value: &str) {
+    if let Expression::Identifier(ident) = expr {
+        assert_eq!(ident.value, value);
+    } else {
+        panic!("expr not Identifier. got={:?}", expr);
+    }
+}
+
 fn assert_literal_expression(expr: &Expression, expected: &dyn Any) {
     if let Some(value) = expected.downcast_ref::<i64>() {
         assert_integer_literal(expr, *value);
     } else if let Some(value) = expected.downcast_ref::<bool>() {
         assert_boolean_literal(expr, *value);
+    } else if let Some(value) = expected.downcast_ref::<String>() {
+        assert_identifier(expr, value);
     } else {
         panic!("type of expected not handled. got={:?}", expected);
     }
@@ -331,5 +341,102 @@ fn assert_infix_expression(expr: &Expression, left: &dyn Any, op: &str, right: &
         assert_literal_expression(r, right);
     } else {
         panic!("expr is not InfixExpression. got={:?}", expr);
+    }
+}
+
+#[test]
+fn test_while_expression() {
+    let input = "while (x < y) { x }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(
+        program.statements.len(),
+        1,
+        "program.statements has not enough statements. got={}",
+        program.statements.len()
+    );
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        if let Expression::WhileExpression { condition, body, .. } = expression {
+            assert_infix_expression(condition, &"x".to_string(), "<", &"y".to_string());
+
+            if let Statement::Block(statements) = &**body {
+                assert_eq!(statements.len(), 1);
+                if let Statement::ExpressionStatement { expression: body_expr } = &statements[0] {
+                    assert_identifier(body_expr, "x");
+                } else {
+                    panic!("statement in body is not ExpressionStatement. got={:?}", statements[0]);
+                }
+            } else {
+                panic!("body is not BlockStatement. got={:?}", body);
+            }
+        } else {
+            panic!("expression is not WhileExpression. got={:?}", expression);
+        }
+    } else {
+        panic!(
+            "program.statements[0] is not ExpressionStatement. got={:?}",
+            program.statements[0]
+        );
+    }
+}
+
+#[test]
+fn test_continue_statement() {
+    let input = "while (true) { continue; }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        if let Expression::WhileExpression { body, .. } = expression {
+            if let Statement::Block(statements) = &**body {
+                assert_eq!(statements.len(), 1);
+                if let Statement::Continue(_) = &statements[0] {
+                    // success
+                } else {
+                    panic!("statement is not ContinueStatement. got={:?}", statements[0]);
+                }
+            } else {
+                panic!("body is not BlockStatement. got={:?}", body);
+            }
+        } else {
+            panic!("expression is not WhileExpression. got={:?}", expression);
+        }
+    } else {
+        panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_break_statement() {
+    let input = "while (true) { break; }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        if let Expression::WhileExpression { body, .. } = expression {
+            if let Statement::Block(statements) = &**body {
+                assert_eq!(statements.len(), 1);
+                if let Statement::Break(_) = &statements[0] {
+                    // success
+                } else {
+                    panic!("statement is not BreakStatement. got={:?}", statements[0]);
+                }
+            } else {
+                panic!("body is not BlockStatement. got={:?}", body);
+            }
+        } else {
+            panic!("expression is not WhileExpression. got={:?}", expression);
+        }
+    } else {
+        panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
     }
 }

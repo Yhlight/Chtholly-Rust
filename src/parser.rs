@@ -130,6 +130,26 @@ impl<'a> Parser<'a> {
                 alternative,
             })
         });
+        p.register_prefix(TokenKind::While, |parser| {
+            let token = parser.current_token.clone();
+            if !parser.expect_peek(TokenKind::LParen) {
+                return None;
+            }
+            parser.next_token();
+            let condition = parser.parse_expression(Precedence::Lowest)?;
+            if !parser.expect_peek(TokenKind::RParen) {
+                return None;
+            }
+            if !parser.expect_peek(TokenKind::LBrace) {
+                return None;
+            }
+            let body = parser.parse_block_statement()?;
+            Some(Expression::WhileExpression {
+                token,
+                condition: Box::new(condition),
+                body: Box::new(body),
+            })
+        });
 
         p.register_infix(TokenKind::Plus, |parser, left| {
             let token = parser.current_token.clone();
@@ -315,8 +335,26 @@ impl<'a> Parser<'a> {
             TokenKind::Let => self.parse_let_statement(),
             TokenKind::Mut => self.parse_mut_statement(),
             TokenKind::Function => self.parse_function_statement(),
+            TokenKind::Continue => self.parse_continue_statement(),
+            TokenKind::Break => self.parse_break_statement(),
             _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_continue_statement(&mut self) -> Option<Statement> {
+        let token = self.current_token.clone();
+        if self.peek_token.kind == TokenKind::Semicolon {
+            self.next_token();
+        }
+        Some(Statement::Continue(token))
+    }
+
+    fn parse_break_statement(&mut self) -> Option<Statement> {
+        let token = self.current_token.clone();
+        if self.peek_token.kind == TokenKind::Semicolon {
+            self.next_token();
+        }
+        Some(Statement::Break(token))
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {

@@ -20,6 +20,8 @@ pub enum Statement {
         expression: Expression,
     },
     Block(Vec<Statement>),
+    Continue(Token),
+    Break(Token),
 }
 
 impl Node for Statement {
@@ -35,6 +37,8 @@ impl Node for Statement {
                     statements[0].token_literal()
                 }
             }
+            Statement::Continue(token) => token.literal.clone(),
+            Statement::Break(token) => token.literal.clone(),
         }
     }
 }
@@ -73,6 +77,11 @@ pub enum Expression {
         parameters: Vec<Identifier>,
         body: Box<Statement>, // BlockStatement
     },
+    WhileExpression {
+        token: Token, // The 'while' token
+        condition: Box<Expression>,
+        body: Box<Statement>, // BlockStatement
+    },
 }
 
 impl Node for Expression {
@@ -85,6 +94,7 @@ impl Node for Expression {
             Expression::InfixExpression { token, .. } => token.literal.clone(),
             Expression::IfExpression { token, .. } => token.literal.clone(),
             Expression::FunctionLiteral { token, .. } => token.literal.clone(),
+            Expression::WhileExpression { token, .. } => token.literal.clone(),
         }
     }
 }

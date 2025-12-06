@@ -145,6 +145,9 @@ impl<'a> Lexer<'a> {
                     "false" => TokenKind::False,
                     "if" => TokenKind::If,
                     "else" => TokenKind::Else,
+                    "while" => TokenKind::While,
+                    "continue" => TokenKind::Continue,
+                    "break" => TokenKind::Break,
                     _ => TokenKind::Ident,
                 };
                 return Token::new(kind, literal);
@@ -162,7 +165,7 @@ impl<'a> Lexer<'a> {
 
     fn read_identifier(&mut self) -> String {
         let position = self.position;
-        while self.ch.is_ascii_alphabetic() || self.ch == b'_' {
+        while self.ch.is_ascii_alphanumeric() || self.ch == b'_' {
             self.read_char();
         }
         self.input[position..self.position].to_string()

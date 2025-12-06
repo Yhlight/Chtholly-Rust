@@ -21,3 +21,6 @@ path = "tests/compiler_test.rs"
 
 [dependencies]
 inkwell = { git = "https://github.com/TheDan64/inkwell", rev = "b9c53276e30935ccec841d12c9687a17e9199958", features = ["llvm18-1-force-dynamic"] }
+
+[dev-dependencies]
+regex = "1.5"
