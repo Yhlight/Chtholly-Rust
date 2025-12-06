@@ -46,15 +46,25 @@ statement = {
 
 expression_statement = { expression ~ ";" }
 
-expression = { term ~ ( (add_op | sub_op) ~ term )* }
-term = { factor ~ ( (mul_op | div_op | mod_op) ~ factor )* }
-factor = { integer | string | function_call | ident | "(" ~ expression ~ ")" }
+expression = { comparison }
+comparison = { term ~ ( (eq_op | neq_op | lt_op | gt_op | lte_op | gte_op) ~ term )* }
+term = { factor ~ ( (add_op | sub_op) ~ factor )* }
+factor = { unary ~ ( (mul_op | div_op | mod_op) ~ unary )* }
+unary = { primary } // Placeholder for future unary operators
+primary = { integer | string | function_call | ident | "(" ~ expression ~ ")" }
 
 add_op = { "+" }
 sub_op = { "-" }
 mul_op = { "*" }
 div_op = { "/" }
 mod_op = { "%" }
+
+eq_op = { "==" }
+neq_op = { "!=" }
+lt_op = { "<" }
+gt_op = { ">" }
+lte_op = { "<=" }
+gte_op = { ">=" }
 
 function_call = { ident ~ "(" ~ argument_list? ~ ")" }
 argument_list = { expression ~ ("," ~ expression)* }

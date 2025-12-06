@@ -4,8 +4,9 @@ use crate::ast;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::types::{BasicMetadataTypeEnum, BasicTypeEnum};
+use inkwell::types::{BasicMetadataTypeEnum, BasicTypeEnum, BasicType};
 use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue, ValueKind};
+use inkwell::IntPredicate;
 use std::collections::HashMap;
 
 struct Symbol<'ctx> {
@@ -149,7 +150,11 @@ impl<'ctx> CodeGen<'ctx> {
 
         if let Some(initializer) = &var_decl.initializer {
             let initial_value = self.codegen_expression(initializer)?;
-            let casted_value = self.builder.build_int_cast(initial_value.into_int_value(), llvm_type.into_int_type(), "casttmp").unwrap();
+            let casted_value = if initial_value.is_int_value() && initial_value.into_int_value().get_type().get_bit_width() == 1 {
+                self.builder.build_int_z_extend(initial_value.into_int_value(), llvm_type.into_int_type(), "zexttmp").unwrap()
+            } else {
+                self.builder.build_int_cast(initial_value.into_int_value(), llvm_type.into_int_type(), "casttmp").unwrap()
+            };
             self.builder.build_store(alloca, casted_value).unwrap();
         }
 
@@ -182,13 +187,19 @@ impl<'ctx> CodeGen<'ctx> {
                 let right = self.codegen_expression(right)?.into_int_value();
 
                 let result = match op {
-                    ast::BinaryOperator::Add => self.builder.build_int_add(left, right, "addtmp").unwrap(),
-                    ast::BinaryOperator::Subtract => self.builder.build_int_sub(left, right, "subtmp").unwrap(),
-                    ast::BinaryOperator::Multiply => self.builder.build_int_mul(left, right, "multmp").unwrap(),
-                    ast::BinaryOperator::Divide => self.builder.build_int_signed_div(left, right, "divtmp").unwrap(),
-                    ast::BinaryOperator::Modulo => self.builder.build_int_signed_rem(left, right, "modtmp").unwrap(),
+                    ast::BinaryOperator::Add => self.builder.build_int_add(left, right, "addtmp").unwrap().into(),
+                    ast::BinaryOperator::Subtract => self.builder.build_int_sub(left, right, "subtmp").unwrap().into(),
+                    ast::BinaryOperator::Multiply => self.builder.build_int_mul(left, right, "multmp").unwrap().into(),
+                    ast::BinaryOperator::Divide => self.builder.build_int_signed_div(left, right, "divtmp").unwrap().into(),
+                    ast::BinaryOperator::Modulo => self.builder.build_int_signed_rem(left, right, "modtmp").unwrap().into(),
+                    ast::BinaryOperator::Equal => self.builder.build_int_compare(IntPredicate::EQ, left, right, "eqtmp").unwrap().into(),
+                    ast::BinaryOperator::NotEqual => self.builder.build_int_compare(IntPredicate::NE, left, right, "netmp").unwrap().into(),
+                    ast::BinaryOperator::LessThan => self.builder.build_int_compare(IntPredicate::SLT, left, right, "lttmp").unwrap().into(),
+                    ast::BinaryOperator::GreaterThan => self.builder.build_int_compare(IntPredicate::SGT, left, right, "gttmp").unwrap().into(),
+                    ast::BinaryOperator::LessThanOrEqual => self.builder.build_int_compare(IntPredicate::SLE, left, right, "letmp").unwrap().into(),
+                    ast::BinaryOperator::GreaterThanOrEqual => self.builder.build_int_compare(IntPredicate::SGE, left, right, "getmp").unwrap().into(),
                 };
-                Ok(result.into())
+                Ok(result)
             }
             ast::Expression::FunctionCall { name, args } => {
                  let callee = self.module.get_function(name).ok_or(format!("Function '{}' not found in module", name))
@@ -225,9 +236,9 @@ impl<'ctx> CodeGen<'ctx> {
                 _ => unimplemented!("Type '{}' not yet supported", name),
             },
             ast::Type::Array(t) => {
-                 let _inner_type = self.to_basic_type(t);
+                 let inner_type = self.to_basic_type(t);
                  let addr_space = inkwell::AddressSpace::default();
-                 self.context.ptr_type(addr_space).into()
+                 inner_type.ptr_type(addr_space).into()
             },
             ast::Type::Generic(name, _) => {
                 if name == "Result" {

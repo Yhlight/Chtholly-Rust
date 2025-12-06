@@ -131,15 +131,23 @@ fn build_variable_declaration(pair: Pair<Rule>) -> ast::VariableDeclaration {
 }
 
 fn build_expression(mut pairs: Pairs<Rule>) -> Expression {
-    let mut lhs = build_term(pairs.next().unwrap().into_inner());
+    build_comparison(pairs.next().unwrap().into_inner())
+}
+
+fn build_comparison(mut pairs: Pairs<Rule>) -> Expression {
+    let mut lhs = build_additive(pairs.next().unwrap().into_inner());
 
     while let Some(op) = pairs.next() {
         let op = match op.as_rule() {
-            Rule::add_op => BinaryOperator::Add,
-            Rule::sub_op => BinaryOperator::Subtract,
+            Rule::eq_op => BinaryOperator::Equal,
+            Rule::neq_op => BinaryOperator::NotEqual,
+            Rule::lt_op => BinaryOperator::LessThan,
+            Rule::gt_op => BinaryOperator::GreaterThan,
+            Rule::lte_op => BinaryOperator::LessThanOrEqual,
+            Rule::gte_op => BinaryOperator::GreaterThanOrEqual,
             _ => unreachable!(),
         };
-        let rhs = build_term(pairs.next().unwrap().into_inner());
+        let rhs = build_additive(pairs.next().unwrap().into_inner());
         lhs = Expression::BinaryExpression {
             op,
             left: Box::new(lhs),
@@ -150,8 +158,28 @@ fn build_expression(mut pairs: Pairs<Rule>) -> Expression {
     lhs
 }
 
-fn build_term(mut pairs: Pairs<Rule>) -> Expression {
-    let mut lhs = build_factor(pairs.next().unwrap().into_inner().next().unwrap());
+fn build_additive(mut pairs: Pairs<Rule>) -> Expression {
+    let mut lhs = build_multiplicative(pairs.next().unwrap().into_inner());
+
+    while let Some(op) = pairs.next() {
+        let op = match op.as_rule() {
+            Rule::add_op => BinaryOperator::Add,
+            Rule::sub_op => BinaryOperator::Subtract,
+            _ => unreachable!(),
+        };
+        let rhs = build_multiplicative(pairs.next().unwrap().into_inner());
+        lhs = Expression::BinaryExpression {
+            op,
+            left: Box::new(lhs),
+            right: Box::new(rhs),
+        };
+    }
+
+    lhs
+}
+
+fn build_multiplicative(mut pairs: Pairs<Rule>) -> Expression {
+    let mut lhs = build_primary(pairs.next().unwrap().into_inner().next().unwrap());
 
     while let Some(op) = pairs.next() {
         let op = match op.as_rule() {
@@ -160,7 +188,7 @@ fn build_term(mut pairs: Pairs<Rule>) -> Expression {
             Rule::mod_op => BinaryOperator::Modulo,
             _ => unreachable!(),
         };
-        let rhs = build_factor(pairs.next().unwrap().into_inner().next().unwrap());
+        let rhs = build_primary(pairs.next().unwrap().into_inner().next().unwrap());
         lhs = Expression::BinaryExpression {
             op,
             left: Box::new(lhs),
@@ -171,18 +199,19 @@ fn build_term(mut pairs: Pairs<Rule>) -> Expression {
     lhs
 }
 
-fn build_factor(pair: Pair<Rule>) -> Expression {
-    match pair.as_rule() {
+fn build_primary(pair: Pair<Rule>) -> Expression {
+    let inner = pair.into_inner().next().unwrap();
+    match inner.as_rule() {
         Rule::integer => {
-            Expression::IntegerLiteral(pair.as_str().parse().expect("Failed to parse integer"))
+            Expression::IntegerLiteral(inner.as_str().parse().expect("Failed to parse integer"))
         }
-        Rule::ident => Expression::Variable(pair.as_str().to_string()),
+        Rule::ident => Expression::Variable(inner.as_str().to_string()),
         Rule::string => {
-            let literal = pair.as_str();
+            let literal = inner.as_str();
             Expression::StringLiteral(literal[1..literal.len() - 1].to_string())
         }
         Rule::function_call => {
-            let mut inner_pairs = pair.into_inner();
+            let mut inner_pairs = inner.into_inner();
             let name = inner_pairs.next().unwrap().as_str().to_string();
             let args = inner_pairs
                 .next()
@@ -195,7 +224,7 @@ fn build_factor(pair: Pair<Rule>) -> Expression {
                 .unwrap_or_else(Vec::new);
             Expression::FunctionCall { name, args }
         }
-        Rule::expression => build_expression(pair.into_inner()),
-        _ => unreachable!("Unexpected rule in build_factor: {:?}", pair.as_rule()),
+        Rule::expression => build_expression(inner.into_inner()),
+        _ => unreachable!("Unexpected rule in build_primary: {:?}", inner.as_rule()),
     }
 }
