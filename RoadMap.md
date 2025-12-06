@@ -43,7 +43,7 @@ This document outlines the development plan for the Chtholly programming languag
 
 - [x] **Arithmetic Operators**
   - [x] `+`, `-`, `*`, `/`
-  - [ ] `%`
+  - [x] `%`
 - [x] **Comparison Operators**
   - [x] `==`, `!=`, `>`, `<`, `>=`, `<=`
 - [x] **Logical Operators**

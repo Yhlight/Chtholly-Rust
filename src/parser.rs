@@ -30,6 +30,7 @@ fn precedents(token_kind: &TokenKind) -> Precedence {
         TokenKind::Minus => Precedence::Sum,
         TokenKind::Slash => Precedence::Product,
         TokenKind::Asterisk => Precedence::Product,
+        TokenKind::Percent => Precedence::Product,
         TokenKind::And => Precedence::And,
         TokenKind::Or => Precedence::Or,
         _ => Precedence::Lowest,
@@ -237,6 +238,19 @@ impl<'a> Parser<'a> {
                 token,
                 left: Box::new(left),
                 operator: "/".to_string(),
+                right: Box::new(right),
+            })
+        });
+
+        p.register_infix(TokenKind::Percent, |parser, left| {
+            let token = parser.current_token.clone();
+            let precedence = parser.cur_precedence();
+            parser.next_token();
+            let right = parser.parse_expression(precedence)?;
+            Some(Expression::InfixExpression {
+                token,
+                left: Box::new(left),
+                operator: "%".to_string(),
                 right: Box::new(right),
             })
         });

@@ -117,6 +117,7 @@ impl<'a> Lexer<'a> {
             b'+' => Token::new(TokenKind::Plus, "+".to_string()),
             b'-' => Token::new(TokenKind::Minus, "-".to_string()),
             b'*' => Token::new(TokenKind::Asterisk, "*".to_string()),
+            b'%' => Token::new(TokenKind::Percent, "%".to_string()),
             b'/' => {
                 if self.peek_char() == b'/' {
                     self.read_char();

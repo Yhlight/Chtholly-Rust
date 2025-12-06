@@ -64,6 +64,7 @@ fn test_infix_expressions() {
         ("5 - 5;", Box::new(5i64), "-", Box::new(5i64)),
         ("5 * 5;", Box::new(5i64), "*", Box::new(5i64)),
         ("5 / 5;", Box::new(5i64), "/", Box::new(5i64)),
+        ("5 % 5;", Box::new(5i64), "%", Box::new(5i64)),
         ("5 > 5;", Box::new(5i64), ">", Box::new(5i64)),
         ("5 < 5;", Box::new(5i64), "<", Box::new(5i64)),
         ("5 == 5;", Box::new(5i64), "==", Box::new(5i64)),
