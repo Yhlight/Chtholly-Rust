@@ -413,6 +413,26 @@ fn test_continue_statement() {
 }
 
 #[test]
+fn test_float_literal_expression() {
+    let input = "3.14;";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.statements.len(), 1);
+
+    if let Statement::ExpressionStatement { expression } = &program.statements[0] {
+        if let Expression::FloatLiteral { value, .. } = expression {
+            assert_eq!(*value, 3.14);
+        } else {
+            panic!("expression not FloatLiteral. got={:?}", expression);
+        }
+    } else {
+        panic!("program.statements[0] is not ExpressionStatement. got={:?}", program.statements[0]);
+    }
+}
+
+#[test]
 fn test_char_literal_expression() {
     let input = r#"'a';"#;
     let lexer = Lexer::new(input);

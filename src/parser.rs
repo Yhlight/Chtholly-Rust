@@ -113,6 +113,22 @@ impl<'a> Parser<'a> {
                 value,
             })
         });
+        p.register_prefix(TokenKind::Float, |parser| {
+            let value = match parser.current_token.literal.parse::<f64>() {
+                Ok(v) => v,
+                Err(_) => {
+                    parser.errors.push(format!(
+                        "could not parse {} as float",
+                        parser.current_token.literal
+                    ));
+                    return None;
+                }
+            };
+            Some(Expression::FloatLiteral {
+                token: parser.current_token.clone(),
+                value,
+            })
+        });
         p.register_prefix(TokenKind::Bang, |parser| {
             let token = parser.current_token.clone();
             parser.next_token();

@@ -62,6 +62,10 @@ pub enum Expression {
         token: Token,
         value: char,
     },
+    FloatLiteral {
+        token: Token,
+        value: f64,
+    },
     PrefixExpression {
         token: Token,
         operator: String,
@@ -100,6 +104,7 @@ impl Node for Expression {
             Expression::BooleanLiteral { token, .. } => token.literal.clone(),
             Expression::StringLiteral { token, .. } => token.literal.clone(),
             Expression::CharLiteral { token, .. } => token.literal.clone(),
+            Expression::FloatLiteral { token, .. } => token.literal.clone(),
             Expression::PrefixExpression { token, .. } => token.literal.clone(),
             Expression::InfixExpression { token, .. } => token.literal.clone(),
             Expression::IfExpression { token, .. } => token.literal.clone(),

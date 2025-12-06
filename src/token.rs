@@ -8,6 +8,7 @@ pub enum TokenKind {
     Int, // 1343456
     String,
     Char,
+    Float,
 
     // Operators
     Assign,

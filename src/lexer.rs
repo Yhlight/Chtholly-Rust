@@ -162,7 +162,10 @@ impl<'a> Lexer<'a> {
                 return Token::new(TokenKind::Char, literal);
             }
             b'0'..=b'9' => {
-                let literal = self.read_number();
+                let (literal, is_float) = self.read_number();
+                if is_float {
+                    return Token::new(TokenKind::Float, literal);
+                }
                 return Token::new(TokenKind::Int, literal);
             }
             0 => Token::new(TokenKind::Eof, "".to_string()),
@@ -203,11 +206,19 @@ impl<'a> Lexer<'a> {
         self.input[position..self.position].to_string()
     }
 
-    fn read_number(&mut self) -> String {
+    fn read_number(&mut self) -> (String, bool) {
         let position = self.position;
+        let mut is_float = false;
         while self.ch.is_ascii_digit() {
             self.read_char();
         }
-        self.input[position..self.position].to_string()
+        if self.ch == b'.' {
+            is_float = true;
+            self.read_char();
+            while self.ch.is_ascii_digit() {
+                self.read_char();
+            }
+        }
+        (self.input[position..self.position].to_string(), is_float)
     }
 }
