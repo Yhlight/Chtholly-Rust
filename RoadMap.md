@@ -6,10 +6,10 @@ This document outlines the development plan for the Chtholly compiler, following
 
 *   **Goal:** Set up the project structure and implement the lexer.
 *   **Tasks:**
-    *   [ ] Initialize the Rust project using Cargo.
-    *   [ ] Set up the `.gitignore` file.
-    *   [ ] Implement the lexer to tokenize the source code according to the `Chtholly.md` specification.
-    *   [ ] Write unit tests for the lexer to ensure correctness.
+    *   [x] Initialize the Rust project using Cargo.
+    *   [x] Set up the `.gitignore` file.
+    *   [x] Implement the lexer to tokenize the source code according to the `Chtholly.md` specification.
+    *   [x] Write unit tests for the lexer to ensure correctness.
 
 ## Sprint 2: Parser and AST
 

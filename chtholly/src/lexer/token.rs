@@ -1,0 +1,77 @@
+#[derive(Debug, PartialEq, Clone)]
+pub enum Token {
+    // Special tokens
+    Illegal(String),
+    Eof,
+
+    // Identifiers and literals
+    Identifier(String),
+    IntLiteral(String),
+    FloatLiteral(String),
+    StringLiteral(String),
+    CharLiteral(char),
+
+    // Operators
+    Assign,
+    Plus,
+    Minus,
+    Bang,
+    Asterisk,
+    Slash,
+    Percent,
+    LessThan,
+    GreaterThan,
+    Equal,
+    NotEqual,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
+    PlusAssign,
+    MinusAssign,
+    AsteriskAssign,
+    SlashAssign,
+    PercentAssign,
+    And,
+    Or,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseNot,
+    ShiftLeft,
+    ShiftRight,
+    Increment,
+    Decrement,
+
+    // Delimiters
+    Comma,
+    Semicolon,
+    Colon,
+    LParen,
+    RParen,
+    LBrace,
+    RBrace,
+    LBracket,
+    RBracket,
+
+    // Keywords
+    Function,
+    Let,
+    Mut,
+    True,
+    False,
+    If,
+    Else,
+    Return,
+    Class,
+    Struct,
+    Enum,
+    Public,
+    Private,
+    Switch,
+    Case,
+    For,
+    While,
+    Do,
+    Fallthrough,
+    SelfKeyword, // To avoid conflict with the `self` parameter name
+    Type(String), // For type annotations like i32, string, etc.
+}
