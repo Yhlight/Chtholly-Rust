@@ -1,0 +1,72 @@
+#[derive(Debug, PartialEq, Clone)]
+pub enum Token {
+    Illegal,
+    Eof,
+
+    // Identifiers + literals
+    Ident(String),
+    Int(i64),
+    Float(f64),
+    String(String),
+    Char(char),
+    Bool(bool),
+
+    // Operators
+    Assign,
+    Plus,
+    Minus,
+    Bang,
+    Asterisk,
+    Slash,
+    Percent,
+
+    Lt,
+    Gt,
+    LtEq,
+    GtEq,
+
+    Eq,
+    NotEq,
+
+    // Delimiters
+    Comma,
+    Semicolon,
+    LParen,
+    RParen,
+    LBrace,
+    RBrace,
+    LBracket,
+    RBracket,
+
+    // Keywords
+    Function,
+    Let,
+    Mut,
+    True,
+    False,
+    If,
+    Else,
+    Return,
+    Class,
+    Struct,
+    Enum,
+    Public,
+    Private,
+    Switch,
+    Case,
+    Fallthrough,
+    While,
+    For,
+    Do,
+    Continue,
+    Break,
+    Import,
+    Use,
+    As,
+    Package,
+    Request,
+    Require,
+    Type,
+    Self_,
+    Optional,
+}

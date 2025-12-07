@@ -1,0 +1,11 @@
+[package]
+name = "chtholly"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+inkwell = { git = "https://github.com/TheDan64/inkwell.git", rev = "b9c53276e30935ccec841d12c9687a17e9199958", features = ["llvm18-1"] }
+
+[[bin]]
+name = "chthollyc"
+path = "src/main.rs"
