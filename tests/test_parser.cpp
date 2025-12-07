@@ -1,21 +1,23 @@
 #include <gtest/gtest.h>
 #include "parser.h"
+#include "lexer.h"
 
-TEST(ParserTest, SingleLineComment) {
-    std::string code = "// This is a single-line comment";
-    Parser parser(code);
-    // The parser should not throw an exception for a valid comment.
-    ASSERT_NO_THROW(parser.parse());
-}
+TEST(ParserTest, LetStatements) {
+    std::string code = "let x = 5;";
+    Lexer lexer(code);
+    Parser parser(lexer);
 
-TEST(ParserTest, MultiLineComment) {
-    std::string code = "/* This is a multi-line comment */";
-    Parser parser(code);
-    ASSERT_NO_THROW(parser.parse());
-}
+    auto program = parser.parse_program();
+    ASSERT_NE(program, nullptr);
+    ASSERT_EQ(program->statements.size(), 1);
 
-TEST(ParserTest, UnterminatedMultiLineComment) {
-    std::string code = "/* This is an unterminated multi-line comment";
-    Parser parser(code);
-    ASSERT_THROW(parser.parse(), std::runtime_error);
+    auto stmt = dynamic_cast<LetStatement*>(program->statements[0].get());
+    ASSERT_NE(stmt, nullptr);
+    EXPECT_EQ(stmt->token.literal, "let");
+    EXPECT_EQ(stmt->name->value, "x");
+
+    auto literal = dynamic_cast<IntegerLiteral*>(stmt->value.get());
+    ASSERT_NE(literal, nullptr);
+    EXPECT_EQ(literal->value, 5);
+    EXPECT_EQ(literal->token.literal, "5");
 }

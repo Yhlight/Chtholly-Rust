@@ -1,39 +1,71 @@
 #include "parser.h"
-#include <stdexcept>
 
-Parser::Parser(const std::string& code) : code_(code), pos_(0) {
-    // Constructor
+Parser::Parser(Lexer& lexer) : lexer_(lexer) {
+    // Read two tokens, so cur_token_ and peek_token_ are both set
+    next_token();
+    next_token();
 }
 
-void Parser::parse() {
-    while (pos_ < code_.length()) {
-        if (code_[pos_] == '/' && pos_ + 1 < code_.length()) {
-            if (code_[pos_ + 1] == '/') {
-                // Single-line comment
-                pos_ += 2;
-                while (pos_ < code_.length() && code_[pos_] != '\n') {
-                    pos_++;
-                }
-            } else if (code_[pos_ + 1] == '*') {
-                // Multi-line comment
-                pos_ += 2;
-                bool found_end = false;
-                while (pos_ + 1 < code_.length()) {
-                    if (code_[pos_] == '*' && code_[pos_ + 1] == '/') {
-                        pos_ += 2;
-                        found_end = true;
-                        break;
-                    }
-                    pos_++;
-                }
-                if (!found_end) {
-                    throw std::runtime_error("Unterminated multi-line comment");
-                }
-            } else {
-                pos_++;
-            }
-        } else {
-            pos_++;
+void Parser::next_token() {
+    cur_token_ = peek_token_;
+    peek_token_ = lexer_.next_token();
+}
+
+std::unique_ptr<Program> Parser::parse_program() {
+    auto program = std::make_unique<Program>();
+    while (cur_token_.type != TokenType::END_OF_FILE) {
+        auto stmt = parse_statement();
+        if (stmt) {
+            program->statements.push_back(std::move(stmt));
         }
+        next_token();
     }
+    return program;
+}
+
+std::unique_ptr<Statement> Parser::parse_statement() {
+    if (cur_token_.type == TokenType::LET) {
+        return parse_let_statement();
+    }
+    return nullptr;
+}
+
+std::unique_ptr<LetStatement> Parser::parse_let_statement() {
+    auto stmt = std::make_unique<LetStatement>();
+    stmt->token = cur_token_;
+
+    if (peek_token_.type != TokenType::IDENTIFIER) {
+        return nullptr;
+    }
+    next_token();
+
+    auto name = std::make_unique<Identifier>();
+    name->token = cur_token_;
+    name->value = cur_token_.literal;
+    stmt->name = std::move(name);
+
+    if (peek_token_.type != TokenType::ASSIGN) {
+        return nullptr;
+    }
+    next_token();
+    next_token();
+
+    stmt->value = parse_expression();
+
+    if (peek_token_.type != TokenType::SEMICOLON) {
+        return nullptr;
+    }
+    next_token();
+
+    return stmt;
+}
+
+std::unique_ptr<Expression> Parser::parse_expression() {
+    if (cur_token_.type == TokenType::INTEGER) {
+        auto lit = std::make_unique<IntegerLiteral>();
+        lit->token = cur_token_;
+        lit->value = std::stoll(cur_token_.literal);
+        return lit;
+    }
+    return nullptr;
 }
