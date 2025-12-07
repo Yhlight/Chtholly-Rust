@@ -29,11 +29,11 @@ sudo apt-get update
 # - llvm-18-dev: 核心 LLVM 开发文件 (头文件、配置脚本等)
 # - libpolly-18-dev 和 libzstd-dev: 保留，以确保所有必要的 LLVM 组件完整安装
 sudo apt-get install -y \
-    clang-18 \
-    libc++-18-dev \
-    llvm-18-dev \
-    libpolly-18-dev \
-    libzstd-dev
+    clang-18 \
+    libc++-18-dev \
+    llvm-18-dev \
+    libpolly-18-dev \
+    libzstd-dev
 ```
 
 ## 项目要求
