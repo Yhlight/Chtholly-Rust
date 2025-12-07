@@ -14,6 +14,7 @@ Parser::Parser(Lexer& lexer) : lexer_(lexer) {
         {TokenType::MINUS, SUM},
         {TokenType::SLASH, PRODUCT},
         {TokenType::ASTERISK, PRODUCT},
+        {TokenType::LPAREN, CALL},
     };
 }
 
@@ -122,15 +123,9 @@ std::unique_ptr<FunctionStatement> Parser::parse_function_statement() {
     if (peek_token_.type != TokenType::LPAREN) {
         return nullptr;
     }
-    next_token(); // consume '('
+    next_token();
 
-    // TODO: Parse parameters
-    if (peek_token_.type != TokenType::RPAREN) {
-        // We have parameters, but we don't parse them yet.
-        // For now, we only support functions with no parameters.
-        return nullptr;
-    }
-    next_token(); // consume ')'
+    func->parameters = parse_function_parameters();
 
     if (peek_token_.type == TokenType::COLON) {
         next_token();
@@ -146,6 +141,55 @@ std::unique_ptr<FunctionStatement> Parser::parse_function_statement() {
     func->body = parse_block_statement();
 
     return func;
+}
+
+std::vector<std::pair<std::unique_ptr<Identifier>, std::unique_ptr<Type>>> Parser::parse_function_parameters() {
+    std::vector<std::pair<std::unique_ptr<Identifier>, std::unique_ptr<Type>>> params;
+
+    if (peek_token_.type == TokenType::RPAREN) {
+        next_token();
+        return params;
+    }
+
+    next_token();
+
+    auto ident = std::make_unique<Identifier>();
+    ident->token = cur_token_;
+    ident->value = cur_token_.literal;
+
+    if (peek_token_.type != TokenType::COLON) {
+        return {};
+    }
+    next_token();
+    next_token();
+
+    auto type = parse_type();
+    params.emplace_back(std::move(ident), std::move(type));
+
+    while (peek_token_.type == TokenType::COMMA) {
+        next_token();
+        next_token();
+
+        ident = std::make_unique<Identifier>();
+        ident->token = cur_token_;
+        ident->value = cur_token_.literal;
+
+        if (peek_token_.type != TokenType::COLON) {
+            return {};
+        }
+        next_token();
+        next_token();
+
+        type = parse_type();
+        params.emplace_back(std::move(ident), std::move(type));
+    }
+
+    if (peek_token_.type != TokenType::RPAREN) {
+        return {};
+    }
+    next_token();
+
+    return params;
 }
 
 std::unique_ptr<BlockStatement> Parser::parse_block_statement() {
@@ -238,15 +282,49 @@ std::unique_ptr<Expression> Parser::parse_expression(Precedence precedence) {
     }
 
     while (peek_token_.type != TokenType::SEMICOLON && precedence < peek_precedence()) {
-        next_token();
-        auto infix_exp = std::make_unique<InfixExpression>();
-        infix_exp->token = cur_token_;
-        infix_exp->left = std::move(left_exp);
-        Precedence p = cur_precedence();
-        next_token();
-        infix_exp->right = parse_expression(p);
-        left_exp = std::move(infix_exp);
+        if (peek_token_.type == TokenType::LPAREN) {
+            next_token();
+            auto call_exp = std::make_unique<CallExpression>();
+            call_exp->token = cur_token_;
+            call_exp->function = std::move(left_exp);
+            call_exp->arguments = parse_call_arguments();
+            left_exp = std::move(call_exp);
+        } else {
+            next_token();
+            auto infix_exp = std::make_unique<InfixExpression>();
+            infix_exp->token = cur_token_;
+            infix_exp->left = std::move(left_exp);
+            Precedence p = cur_precedence();
+            next_token();
+            infix_exp->right = parse_expression(p);
+            left_exp = std::move(infix_exp);
+        }
     }
 
     return left_exp;
+}
+
+std::vector<std::unique_ptr<Expression>> Parser::parse_call_arguments() {
+    std::vector<std::unique_ptr<Expression>> args;
+
+    if (peek_token_.type == TokenType::RPAREN) {
+        next_token();
+        return args;
+    }
+
+    next_token();
+    args.push_back(parse_expression(LOWEST));
+
+    while (peek_token_.type == TokenType::COMMA) {
+        next_token();
+        next_token();
+        args.push_back(parse_expression(LOWEST));
+    }
+
+    if (peek_token_.type != TokenType::RPAREN) {
+        return {};
+    }
+    next_token();
+
+    return args;
 }

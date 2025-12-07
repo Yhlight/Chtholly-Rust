@@ -137,19 +137,6 @@ public:
     }
 };
 
-class ExpressionStatement : public Statement {
-public:
-    Token token; // The first token of the expression
-    std::unique_ptr<Expression> expression;
-
-    std::string to_string() const override {
-        if (expression) {
-            return expression->to_string();
-        }
-        return "";
-    }
-};
-
 class IfExpression : public Expression {
 public:
     Token token; // The 'if' token
@@ -170,14 +157,14 @@ class FunctionStatement : public Statement {
 public:
     Token token; // The FN token
     std::unique_ptr<Identifier> name;
-    std::vector<std::unique_ptr<Identifier>> parameters;
+    std::vector<std::pair<std::unique_ptr<Identifier>, std::unique_ptr<Type>>> parameters;
     std::unique_ptr<Type> return_type;
     std::unique_ptr<BlockStatement> body;
 
     std::string to_string() const override {
         std::string out = token.literal + " " + name->to_string() + "(";
         for (size_t i = 0; i < parameters.size(); ++i) {
-            out += parameters[i]->to_string();
+            out += parameters[i].first->to_string() + ": " + parameters[i].second->to_string();
             if (i < parameters.size() - 1) {
                 out += ", ";
             }
@@ -188,6 +175,38 @@ public:
         }
         out += " { " + body->to_string() + " }";
         return out;
+    }
+};
+
+class CallExpression : public Expression {
+public:
+    Token token; // The '(' token
+    std::unique_ptr<Expression> function;
+    std::vector<std::unique_ptr<Expression>> arguments;
+
+    std::string to_string() const override {
+        std::string out = function->to_string() + "(";
+        for (size_t i = 0; i < arguments.size(); ++i) {
+            out += arguments[i]->to_string();
+            if (i < arguments.size() - 1) {
+                out += ", ";
+            }
+        }
+        out += ")";
+        return out;
+    }
+};
+
+class ExpressionStatement : public Statement {
+public:
+    Token token; // The first token of the expression
+    std::unique_ptr<Expression> expression;
+
+    std::string to_string() const override {
+        if (expression) {
+            return expression->to_string();
+        }
+        return "";
     }
 };
 

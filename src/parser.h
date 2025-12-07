@@ -29,6 +29,8 @@ private:
     std::unique_ptr<BlockStatement> parse_block_statement();
     std::unique_ptr<Expression> parse_expression(Precedence precedence);
     std::unique_ptr<Type> parse_type();
+    std::vector<std::pair<std::unique_ptr<Identifier>, std::unique_ptr<Type>>> parse_function_parameters();
+    std::vector<std::unique_ptr<Expression>> parse_call_arguments();
 
     Precedence peek_precedence();
     Precedence cur_precedence();

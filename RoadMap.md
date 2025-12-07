@@ -20,7 +20,7 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [ ] Integer types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`)
   - [ ] Floating-point types (`f32`, `f64`)
   - [ ] Character type (`char`)
-  - [ ] Boolean type (`bool`)
+  - [x] Boolean type (`bool`)
   - [ ] Void type (`void`)
   - [ ] String type (`string`)
   - [ ] Array types (`T[]`, `T[N]`)
@@ -29,16 +29,16 @@ This document outlines the development plan and tracks the progress of the Chtho
 - [x] **Operators:**
   - [x] Arithmetic operators (`+`, `-`, `*`, `/`, `%`)
   - [x] Comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`)
-  - [x] Logical operators (`!`, `&&`, `||`)
+  - [x] Logical operators (`!`)
   - [ ] Bitwise operators (`&`, `|`, `^`, `~`, `<<`, `>>`)
   - [ ] Assignment operators (`=`, `+=`, `-=`, `*=`, `/=`, `%=`)
   - [ ] Increment and decrement operators (`++`, `--`)
 - [ ] **Functions:**
-  - [x] Function definition (no parameters)
-  - [ ] Function calls
+  - [x] Function definition
+  - [x] Function calls
   - [ ] Lambda expressions
 - [ ] **Control Flow:**
-  - [ ] `if-else` statements
+  - [x] `if-else` statements
   - [ ] `switch-case` statements
   - [ ] `while` loops
   - [ ] `for` loops

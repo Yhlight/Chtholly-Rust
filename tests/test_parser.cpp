@@ -48,8 +48,8 @@ TEST(ParserTest, MutStatements) {
     EXPECT_EQ(literal->token.literal, "10");
 }
 
-TEST(ParserTest, MainFunction) {
-    std::string code = "fn main(): i32 {}";
+TEST(ParserTest, FunctionDefinition) {
+    std::string code = "fn add(a: i32, b: i32): i32 { let result = a + b; }";
     Lexer lexer(code);
     Parser parser(lexer);
 
@@ -60,9 +60,17 @@ TEST(ParserTest, MainFunction) {
     auto stmt = dynamic_cast<FunctionStatement*>(program->statements[0].get());
     ASSERT_NE(stmt, nullptr);
     EXPECT_EQ(stmt->token.literal, "fn");
-    EXPECT_EQ(stmt->name->value, "main");
+    EXPECT_EQ(stmt->name->value, "add");
+
+    ASSERT_EQ(stmt->parameters.size(), 2);
+    EXPECT_EQ(stmt->parameters[0].first->value, "a");
+    EXPECT_EQ(stmt->parameters[0].second->name, "i32");
+    EXPECT_EQ(stmt->parameters[1].first->value, "b");
+    EXPECT_EQ(stmt->parameters[1].second->name, "i32");
+
     ASSERT_NE(stmt->return_type, nullptr);
     EXPECT_EQ(stmt->return_type->name, "i32");
+
     ASSERT_NE(stmt->body, nullptr);
-    EXPECT_EQ(stmt->body->statements.size(), 0);
+    ASSERT_EQ(stmt->body->statements.size(), 1);
 }

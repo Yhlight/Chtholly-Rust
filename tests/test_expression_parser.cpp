@@ -174,3 +174,26 @@ TEST(ExpressionParserTest, InfixExpressions) {
         EXPECT_EQ(exp->right->to_string(), std::get<3>(test));
     }
 }
+
+TEST(ExpressionParserTest, CallExpression) {
+    std::string code = "add(1, 2 * 3, 4 + 5);";
+    Lexer lexer(code);
+    Parser parser(lexer);
+
+    auto program = parser.parse_program();
+    ASSERT_NE(program, nullptr);
+    ASSERT_EQ(program->statements.size(), 1);
+
+    auto stmt = dynamic_cast<ExpressionStatement*>(program->statements[0].get());
+    ASSERT_NE(stmt, nullptr);
+
+    auto exp = dynamic_cast<CallExpression*>(stmt->expression.get());
+    ASSERT_NE(exp, nullptr);
+
+    EXPECT_EQ(exp->function->to_string(), "add");
+
+    ASSERT_EQ(exp->arguments.size(), 3);
+    EXPECT_EQ(exp->arguments[0]->to_string(), "1");
+    EXPECT_EQ(exp->arguments[1]->to_string(), "(2 * 3)");
+    EXPECT_EQ(exp->arguments[2]->to_string(), "(4 + 5)");
+}
