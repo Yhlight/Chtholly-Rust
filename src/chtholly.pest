@@ -1,0 +1,21 @@
+// Chtholly Grammar
+
+// Silently skipped rules
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT = _{ SINGLE_LINE_COMMENT | MULTI_LINE_COMMENT }
+SINGLE_LINE_COMMENT = { "//" ~ (!("\r" | "\n") ~ ANY)* }
+MULTI_LINE_COMMENT  = { "/*" ~ (MULTI_LINE_COMMENT | !"*/" ~ ANY)* ~ "*/" }
+
+// Basic program structure
+program = { SOI ~ (COMMENT | function)* ~ EOI }
+
+// Function Definition
+function = { "fn" ~ identifier ~ "(" ~ parameter_list? ~ ")" ~ ":" ~ type_name ~ "{" ~ statement* ~ "}" }
+parameter_list = { parameter ~ ("," ~ parameter)* }
+parameter = { identifier ~ ":" ~ type_name }
+type_name = { "Result" ~ "<" ~ identifier ~ "," ~ identifier ~ ">" | identifier ~ ("[" ~ "]")? }
+statement = { expression ~ ";" }
+expression = { identifier } // Placeholder for actual expressions
+
+// Identifier rule
+identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
