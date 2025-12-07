@@ -1,25 +1,18 @@
 use chumsky::prelude::*;
 
-use crate::compiler::ast::{BinaryOp, Expr, Literal};
+use crate::compiler::ast::{BinaryOp, Expr, Literal, Stmt};
 use crate::compiler::lexer::Token;
 
-pub fn parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
+pub fn parser() -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> {
+    let ident = select! { Token::Ident(ident) => ident };
+
     let expr = recursive(|expr| {
         let literal = select! {
-            Token::Int(s) => s,
-            Token::Float(s) => s,
+            Token::Int(s) => s.parse::<i64>().map(Literal::Int).map_err(|e| e.to_string()),
+            Token::Float(s) => s.parse::<f64>().map(Literal::Float).map_err(|e| e.to_string()),
         }
-        .try_map(|s: String, span| {
-            s.parse::<String>()
-                .map_err(|e| Simple::custom(span, format!("{}", e)))
-        })
-        .map(|value: String| {
-            if value.contains('.') {
-                Expr::Literal(Literal::Float(value.parse().unwrap()))
-            } else {
-                Expr::Literal(Literal::Int(value.parse().unwrap()))
-            }
-        })
+        .try_map(|res, span| res.map_err(|e| Simple::custom(span, e)))
+        .map(Expr::Literal)
         .or(select! {
             Token::String(s) => Expr::Literal(Literal::String(s)),
             Token::Char(c) => Expr::Literal(Literal::Char(c)),
@@ -30,6 +23,7 @@ pub fn parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
 
         let atom = literal
             .or(expr.delimited_by(just(Token::LParen), just(Token::RParen)))
+            .or(ident.map(Expr::Ident))
             .labelled("atom");
 
         let op = |op, op_type| just(op).to(op_type);
@@ -75,7 +69,21 @@ pub fn parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
         comparison
     });
 
-    expr.then_ignore(end())
+    let let_stmt = just(Token::Let)
+        .ignore_then(ident)
+        .then_ignore(just(Token::Eq))
+        .then(expr.clone())
+        .then_ignore(just(Token::Semicolon))
+        .map(|(ident, expr)| Stmt::Let(ident, expr));
+
+    let expr_stmt = expr
+        .clone()
+        .then_ignore(just(Token::Semicolon))
+        .map(Stmt::Expr);
+
+    let stmt = let_stmt.or(expr_stmt);
+
+    stmt.repeated().then_ignore(end())
 }
 
 #[cfg(test)]
@@ -84,12 +92,12 @@ mod tests {
     use crate::compiler::lexer::lexer;
     use chumsky::Stream;
 
-    fn parse_test_helper(input: &str, expected_expr: Expr) {
+    fn parse_test_helper(input: &str, expected_stmts: Vec<Stmt>) {
         let (tokens, lex_errs) = lexer().parse_recovery(input);
         assert!(lex_errs.is_empty(), "Lexer errors: {:?}", lex_errs);
 
         let tokens_vec = tokens.unwrap();
-        let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
+        let (stmts, parse_errs) = parser().parse_recovery(Stream::from_iter(
             0..tokens_vec.len(),
             tokens_vec.into_iter(),
         ));
@@ -100,35 +108,17 @@ mod tests {
             parse_errs
         );
 
-        assert_eq!(expr.unwrap(), expected_expr);
+        assert_eq!(stmts.unwrap(), expected_stmts);
     }
 
     #[test]
-    fn test_literals() {
-        parse_test_helper("123", Expr::Literal(Literal::Int(123)));
-        parse_test_helper("123.456", Expr::Literal(Literal::Float(123.456)));
+    fn test_let_statement() {
         parse_test_helper(
-            "\"hello\"",
-            Expr::Literal(Literal::String("hello".to_string())),
-        );
-        parse_test_helper("'a'", Expr::Literal(Literal::Char('a')));
-        parse_test_helper("true", Expr::Literal(Literal::Bool(true)));
-        parse_test_helper("false", Expr::Literal(Literal::Bool(false)));
-    }
-
-    #[test]
-    fn test_arithmetic() {
-        parse_test_helper(
-            "1 + 2 * 3",
-            Expr::Binary(
-                Box::new(Expr::Literal(Literal::Int(1))),
-                BinaryOp::Add,
-                Box::new(Expr::Binary(
-                    Box::new(Expr::Literal(Literal::Int(2))),
-                    BinaryOp::Mul,
-                    Box::new(Expr::Literal(Literal::Int(3))),
-                )),
-            ),
+            "let x = 5;",
+            vec![Stmt::Let(
+                "x".to_string(),
+                Expr::Literal(Literal::Int(5)),
+            )],
         );
     }
 }

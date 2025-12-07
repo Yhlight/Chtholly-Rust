@@ -2,16 +2,19 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::{BasicValueEnum, FloatValue, IntValue, PointerValue};
+use inkwell::types::BasicTypeEnum;
 use inkwell::IntPredicate;
 use inkwell::FloatPredicate;
+use std::collections::HashMap;
 
-use crate::compiler::ast::{BinaryOp, Expr, Literal};
+use crate::compiler::ast::{BinaryOp, Expr, Literal, Stmt};
 
 /// A compiler that generates LLVM IR from a Chtholly AST.
 pub struct Compiler<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
     pub module: Module<'ctx>,
+    variables: HashMap<String, (PointerValue<'ctx>, BasicTypeEnum<'ctx>)>,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -23,6 +26,25 @@ impl<'ctx> Compiler<'ctx> {
             context,
             builder,
             module,
+            variables: HashMap::new(),
+        }
+    }
+
+    /// Compiles a `Stmt` into LLVM IR.
+    pub fn compile_stmt(&mut self, stmt: &Stmt) -> Result<(), &'static str> {
+        match stmt {
+            Stmt::Let(name, expr) => {
+                let value = self.compile_expr(expr)?;
+                let ty = value.get_type();
+                let ptr = self.builder.build_alloca(ty, name).map_err(|_| "Failed to build alloca")?;
+                self.builder.build_store(ptr, value).map_err(|_| "Failed to build store")?;
+                self.variables.insert(name.clone(), (ptr, ty));
+                Ok(())
+            }
+            Stmt::Expr(expr) => {
+                self.compile_expr(expr)?;
+                Ok(())
+            }
         }
     }
 
@@ -30,6 +52,14 @@ impl<'ctx> Compiler<'ctx> {
     pub fn compile_expr(&self, expr: &Expr) -> Result<BasicValueEnum<'ctx>, &'static str> {
         match expr {
             Expr::Literal(literal) => self.compile_literal(literal),
+            Expr::Ident(name) => {
+                match self.variables.get(name) {
+                    Some((ptr, ty)) => {
+                        self.builder.build_load(*ty, *ptr, name).map_err(|_| "Failed to build load")
+                    },
+                    None => Err("Undefined variable"),
+                }
+            }
             Expr::Binary(lhs, op, rhs) => self.compile_binary(lhs, op, rhs),
         }
     }

@@ -9,9 +9,9 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **Basic AST:** Define AST nodes for fundamental language constructs like variables, literals, and expressions.
 - [x] **LLVM Integration:** Set up the LLVM backend for code generation.
 - [ ] **Variable Declarations:** Implement `let` and `mut` for variable declarations.
-- [ ] **Primitive Data Types:** Support for `i32`, `f64`, `char`, `bool`, and `string`.
-- [ ] **Basic Operators:** Implement arithmetic, comparison, and logical operators.
-- [ ] **Main Function:** The entry point of a Chtholly program.
+- [x] **Primitive Data Types:** Support for `i32`, `f64`, `char`, `bool`, and `string`.
+- [x] **Basic Operators:** Implement arithmetic, comparison, and logical operators.
+- [x] **Main Function:** The entry point of a Chtholly program.
 
 ## Phase 2: Control Flow and Functions
 

@@ -1,8 +1,14 @@
 #[derive(Debug, PartialEq, Clone)]
+pub enum Stmt {
+    Let(String, Expr),
+    Expr(Expr),
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Literal(Literal),
+    Ident(String),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
-    // TODO: Add other expression types here
 }
 
 #[derive(Debug, PartialEq, Clone)]

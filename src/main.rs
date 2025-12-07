@@ -45,7 +45,7 @@ fn main() {
             }
 
             let context = Context::create();
-            let compiler = Compiler::new(&context);
+            let mut compiler = Compiler::new(&context);
 
             // Create a main function
             let i64_type = context.i64_type();
@@ -54,31 +54,15 @@ fn main() {
             let basic_block = context.append_basic_block(function, "entry");
             compiler.builder.position_at_end(basic_block);
 
-            match compiler.compile_expr(&ast) {
-                Ok(result) => {
-                    if result.is_int_value() {
-                        let int_value = result.into_int_value();
-                        if int_value.get_type() == context.bool_type() {
-                            if let Ok(extended_value) = compiler.builder.build_int_z_extend(int_value, i64_type, "zext") {
-                                let _ = compiler.builder.build_return(Some(&extended_value));
-                            } else {
-                                eprintln!("Failed to build zext");
-                            }
-                        } else {
-                            let _ = compiler.builder.build_return(Some(&int_value));
-                        }
-                    } else if result.is_float_value() {
-                        // For now, we just return 0 for float results
-                        let _ = compiler.builder.build_return(Some(&i64_type.const_int(0, false)));
-                    } else {
-                        eprintln!("Result is not an integer or float, cannot return from main");
-                    }
-                }
-                Err(e) => {
+            for stmt in ast {
+                if let Err(e) = compiler.compile_stmt(&stmt) {
                     eprintln!("Compiler error: {}", e);
                     return;
                 }
             }
+
+            // For now, we just return 0 from main
+            compiler.builder.build_return(Some(&i64_type.const_int(0, false)));
 
             println!("{}", compiler.module.print_to_string().to_string());
         } else {
