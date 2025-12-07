@@ -19,6 +19,11 @@ enum class TokenType {
     MINUS,
     ASTERISK,
     SLASH,
+    BANG,
+    LT,
+    GT,
+    EQ,
+    NOT_EQ,
 
     // Delimiters
     LPAREN,

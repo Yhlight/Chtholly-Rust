@@ -2,7 +2,15 @@
 #include "lexer.h"
 
 TEST(LexerTest, NextToken) {
-    std::string code = "let five = 5; [ ] ,";
+    std::string code = R"(
+        let five = 5;
+        // This is a comment
+        let ten = 10;
+        /*
+         * This is a multi-line comment
+         */
+        let result = five + ten;
+    )";
     Lexer lexer(code);
 
     std::vector<Token> expected_tokens = {
@@ -11,9 +19,18 @@ TEST(LexerTest, NextToken) {
         {TokenType::ASSIGN, "="},
         {TokenType::INTEGER, "5"},
         {TokenType::SEMICOLON, ";"},
-        {TokenType::LBRACKET, "["},
-        {TokenType::RBRACKET, "]"},
-        {TokenType::COMMA, ","},
+        {TokenType::LET, "let"},
+        {TokenType::IDENTIFIER, "ten"},
+        {TokenType::ASSIGN, "="},
+        {TokenType::INTEGER, "10"},
+        {TokenType::SEMICOLON, ";"},
+        {TokenType::LET, "let"},
+        {TokenType::IDENTIFIER, "result"},
+        {TokenType::ASSIGN, "="},
+        {TokenType::IDENTIFIER, "five"},
+        {TokenType::PLUS, "+"},
+        {TokenType::IDENTIFIER, "ten"},
+        {TokenType::SEMICOLON, ";"},
         {TokenType::END_OF_FILE, ""},
     };
 

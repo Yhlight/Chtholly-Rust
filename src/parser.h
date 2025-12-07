@@ -4,6 +4,17 @@
 #include "lexer.h"
 #include "ast.h"
 #include <memory>
+#include <map>
+
+enum Precedence {
+    LOWEST,
+    EQUALS,      // ==
+    LESSGREATER, // > or <
+    SUM,         // +
+    PRODUCT,     // *
+    PREFIX,      // -X or !X
+    CALL,        // myFunction(X)
+};
 
 class Parser {
 public:
@@ -16,12 +27,17 @@ private:
     std::unique_ptr<VarDeclarationStatement> parse_var_declaration_statement();
     std::unique_ptr<FunctionStatement> parse_function_statement();
     std::unique_ptr<BlockStatement> parse_block_statement();
-    std::unique_ptr<Expression> parse_expression();
+    std::unique_ptr<Expression> parse_expression(Precedence precedence);
     std::unique_ptr<Type> parse_type();
+
+    Precedence peek_precedence();
+    Precedence cur_precedence();
 
     Lexer& lexer_;
     Token cur_token_;
     Token peek_token_;
+
+    std::map<TokenType, Precedence> precedences;
 };
 
 #endif //CHTHOLLY_PARSER_H

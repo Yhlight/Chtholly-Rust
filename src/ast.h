@@ -92,6 +92,27 @@ public:
     }
 };
 
+class PrefixExpression : public Expression {
+public:
+    Token token; // The operator token, e.g., !
+    std::unique_ptr<Expression> right;
+
+    std::string to_string() const override {
+        return "(" + token.literal + right->to_string() + ")";
+    }
+};
+
+class InfixExpression : public Expression {
+public:
+    Token token; // The operator token, e.g., +
+    std::unique_ptr<Expression> left;
+    std::unique_ptr<Expression> right;
+
+    std::string to_string() const override {
+        return "(" + left->to_string() + " " + token.literal + " " + right->to_string() + ")";
+    }
+};
+
 class BlockStatement : public Statement {
 public:
     Token token; // The { token
@@ -103,6 +124,19 @@ public:
             out += s->to_string();
         }
         return out;
+    }
+};
+
+class ExpressionStatement : public Statement {
+public:
+    Token token; // The first token of the expression
+    std::unique_ptr<Expression> expression;
+
+    std::string to_string() const override {
+        if (expression) {
+            return expression->to_string();
+        }
+        return "";
     }
 };
 

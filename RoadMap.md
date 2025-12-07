@@ -34,7 +34,7 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [ ] Assignment operators (`=`, `+=`, `-=`, `*=`, `/=`, `%=`)
   - [ ] Increment and decrement operators (`++`, `--`)
 - [ ] **Functions:**
-  - [ ] Function definition (`fn`)
+  - [x] Function definition (`fn`)
   - [ ] Function calls
   - [ ] Lambda expressions
 - [ ] **Control Flow:**

@@ -4,12 +4,38 @@ Parser::Parser(Lexer& lexer) : lexer_(lexer) {
     // Read two tokens, so cur_token_ and peek_token_ are both set
     next_token();
     next_token();
+
+    precedences = {
+        {TokenType::EQ, EQUALS},
+        {TokenType::NOT_EQ, EQUALS},
+        {TokenType::LT, LESSGREATER},
+        {TokenType::GT, LESSGREATER},
+        {TokenType::PLUS, SUM},
+        {TokenType::MINUS, SUM},
+        {TokenType::SLASH, PRODUCT},
+        {TokenType::ASTERISK, PRODUCT},
+    };
 }
 
 void Parser::next_token() {
     cur_token_ = peek_token_;
     peek_token_ = lexer_.next_token();
 }
+
+Precedence Parser::peek_precedence() {
+    if (precedences.find(peek_token_.type) != precedences.end()) {
+        return precedences[peek_token_.type];
+    }
+    return LOWEST;
+}
+
+Precedence Parser::cur_precedence() {
+    if (precedences.find(cur_token_.type) != precedences.end()) {
+        return precedences[cur_token_.type];
+    }
+    return LOWEST;
+}
+
 
 std::unique_ptr<Program> Parser::parse_program() {
     auto program = std::make_unique<Program>();
@@ -30,7 +56,16 @@ std::unique_ptr<Statement> Parser::parse_statement() {
     if (cur_token_.type == TokenType::FN) {
         return parse_function_statement();
     }
-    return nullptr;
+
+    auto stmt = std::make_unique<ExpressionStatement>();
+    stmt->token = cur_token_;
+    stmt->expression = parse_expression(LOWEST);
+
+    if (peek_token_.type == TokenType::SEMICOLON) {
+        next_token();
+    }
+
+    return stmt;
 }
 
 std::unique_ptr<VarDeclarationStatement> Parser::parse_var_declaration_statement() {
@@ -60,7 +95,7 @@ std::unique_ptr<VarDeclarationStatement> Parser::parse_var_declaration_statement
     next_token();
     next_token();
 
-    stmt->value = parse_expression();
+    stmt->value = parse_expression(LOWEST);
 
     if (peek_token_.type != TokenType::SEMICOLON) {
         return nullptr;
@@ -147,12 +182,33 @@ std::unique_ptr<Type> Parser::parse_type() {
     return type;
 }
 
-std::unique_ptr<Expression> Parser::parse_expression() {
+std::unique_ptr<Expression> Parser::parse_expression(Precedence precedence) {
+    std::unique_ptr<Expression> left_exp;
     if (cur_token_.type == TokenType::INTEGER) {
         auto lit = std::make_unique<IntegerLiteral>();
         lit->token = cur_token_;
         lit->value = std::stoll(cur_token_.literal);
-        return lit;
+        left_exp = std::move(lit);
+    } else if (cur_token_.type == TokenType::BANG || cur_token_.type == TokenType::MINUS) {
+        auto prefix_exp = std::make_unique<PrefixExpression>();
+        prefix_exp->token = cur_token_;
+        next_token();
+        prefix_exp->right = parse_expression(PREFIX);
+        left_exp = std::move(prefix_exp);
+    } else {
+        return nullptr;
     }
-    return nullptr;
+
+    while (peek_token_.type != TokenType::SEMICOLON && precedence < peek_precedence()) {
+        next_token();
+        auto infix_exp = std::make_unique<InfixExpression>();
+        infix_exp->token = cur_token_;
+        infix_exp->left = std::move(left_exp);
+        Precedence p = cur_precedence();
+        next_token();
+        infix_exp->right = parse_expression(p);
+        left_exp = std::move(infix_exp);
+    }
+
+    return left_exp;
 }

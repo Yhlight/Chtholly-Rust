@@ -42,11 +42,24 @@ Token Lexer::next_token() {
     }
 
     switch (current_char) {
-        case '=': return make_token(TokenType::ASSIGN, "=");
+        case '=':
+            if (peek() == '=') {
+                advance();
+                return make_token(TokenType::EQ, "==");
+            }
+            return make_token(TokenType::ASSIGN, "=");
         case '+': return make_token(TokenType::PLUS, "+");
         case '-': return make_token(TokenType::MINUS, "-");
         case '*': return make_token(TokenType::ASTERISK, "*");
         case '/': return make_token(TokenType::SLASH, "/");
+        case '!':
+            if (peek() == '=') {
+                advance();
+                return make_token(TokenType::NOT_EQ, "!=");
+            }
+            return make_token(TokenType::BANG, "!");
+        case '<': return make_token(TokenType::LT, "<");
+        case '>': return make_token(TokenType::GT, ">");
         case '(': return make_token(TokenType::LPAREN, "(");
         case ')': return make_token(TokenType::RPAREN, ")");
         case '{': return make_token(TokenType::LBRACE, "{");
@@ -61,8 +74,32 @@ Token Lexer::next_token() {
 }
 
 void Lexer::skip_whitespace() {
-    while (pos_ < code_.length() && isspace(code_[pos_])) {
-        pos_++;
+    while (pos_ < code_.length()) {
+        if (isspace(code_[pos_])) {
+            pos_++;
+        } else if (code_[pos_] == '/' && pos_ + 1 < code_.length()) {
+            if (code_[pos_ + 1] == '/') {
+                // Single-line comment
+                pos_ += 2;
+                while (pos_ < code_.length() && code_[pos_] != '\n') {
+                    pos_++;
+                }
+            } else if (code_[pos_ + 1] == '*') {
+                // Multi-line comment
+                pos_ += 2;
+                while (pos_ + 1 < code_.length()) {
+                    if (code_[pos_] == '*' && code_[pos_ + 1] == '/') {
+                        pos_ += 2;
+                        break;
+                    }
+                    pos_++;
+                }
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
     }
 }
 
