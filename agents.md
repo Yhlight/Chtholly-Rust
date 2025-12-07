@@ -38,7 +38,7 @@ sudo apt-get install -y \
 
 ## 项目要求
 
-1. Chtholly 是一门基于 C++17 编写的编程语言，使用 LLVM 作为后端，语法规范文档是 `Chtholly.md`（已经提供）。
+1. Chtholly 是一门基于 C++17 编写的编程语言，使用 CMake 进行构建， LLVM 作为后端，语法规范文档是 `Chtholly.md`（已经提供）。
 
 2. 项目使用 `.gitignore` 进行版本控制，不要提交构建产物与二进制文件。
 
