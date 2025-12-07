@@ -53,7 +53,9 @@ comparison = { term ~ ( (eq_op | neq_op | lt_op | gt_op | lte_op | gte_op) ~ ter
 term = { factor ~ ( (add_op | sub_op) ~ factor )* }
 factor = { unary ~ ( (mul_op | div_op | mod_op) ~ unary )* }
 unary = { not_op? ~ primary }
-primary = { integer | string | function_call | ident | "(" ~ expression ~ ")" }
+primary = { integer | string | boolean | function_call | ident | "(" ~ expression ~ ")" }
+
+boolean = { "true" | "false" }
 
 add_op = { "+" }
 sub_op = { "-" }

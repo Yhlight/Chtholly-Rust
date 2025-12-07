@@ -1,4 +1,4 @@
 fn main(args: string[]): Result<i32, SystemError>
 {
-    let a: i32 = 10 > 5 && !(1 > 2);
+    let a: bool = true;
 }

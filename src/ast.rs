@@ -80,4 +80,5 @@ pub enum Expression {
         op: UnaryOperator,
         operand: Box<Expression>,
     },
+    BooleanLiteral(bool),
 }

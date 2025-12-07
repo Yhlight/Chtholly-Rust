@@ -258,6 +258,7 @@ fn build_primary(pair: Pair<Rule>) -> Expression {
             Expression::IntegerLiteral(inner.as_str().parse().expect("Failed to parse integer"))
         }
         Rule::ident => Expression::Variable(inner.as_str().to_string()),
+        Rule::boolean => Expression::BooleanLiteral(inner.as_str().parse().unwrap()),
         Rule::string => {
             let literal = inner.as_str();
             Expression::StringLiteral(literal[1..literal.len() - 1].to_string())

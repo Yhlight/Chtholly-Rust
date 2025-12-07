@@ -1,8 +1,8 @@
    Compiling chtholly_compiler v0.1.0 (/app)
 warning: use of deprecated method `inkwell::types::BasicType::ptr_type`: Starting from version 15.0, LLVM doesn't differentiate between pointer types. Use Context::ptr_type instead.
-   --> src/codegen.rs:250:29
+   --> src/codegen.rs:254:29
     |
-250 |                  inner_type.ptr_type(addr_space).into()
+254 |                  inner_type.ptr_type(addr_space).into()
     |                             ^^^^^^^^
     |
     = note: `#[warn(deprecated)]` on by default
@@ -19,13 +19,13 @@ warning: field `is_mutable` is never read
    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: `chtholly_compiler` (bin "chtholly_compiler") generated 2 warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.86s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.82s
      Running `target/debug/chtholly_compiler test.cns`
 正在编译文件：test.cns
 --- 源代码 ---
 fn main(args: string[]): Result<i32, SystemError>
 {
-    let a: i32 = 10 > 5 && !(1 > 2);
+    let a: bool = true;
 }
 
 -------------------
@@ -62,34 +62,13 @@ Program {
                         name: "a",
                         var_type: Some(
                             Simple(
-                                "i32",
+                                "bool",
                             ),
                         ),
                         initializer: Some(
-                            BinaryExpression {
-                                op: LogicalAnd,
-                                left: BinaryExpression {
-                                    op: GreaterThan,
-                                    left: IntegerLiteral(
-                                        10,
-                                    ),
-                                    right: IntegerLiteral(
-                                        5,
-                                    ),
-                                },
-                                right: UnaryExpression {
-                                    op: Not,
-                                    operand: BinaryExpression {
-                                        op: GreaterThan,
-                                        left: IntegerLiteral(
-                                            1,
-                                        ),
-                                        right: IntegerLiteral(
-                                            2,
-                                        ),
-                                    },
-                                },
-                            },
+                            BooleanLiteral(
+                                true,
+                            ),
                         ),
                     },
                 ),
@@ -104,8 +83,8 @@ source_filename = "chtholly_module"
 
 define i32 @main(ptr %args) {
 entry:
-  %a = alloca i32, align 4
-  store i32 1, ptr %a, align 4
+  %a = alloca i1, align 1
+  store i1 true, ptr %a, align 1
   ret i32 0
 }
 

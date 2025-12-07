@@ -173,6 +173,9 @@ impl<'ctx> CodeGen<'ctx> {
             ast::Expression::IntegerLiteral(val) => {
                 Ok(self.context.i64_type().const_int(*val as u64, false).into())
             }
+            ast::Expression::BooleanLiteral(val) => {
+                Ok(self.context.bool_type().const_int(*val as u64, false).into())
+            }
             ast::Expression::StringLiteral(val) => {
                 let ptr = self.builder.build_global_string_ptr(val, ".str").unwrap();
                 Ok(ptr.as_pointer_value().into())
@@ -242,6 +245,7 @@ impl<'ctx> CodeGen<'ctx> {
             ast::Type::Simple(name) => match name.as_str() {
                 "i32" => self.context.i32_type().into(),
                 "string" => self.context.ptr_type(inkwell::AddressSpace::default()).into(),
+                "bool" => self.context.bool_type().into(),
                 _ => unimplemented!("Type '{}' not yet supported", name),
             },
             ast::Type::Array(t) => {
