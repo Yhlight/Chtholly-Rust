@@ -1,0 +1,10 @@
+# Rust build artifacts
+/target
+
+# Executables
+*.exe
+*.out
+*.so
+*.dll
+
+# Other
