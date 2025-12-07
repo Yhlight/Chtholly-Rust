@@ -1,0 +1,20 @@
+// Chtholly example program
+
+fn main() {
+    let x = 10;
+    let y = 20.5;
+    let name = "Chtholly";
+
+    if (x > y) {
+        // do something
+    } else {
+        // do something else
+    }
+
+    /*
+     * This is a block comment.
+     */
+    for (let i = 0; i < 10; i++) {
+        // loop
+    }
+}
