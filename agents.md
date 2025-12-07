@@ -14,7 +14,7 @@ source $HOME/.cargo/env
 
 ### 2. 安装 LLVM 18
 
-标准的 Ubuntu 仓库可能没有最新版本的 LLVM，或者可能存在链接问题。推荐使用 LLVM 官方提供的 APT 仓库进行安装。
+标准的 Ubuntu 仓库可能没有最新版本的 LLVM，或者可能存在链接问题。推荐使用 LLVM 官方提供的 APT 仓库进行安装。编译 `inkwell` crate 时需要额外的开发库 (`libpolly-18-dev`, `libzstd-dev`) 以避免链接器错误。
 
 ```bash
 #!/bin/bash
@@ -28,9 +28,21 @@ wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /et
 # 添加 LLVM 18 的 APT 仓库
 sudo add-apt-repository "deb http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME}-18 main"
 
-# 更新包列表并安装 LLVM 18
+# 更新包列表
 sudo apt-get update
-sudo apt-get install -y llvm-18-dev libclang-18-dev clang-18
+
+# 安装 LLVM 18 及其核心依赖
+# - llvm-18-dev: 核心开发文件
+# - libclang-18-dev: Clang 开发库
+# - clang-18: C/C++ 编译器
+# - libpolly-18-dev: Polly 优化器库，解决链接器错误
+# - libzstd-dev: Zstd 压缩库，解决链接器错误
+sudo apt-get install -y \
+    llvm-18-dev \
+    libclang-18-dev \
+    clang-18 \
+    libpolly-18-dev \
+    libzstd-dev
 ```
 
 ### 3. 配置环境变量
@@ -41,7 +53,7 @@ sudo apt-get install -y llvm-18-dev libclang-18-dev clang-18
 export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
 ```
 
-将此行添加到您的 `.bashrc` 或 `.zshrc` 文件中，以使其在新的 shell 会话中永久生效。
+将此行添加到您的 `.bashrc` 或 `.zshrc` 文件中，以使其在新的 shell 会- 话中永久生效。
 
 ## 项目要求
 
