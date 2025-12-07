@@ -7,7 +7,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [ ] Basic syntax parsing (variables, data types, operators)
 - [x] Variable declaration parsing
 - [x] Function definitions and calls
-- [ ] Control flow (if/else, loops)
+- [x] Control flow (if/else, loops)
 - [ ] Basic type checking
 - [ ] LLVM IR generation for simple expressions and functions
 

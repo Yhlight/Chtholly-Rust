@@ -43,6 +43,7 @@ pub enum Expression {
     Infix(Token, Box<Expression>, Box<Expression>),
     FunctionLiteral(FunctionLiteral),
     Call(CallExpression),
+    If(IfExpression),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -55,4 +56,11 @@ pub struct FunctionLiteral {
 pub struct CallExpression {
     pub function: Box<Expression>,
     pub arguments: Vec<Expression>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
 }
