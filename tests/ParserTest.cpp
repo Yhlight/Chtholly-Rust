@@ -73,3 +73,49 @@ TEST(ParserTest, VariableDeclaration) {
     std::string result = printer.print(*varDeclStmt->initializer);
     EXPECT_EQ(result, "10.000000");
 }
+
+TEST(ParserTest, IfStatement) {
+    std::vector<Token> tokens = {
+        {TokenType::IF, "if", 1},
+        {TokenType::LEFT_PAREN, "(", 1},
+        {TokenType::TRUE, "true", 1},
+        {TokenType::RIGHT_PAREN, ")", 1},
+        {TokenType::LEFT_BRACE, "{", 1},
+        {TokenType::RIGHT_BRACE, "}", 1},
+        {TokenType::END_OF_FILE, "", 1}
+    };
+
+    Parser parser(tokens);
+    auto stmts = parser.parse();
+    ASSERT_EQ(stmts.size(), 1);
+
+    auto ifStmt = dynamic_cast<IfStmt*>(stmts[0].get());
+    ASSERT_NE(ifStmt, nullptr);
+
+    ASTPrinter printer;
+    std::string result = printer.print(*stmts[0]);
+    EXPECT_EQ(result, "(if true (block))");
+}
+
+TEST(ParserTest, WhileStatement) {
+    std::vector<Token> tokens = {
+        {TokenType::WHILE, "while", 1},
+        {TokenType::LEFT_PAREN, "(", 1},
+        {TokenType::TRUE, "true", 1},
+        {TokenType::RIGHT_PAREN, ")", 1},
+        {TokenType::LEFT_BRACE, "{", 1},
+        {TokenType::RIGHT_BRACE, "}", 1},
+        {TokenType::END_OF_FILE, "", 1}
+    };
+
+    Parser parser(tokens);
+    auto stmts = parser.parse();
+    ASSERT_EQ(stmts.size(), 1);
+
+    auto whileStmt = dynamic_cast<WhileStmt*>(stmts[0].get());
+    ASSERT_NE(whileStmt, nullptr);
+
+    ASTPrinter printer;
+    std::string result = printer.print(*stmts[0]);
+    EXPECT_EQ(result, "(while true (block))");
+}

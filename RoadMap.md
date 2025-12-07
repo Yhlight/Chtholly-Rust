@@ -12,7 +12,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [ ] **Variable Declarations:** Implement `let` (immutable) and `mut` (mutable) variable declarations.
 - [ ] **Basic Operators:** Implement arithmetic, comparison, and logical operators.
 - [ ] **Function Definitions and Calls:** Implement function definitions and call expressions.
-- [ ] **Control Flow:** Implement `if/else`, `while`, and `for` loops.
+- [x] **Control Flow:** Implement `if/else`, `while`, and `for` loops.
 - [ ] **LLVM IR Generation:** Generate LLVM Intermediate Representation for the core language features.
 - [ ] **Main Function:** Implement the `fn main` function as the entry point of the program.
 

@@ -16,13 +16,18 @@ public:
     std::any visitGroupingExpr(const GroupingExpr& expr) override;
     std::any visitLiteralExpr(const LiteralExpr& expr) override;
     std::any visitUnaryExpr(const UnaryExpr& expr) override;
+    std::any visitVariableExpr(const VariableExpr& expr) override;
 
+    void visitBlockStmt(const BlockStmt& stmt) override;
     void visitExpressionStmt(const ExpressionStmt& stmt) override;
+    void visitFunctionStmt(const FunctionStmt& stmt) override;
+    void visitIfStmt(const IfStmt& stmt) override;
+    void visitReturnStmt(const ReturnStmt& stmt) override;
     void visitVarDeclStmt(const VarDeclStmt& stmt) override;
+    void visitWhileStmt(const WhileStmt& stmt) override;
 
 private:
-    template<typename... Args>
-    std::string parenthesize(const std::string& name, const Args&... exprs);
+    std::string parenthesize(const std::string& name, const std::vector<const Expr*>& exprs);
 
     std::string m_result;
 };
