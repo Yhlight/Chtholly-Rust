@@ -8,6 +8,10 @@ enum class TokenType {
     FN,
     LET,
     MUT,
+    TRUE,
+    FALSE,
+    IF,
+    ELSE,
 
     // Identifiers and literals
     IDENTIFIER,

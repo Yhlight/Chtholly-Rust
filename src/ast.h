@@ -113,6 +113,16 @@ public:
     }
 };
 
+class BooleanLiteral : public Expression {
+public:
+    Token token;
+    bool value;
+
+    std::string to_string() const override {
+        return token.literal;
+    }
+};
+
 class BlockStatement : public Statement {
 public:
     Token token; // The { token
@@ -137,6 +147,22 @@ public:
             return expression->to_string();
         }
         return "";
+    }
+};
+
+class IfExpression : public Expression {
+public:
+    Token token; // The 'if' token
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<BlockStatement> consequence;
+    std::unique_ptr<BlockStatement> alternative;
+
+    std::string to_string() const override {
+        std::string out = "if" + condition->to_string() + " " + consequence->to_string();
+        if (alternative) {
+            out += "else " + alternative->to_string();
+        }
+        return out;
     }
 };
 

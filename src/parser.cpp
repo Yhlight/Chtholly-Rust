@@ -184,17 +184,55 @@ std::unique_ptr<Type> Parser::parse_type() {
 
 std::unique_ptr<Expression> Parser::parse_expression(Precedence precedence) {
     std::unique_ptr<Expression> left_exp;
-    if (cur_token_.type == TokenType::INTEGER) {
+    if (cur_token_.type == TokenType::IDENTIFIER) {
+        auto ident = std::make_unique<Identifier>();
+        ident->token = cur_token_;
+        ident->value = cur_token_.literal;
+        left_exp = std::move(ident);
+    }
+    else if (cur_token_.type == TokenType::INTEGER) {
         auto lit = std::make_unique<IntegerLiteral>();
         lit->token = cur_token_;
         lit->value = std::stoll(cur_token_.literal);
         left_exp = std::move(lit);
+    } else if (cur_token_.type == TokenType::TRUE || cur_token_.type == TokenType::FALSE) {
+        auto bool_lit = std::make_unique<BooleanLiteral>();
+        bool_lit->token = cur_token_;
+        bool_lit->value = cur_token_.type == TokenType::TRUE;
+        left_exp = std::move(bool_lit);
     } else if (cur_token_.type == TokenType::BANG || cur_token_.type == TokenType::MINUS) {
         auto prefix_exp = std::make_unique<PrefixExpression>();
         prefix_exp->token = cur_token_;
         next_token();
         prefix_exp->right = parse_expression(PREFIX);
         left_exp = std::move(prefix_exp);
+    } else if (cur_token_.type == TokenType::IF) {
+        auto if_exp = std::make_unique<IfExpression>();
+        if_exp->token = cur_token_;
+        if (peek_token_.type != TokenType::LPAREN) {
+            return nullptr;
+        }
+        next_token();
+        next_token();
+        if_exp->condition = parse_expression(LOWEST);
+        if (peek_token_.type != TokenType::RPAREN) {
+            return nullptr;
+        }
+        next_token();
+        if (peek_token_.type != TokenType::LBRACE) {
+            return nullptr;
+        }
+        next_token();
+        if_exp->consequence = parse_block_statement();
+        if (peek_token_.type == TokenType::ELSE) {
+            next_token();
+            if (peek_token_.type != TokenType::LBRACE) {
+                return nullptr;
+            }
+            next_token();
+            if_exp->alternative = parse_block_statement();
+        }
+        left_exp = std::move(if_exp);
     } else {
         return nullptr;
     }

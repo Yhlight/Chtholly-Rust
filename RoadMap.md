@@ -4,9 +4,9 @@ This document outlines the development plan and tracks the progress of the Chtho
 
 ## Phase 1: Core Language Features
 
-- [ ] **Comments:**
-  - [ ] Single-line comments (`//`)
-  - [ ] Multi-line comments (`/* */`)
+- [x] **Comments:**
+  - [x] Single-line comments (`//`)
+  - [x] Multi-line comments (`/* */`)
 - [ ] **Main Function:**
   - [ ] `fn main(args: string[]): Result<i32, SystemError>`
 - [ ] **Resource Management:**
@@ -26,15 +26,15 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [ ] Array types (`T[]`, `T[N]`)
 - [ ] **Type Casting:**
   - [ ] `type_cast<T>()`
-- [ ] **Operators:**
-  - [ ] Arithmetic operators (`+`, `-`, `*`, `/`, `%`)
-  - [ ] Comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`)
-  - [ ] Logical operators (`!`, `&&`, `||`)
+- [x] **Operators:**
+  - [x] Arithmetic operators (`+`, `-`, `*`, `/`, `%`)
+  - [x] Comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`)
+  - [x] Logical operators (`!`, `&&`, `||`)
   - [ ] Bitwise operators (`&`, `|`, `^`, `~`, `<<`, `>>`)
   - [ ] Assignment operators (`=`, `+=`, `-=`, `*=`, `/=`, `%=`)
   - [ ] Increment and decrement operators (`++`, `--`)
 - [ ] **Functions:**
-  - [x] Function definition (`fn`)
+  - [x] Function definition (no parameters)
   - [ ] Function calls
   - [ ] Lambda expressions
 - [ ] **Control Flow:**

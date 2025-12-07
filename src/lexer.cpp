@@ -24,6 +24,10 @@ Token Lexer::next_token() {
             {"fn", TokenType::FN},
             {"let", TokenType::LET},
             {"mut", TokenType::MUT},
+            {"true", TokenType::TRUE},
+            {"false", TokenType::FALSE},
+            {"if", TokenType::IF},
+            {"else", TokenType::ELSE},
         };
 
         if (keywords.count(literal)) {
