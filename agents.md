@@ -55,6 +55,14 @@ export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
 
 将此行添加到您的 `.bashrc` 或 `.zshrc` 文件中，以使其在新的 shell 会- 话中永久生效。
 
+### 4. toml的配置
+
+`inkwell` 的配置具有一定的要求，为此我们直接提供。
+
+```
+inkwell = { git = "https://github.com/TheDan64/inkwell.git", rev = "b9c53276e30935ccec841d12c9687a17e9199958", features = ["llvm18-1"] }
+```
+
 ## 项目要求
 
 1. Chtholly 是一门基于 Rust 编写的编程语言，使用 LLVM 作为后端，语法规范文档是 `Chtholly.md`（已经提供）。
