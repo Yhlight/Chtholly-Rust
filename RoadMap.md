@@ -7,7 +7,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **Lexer (Tokenizer):** Implement a lexer to convert Chtholly source code into a stream of tokens.
 - [x] **Parser:** Build a parser that takes the token stream and generates an Abstract Syntax Tree (AST).
 - [x] **Basic AST:** Define AST nodes for fundamental language constructs like variables, literals, and expressions.
-- [ ] **LLVM Integration:** Set up the LLVM backend for code generation.
+- [x] **LLVM Integration:** Set up the LLVM backend for code generation.
 - [ ] **Variable Declarations:** Implement `let` and `mut` for variable declarations.
 - [ ] **Primitive Data Types:** Support for `i32`, `f64`, `char`, `bool`, and `string`.
 - [ ] **Basic Operators:** Implement arithmetic, comparison, and logical operators.

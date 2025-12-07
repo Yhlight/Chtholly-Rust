@@ -6,13 +6,26 @@ use crate::compiler::lexer::Token;
 pub fn parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
     let expr = recursive(|expr| {
         let literal = select! {
-            Token::Int(s) => Expr::Literal(Literal::Int(s.parse().unwrap())),
-            Token::Float(s) => Expr::Literal(Literal::Float(s.parse().unwrap())),
+            Token::Int(s) => s,
+            Token::Float(s) => s,
+        }
+        .try_map(|s: String, span| {
+            s.parse::<String>()
+                .map_err(|e| Simple::custom(span, format!("{}", e)))
+        })
+        .map(|value: String| {
+            if value.contains('.') {
+                Expr::Literal(Literal::Float(value.parse().unwrap()))
+            } else {
+                Expr::Literal(Literal::Int(value.parse().unwrap()))
+            }
+        })
+        .or(select! {
             Token::String(s) => Expr::Literal(Literal::String(s)),
             Token::Char(c) => Expr::Literal(Literal::Char(c)),
             Token::True => Expr::Literal(Literal::Bool(true)),
             Token::False => Expr::Literal(Literal::Bool(false)),
-        }
+        })
         .labelled("literal");
 
         let atom = literal
@@ -77,7 +90,7 @@ mod tests {
 
         let tokens_vec = tokens.unwrap();
         let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
-            tokens_vec.len()..tokens_vec.len(),
+            0..tokens_vec.len(),
             tokens_vec.into_iter(),
         ));
 
