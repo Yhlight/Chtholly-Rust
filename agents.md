@@ -22,6 +22,14 @@ echo "开发环境已设置完毕！"
 echo "请重新启动你的 shell 或运行 'source $HOME/.cargo/env' 以使 Rust 工具链生效。"
 ```
 
+注意：本项目在 Ubuntu 上构建时可能会遇到 LLVM 链接错误
+（特别是关于 "Polly" 库）。这似乎是由于 llvm-sys crate 和 Ubuntu 的 LLVM 软件包之间的不兼容性造成的。
+
+要解决此问题，请在构建时设置以下环境变量：
+```bash
+export LLVM_SYS_170_PREFIX=/usr/lib/llvm-17
+```
+
 ## 项目要求
 
 1. Chtholly 是一门基于 Rust 编写的编程语言，使用 LLVM 作为后端，语法规范文档是 `Chtholly.md`（已经提供）。
