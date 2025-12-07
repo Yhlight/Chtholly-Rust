@@ -1,0 +1,12 @@
+// Chtholly Grammar
+
+// Comments
+line_comment = { "//" ~ (!"\n" ~ ANY)* }
+block_comment = { "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+COMMENT = _{ line_comment | block_comment }
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+
+// Basic syntax
+number = @{ ASCII_DIGIT+ }
+program = { SOI ~ (COMMENT | number | WHITESPACE)* ~ EOI }

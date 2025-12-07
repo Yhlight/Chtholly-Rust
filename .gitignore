@@ -1,0 +1,22 @@
+# Rust
+target/
+*.rs.bk
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDEs
+.idea/
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+
+# Added by cargo
+
+/target
