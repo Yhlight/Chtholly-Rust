@@ -1,0 +1,11 @@
+// Chtholly Grammar
+
+// Whitespace and Comments
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT = _{ "//" ~ (!("\n" | "\r") ~ ANY)* | "/*" ~ (COMMENT | !"*/" ~ ANY)* ~ "*/" }
+
+// Main Function
+main_function = { "fn" ~ "main" ~ "(" ~ ")" ~ "{" ~ "}" }
+
+// The top-level rule for a Chtholly program
+program = { SOI ~ (main_function | COMMENT | WHITESPACE)* ~ EOI }
