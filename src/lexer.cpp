@@ -28,6 +28,7 @@ Token Lexer::next_token() {
             {"false", TokenType::FALSE},
             {"if", TokenType::IF},
             {"else", TokenType::ELSE},
+            {"while", TokenType::WHILE},
         };
 
         if (keywords.count(literal)) {

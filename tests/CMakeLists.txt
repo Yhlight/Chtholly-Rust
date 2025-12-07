@@ -4,14 +4,7 @@ FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
 )
-# For Windows:
-# FetchContent_MakeAvailable(googletest)
-# For Linux/macOS:
-FetchContent_GetProperties(googletest)
-if(NOT googletest_POPULATED)
-  FetchContent_Populate(googletest)
-  add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
-endif()
+FetchContent_MakeAvailable(googletest)
 
 # Add test files
 add_executable(parser_tests test_parser.cpp)

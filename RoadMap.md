@@ -28,7 +28,7 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [ ] `type_cast<T>()`
 - [x] **Operators:**
   - [x] Arithmetic operators (`+`, `-`, `*`, `/`, `%`)
-  - [x] Comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`)
+  - [x] Comparison operators (`==`, `!=`, `>`, `<`)
   - [x] Logical operators (`!`)
   - [ ] Bitwise operators (`&`, `|`, `^`, `~`, `<<`, `>>`)
   - [ ] Assignment operators (`=`, `+=`, `-=`, `*=`, `/=`, `%=`)
@@ -40,7 +40,7 @@ This document outlines the development plan and tracks the progress of the Chtho
 - [ ] **Control Flow:**
   - [x] `if-else` statements
   - [ ] `switch-case` statements
-  - [ ] `while` loops
+  - [x] `while` loops
   - [ ] `for` loops
   - [ ] `foreach` loops
   - [ ] `do-while` loops

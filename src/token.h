@@ -12,6 +12,7 @@ enum class TokenType {
     FALSE,
     IF,
     ELSE,
+    WHILE,
 
     // Identifiers and literals
     IDENTIFIER,

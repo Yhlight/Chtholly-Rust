@@ -145,10 +145,22 @@ public:
     std::unique_ptr<BlockStatement> alternative;
 
     std::string to_string() const override {
-        std::string out = "if" + condition->to_string() + " " + consequence->to_string();
+        std::string out = "if (" + condition->to_string() + ") " + consequence->to_string();
         if (alternative) {
-            out += "else " + alternative->to_string();
+            out += " else " + alternative->to_string();
         }
+        return out;
+    }
+};
+
+class WhileStatement : public Statement {
+public:
+    Token token; // The 'while' token
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<BlockStatement> body;
+
+    std::string to_string() const override {
+        std::string out = "while (" + condition->to_string() + ") " + body->to_string();
         return out;
     }
 };

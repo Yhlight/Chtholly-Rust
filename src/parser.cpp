@@ -57,6 +57,9 @@ std::unique_ptr<Statement> Parser::parse_statement() {
     if (cur_token_.type == TokenType::FN) {
         return parse_function_statement();
     }
+    if (cur_token_.type == TokenType::WHILE) {
+        return parse_while_statement();
+    }
 
     auto stmt = std::make_unique<ExpressionStatement>();
     stmt->token = cur_token_;
@@ -190,6 +193,33 @@ std::vector<std::pair<std::unique_ptr<Identifier>, std::unique_ptr<Type>>> Parse
     next_token();
 
     return params;
+}
+
+std::unique_ptr<WhileStatement> Parser::parse_while_statement() {
+    auto stmt = std::make_unique<WhileStatement>();
+    stmt->token = cur_token_;
+
+    if (peek_token_.type != TokenType::LPAREN) {
+        return nullptr;
+    }
+    next_token();
+    next_token();
+
+    stmt->condition = parse_expression(LOWEST);
+
+    if (peek_token_.type != TokenType::RPAREN) {
+        return nullptr;
+    }
+    next_token();
+
+    if (peek_token_.type != TokenType::LBRACE) {
+        return nullptr;
+    }
+    next_token();
+
+    stmt->body = parse_block_statement();
+
+    return stmt;
 }
 
 std::unique_ptr<BlockStatement> Parser::parse_block_statement() {

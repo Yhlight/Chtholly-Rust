@@ -74,3 +74,30 @@ TEST(ParserTest, FunctionDefinition) {
     ASSERT_NE(stmt->body, nullptr);
     ASSERT_EQ(stmt->body->statements.size(), 1);
 }
+
+TEST(ParserTest, WhileStatement) {
+    std::string code = "while (x < y) { x }";
+    Lexer lexer(code);
+    Parser parser(lexer);
+
+    auto program = parser.parse_program();
+    ASSERT_NE(program, nullptr);
+    ASSERT_EQ(program->statements.size(), 1);
+
+    auto stmt = dynamic_cast<WhileStatement*>(program->statements[0].get());
+    ASSERT_NE(stmt, nullptr);
+
+    auto condition = dynamic_cast<InfixExpression*>(stmt->condition.get());
+    ASSERT_NE(condition, nullptr);
+    EXPECT_EQ(condition->left->to_string(), "x");
+    EXPECT_EQ(condition->token.literal, "<");
+    EXPECT_EQ(condition->right->to_string(), "y");
+
+    ASSERT_NE(stmt->body, nullptr);
+    ASSERT_EQ(stmt->body->statements.size(), 1);
+
+    auto body_stmt = dynamic_cast<ExpressionStatement*>(stmt->body->statements[0].get());
+    ASSERT_NE(body_stmt, nullptr);
+
+    EXPECT_EQ(body_stmt->expression->to_string(), "x");
+}
