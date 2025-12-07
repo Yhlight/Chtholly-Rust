@@ -6,7 +6,8 @@ This document outlines the development plan for the Chtholly programming languag
 
 - [ ] **Lexer & Parser:** Implement the lexical and syntactical analysis of the Chtholly language.
   - [x] **Lexer:** Implemented.
-- [ ] **AST (Abstract Syntax Tree):** Define and build the AST to represent the code's structure.
+  - [ ] **Parser:** In progress.
+- [x] **AST (Abstract Syntax Tree):** Define and build the AST to represent the code's structure.
 - [ ] **Basic Type System:** Implement support for basic types such as `i32`, `f64`, `bool`, `char`, and `string`.
 - [ ] **Variable Declarations:** Implement `let` (immutable) and `mut` (mutable) variable declarations.
 - [ ] **Basic Operators:** Implement arithmetic, comparison, and logical operators.

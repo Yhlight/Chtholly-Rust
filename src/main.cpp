@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "Lexer.h"
+#include "Parser.h"
+#include "ASTPrinter.h"
 #include "Token.h"
 
 int main(int argc, char* argv[]) {
@@ -25,10 +27,14 @@ int main(int argc, char* argv[]) {
     Chtholly::Lexer lexer(source);
     std::vector<Chtholly::Token> tokens = lexer.scanTokens();
 
-    for (const auto& token : tokens) {
-        std::cout << "Type: " << Chtholly::tokenTypeToString(token.type)
-                  << ", Lexeme: '" << token.lexeme << "'"
-                  << ", Line: " << token.line << std::endl;
+    Chtholly::Parser parser(tokens);
+    auto stmts = parser.parse();
+
+    Chtholly::ASTPrinter printer;
+    for (const auto& stmt : stmts) {
+        if (stmt) {
+            std::cout << printer.print(*stmt) << std::endl;
+        }
     }
 
     return 0;

@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(LLVM 18.1.8 REQUIRED CONFIG)
 
 # Chtholly Library
-add_library(chtholly_lib src/Lexer.cpp)
+add_library(chtholly_lib src/Lexer.cpp src/ASTPrinter.cpp src/Parser.cpp)
 
 target_link_libraries(chtholly_lib PRIVATE
     LLVMCore
@@ -34,7 +34,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(chtholly_tests tests/LexerTest.cpp)
+add_executable(chtholly_tests tests/LexerTest.cpp tests/ParserTest.cpp)
 
 target_link_libraries(chtholly_tests PRIVATE gtest_main chtholly_lib)
 
