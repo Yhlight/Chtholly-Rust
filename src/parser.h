@@ -13,7 +13,7 @@ public:
 private:
     void next_token();
     std::unique_ptr<Statement> parse_statement();
-    std::unique_ptr<LetStatement> parse_let_statement();
+    std::unique_ptr<VarDeclarationStatement> parse_var_declaration_statement();
     std::unique_ptr<Expression> parse_expression();
 
     Lexer& lexer_;

@@ -50,9 +50,10 @@ public:
     }
 };
 
-class LetStatement : public Statement {
+class VarDeclarationStatement : public Statement {
 public:
-    Token token; // The LET token
+    Token token; // The LET or MUT token
+    bool is_mutable;
     std::unique_ptr<Identifier> name;
     std::unique_ptr<Expression> value;
 

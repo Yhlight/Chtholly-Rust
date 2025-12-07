@@ -24,15 +24,16 @@ std::unique_ptr<Program> Parser::parse_program() {
 }
 
 std::unique_ptr<Statement> Parser::parse_statement() {
-    if (cur_token_.type == TokenType::LET) {
-        return parse_let_statement();
+    if (cur_token_.type == TokenType::LET || cur_token_.type == TokenType::MUT) {
+        return parse_var_declaration_statement();
     }
     return nullptr;
 }
 
-std::unique_ptr<LetStatement> Parser::parse_let_statement() {
-    auto stmt = std::make_unique<LetStatement>();
+std::unique_ptr<VarDeclarationStatement> Parser::parse_var_declaration_statement() {
+    auto stmt = std::make_unique<VarDeclarationStatement>();
     stmt->token = cur_token_;
+    stmt->is_mutable = cur_token_.type == TokenType::MUT;
 
     if (peek_token_.type != TokenType::IDENTIFIER) {
         return nullptr;

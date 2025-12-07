@@ -14,8 +14,8 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [ ] Borrowing
   - [ ] Move Semantics
 - [ ] **Variables:**
-  - [ ] Immutable variables (`let`)
-  - [ ] Mutable variables (`mut`)
+  - [x] Immutable variables (`let`)
+  - [x] Mutable variables (`mut`)
 - [ ] **Data Types:**
   - [ ] Integer types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`)
   - [ ] Floating-point types (`f32`, `f64`)
