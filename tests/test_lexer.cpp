@@ -2,7 +2,7 @@
 #include "lexer.h"
 
 TEST(LexerTest, NextToken) {
-    std::string code = "let five = 5;";
+    std::string code = "let five = 5; [ ] ,";
     Lexer lexer(code);
 
     std::vector<Token> expected_tokens = {
@@ -11,6 +11,9 @@ TEST(LexerTest, NextToken) {
         {TokenType::ASSIGN, "="},
         {TokenType::INTEGER, "5"},
         {TokenType::SEMICOLON, ";"},
+        {TokenType::LBRACKET, "["},
+        {TokenType::RBRACKET, "]"},
+        {TokenType::COMMA, ","},
         {TokenType::END_OF_FILE, ""},
     };
 

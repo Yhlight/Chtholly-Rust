@@ -51,6 +51,9 @@ Token Lexer::next_token() {
         case ')': return make_token(TokenType::RPAREN, ")");
         case '{': return make_token(TokenType::LBRACE, "{");
         case '}': return make_token(TokenType::RBRACE, "}");
+        case '[': return make_token(TokenType::LBRACKET, "[");
+        case ']': return make_token(TokenType::RBRACKET, "]");
+        case ',': return make_token(TokenType::COMMA, ",");
         case ':': return make_token(TokenType::COLON, ":");
         case ';': return make_token(TokenType::SEMICOLON, ";");
         default:  return make_token(TokenType::ILLEGAL, std::string(1, current_char));

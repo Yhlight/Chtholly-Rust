@@ -50,15 +50,30 @@ public:
     }
 };
 
+class Type : public Node {
+public:
+    Token token;
+    std::string name;
+
+    std::string to_string() const override {
+        return name;
+    }
+};
+
 class VarDeclarationStatement : public Statement {
 public:
     Token token; // The LET or MUT token
     bool is_mutable;
     std::unique_ptr<Identifier> name;
+    std::unique_ptr<Type> type;
     std::unique_ptr<Expression> value;
 
     std::string to_string() const override {
-        std::string out = token.literal + " " + name->to_string() + " = ";
+        std::string out = token.literal + " " + name->to_string();
+        if (type) {
+            out += ": " + type->to_string();
+        }
+        out += " = ";
         if (value) {
             out += value->to_string();
         }
@@ -74,6 +89,45 @@ public:
 
     std::string to_string() const override {
         return token.literal;
+    }
+};
+
+class BlockStatement : public Statement {
+public:
+    Token token; // The { token
+    std::vector<std::unique_ptr<Statement>> statements;
+
+    std::string to_string() const override {
+        std::string out;
+        for (const auto& s : statements) {
+            out += s->to_string();
+        }
+        return out;
+    }
+};
+
+class FunctionStatement : public Statement {
+public:
+    Token token; // The FN token
+    std::unique_ptr<Identifier> name;
+    std::vector<std::unique_ptr<Identifier>> parameters;
+    std::unique_ptr<Type> return_type;
+    std::unique_ptr<BlockStatement> body;
+
+    std::string to_string() const override {
+        std::string out = token.literal + " " + name->to_string() + "(";
+        for (size_t i = 0; i < parameters.size(); ++i) {
+            out += parameters[i]->to_string();
+            if (i < parameters.size() - 1) {
+                out += ", ";
+            }
+        }
+        out += ") ";
+        if (return_type) {
+            out += ": " + return_type->to_string();
+        }
+        out += " { " + body->to_string() + " }";
+        return out;
     }
 };
 

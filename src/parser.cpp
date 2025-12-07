@@ -27,6 +27,9 @@ std::unique_ptr<Statement> Parser::parse_statement() {
     if (cur_token_.type == TokenType::LET || cur_token_.type == TokenType::MUT) {
         return parse_var_declaration_statement();
     }
+    if (cur_token_.type == TokenType::FN) {
+        return parse_function_statement();
+    }
     return nullptr;
 }
 
@@ -45,6 +48,12 @@ std::unique_ptr<VarDeclarationStatement> Parser::parse_var_declaration_statement
     name->value = cur_token_.literal;
     stmt->name = std::move(name);
 
+    if (peek_token_.type == TokenType::COLON) {
+        next_token();
+        next_token();
+        stmt->type = parse_type();
+    }
+
     if (peek_token_.type != TokenType::ASSIGN) {
         return nullptr;
     }
@@ -59,6 +68,83 @@ std::unique_ptr<VarDeclarationStatement> Parser::parse_var_declaration_statement
     next_token();
 
     return stmt;
+}
+
+std::unique_ptr<FunctionStatement> Parser::parse_function_statement() {
+    auto func = std::make_unique<FunctionStatement>();
+    func->token = cur_token_;
+
+    if (peek_token_.type != TokenType::IDENTIFIER) {
+        return nullptr;
+    }
+    next_token();
+
+    auto name = std::make_unique<Identifier>();
+    name->token = cur_token_;
+    name->value = cur_token_.literal;
+    func->name = std::move(name);
+
+    if (peek_token_.type != TokenType::LPAREN) {
+        return nullptr;
+    }
+    next_token(); // consume '('
+
+    // TODO: Parse parameters
+    if (peek_token_.type != TokenType::RPAREN) {
+        // We have parameters, but we don't parse them yet.
+        // For now, we only support functions with no parameters.
+        return nullptr;
+    }
+    next_token(); // consume ')'
+
+    if (peek_token_.type == TokenType::COLON) {
+        next_token();
+        next_token();
+        func->return_type = parse_type();
+    }
+
+    if (peek_token_.type != TokenType::LBRACE) {
+        return nullptr;
+    }
+    next_token();
+
+    func->body = parse_block_statement();
+
+    return func;
+}
+
+std::unique_ptr<BlockStatement> Parser::parse_block_statement() {
+    auto block = std::make_unique<BlockStatement>();
+    block->token = cur_token_;
+
+    next_token();
+
+    while (cur_token_.type != TokenType::RBRACE && cur_token_.type != TokenType::END_OF_FILE) {
+        auto stmt = parse_statement();
+        if (stmt) {
+            block->statements.push_back(std::move(stmt));
+        }
+        next_token();
+    }
+
+    return block;
+}
+
+std::unique_ptr<Type> Parser::parse_type() {
+    auto type = std::make_unique<Type>();
+    type->token = cur_token_;
+    type->name = cur_token_.literal;
+    // Handle array types
+    if (peek_token_.type == TokenType::LBRACKET) {
+        next_token();
+        if (peek_token_.type != TokenType::RBRACKET) {
+            // TODO: handle static arrays
+            return nullptr;
+        }
+        next_token();
+        type->name += "[]";
+    }
+    return type;
 }
 
 std::unique_ptr<Expression> Parser::parse_expression() {
