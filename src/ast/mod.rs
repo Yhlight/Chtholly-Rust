@@ -47,6 +47,8 @@ pub enum Expression {
     Prefix(PrefixExpression),
     Infix(InfixExpression),
     If(IfExpression),
+    FunctionLiteral(FunctionLiteral),
+    Call(CallExpression),
 }
 
 impl Node for Expression {
@@ -60,6 +62,8 @@ impl Node for Expression {
             Expression::Prefix(p) => p.token_literal(),
             Expression::Infix(i) => i.token_literal(),
             Expression::If(i) => i.token_literal(),
+            Expression::FunctionLiteral(f) => f.token_literal(),
+            Expression::Call(c) => c.token_literal(),
         }
     }
     fn string(&self) -> String {
@@ -72,6 +76,8 @@ impl Node for Expression {
             Expression::Prefix(p) => p.string(),
             Expression::Infix(i) => i.string(),
             Expression::If(i) => i.string(),
+            Expression::FunctionLiteral(f) => f.string(),
+            Expression::Call(c) => c.string(),
         }
     }
 }
@@ -315,5 +321,51 @@ impl Node for IfExpression {
             s.push_str(&alt.string());
         }
         s
+    }
+}
+
+/// Represents a function literal, like `fn(x, y) { x + y; }`
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionLiteral {
+    pub token: Token, // The 'fn' token
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl Node for FunctionLiteral {
+    fn token_literal(&self) -> String {
+        "fn".to_string()
+    }
+    fn string(&self) -> String {
+        let params = self
+            .parameters
+            .iter()
+            .map(|p| p.string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        format!("fn({}) {}", params, self.body.string())
+    }
+}
+
+/// Represents a call expression, like `myFunction(1, 2)`
+#[derive(Debug, PartialEq, Clone)]
+pub struct CallExpression {
+    pub token: Token, // The '(' token
+    pub function: Box<Expression>, // Identifier or FunctionLiteral
+    pub arguments: Vec<Expression>,
+}
+
+impl Node for CallExpression {
+    fn token_literal(&self) -> String {
+        self.token.to_string()
+    }
+    fn string(&self) -> String {
+        let args = self
+            .arguments
+            .iter()
+            .map(|a| a.string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        format!("{}({})", self.function.string(), args)
     }
 }
