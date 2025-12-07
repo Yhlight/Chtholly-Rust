@@ -46,11 +46,13 @@ statement = {
 
 expression_statement = { expression ~ ";" }
 
-expression = { comparison }
+expression = { logical_or }
+logical_or = { logical_and ~ (or_op ~ logical_and)* }
+logical_and = { comparison ~ (and_op ~ comparison)* }
 comparison = { term ~ ( (eq_op | neq_op | lt_op | gt_op | lte_op | gte_op) ~ term )* }
 term = { factor ~ ( (add_op | sub_op) ~ factor )* }
 factor = { unary ~ ( (mul_op | div_op | mod_op) ~ unary )* }
-unary = { primary } // Placeholder for future unary operators
+unary = { not_op? ~ primary }
 primary = { integer | string | function_call | ident | "(" ~ expression ~ ")" }
 
 add_op = { "+" }
@@ -65,6 +67,10 @@ lt_op = { "<" }
 gt_op = { ">" }
 lte_op = { "<=" }
 gte_op = { ">=" }
+
+not_op = { "!" }
+and_op = { "&&" }
+or_op = { "||" }
 
 function_call = { ident ~ "(" ~ argument_list? ~ ")" }
 argument_list = { expression ~ ("," ~ expression)* }

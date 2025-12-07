@@ -1,8 +1,8 @@
    Compiling chtholly_compiler v0.1.0 (/app)
 warning: use of deprecated method `inkwell::types::BasicType::ptr_type`: Starting from version 15.0, LLVM doesn't differentiate between pointer types. Use Context::ptr_type instead.
-   --> src/codegen.rs:241:29
+   --> src/codegen.rs:250:29
     |
-241 |                  inner_type.ptr_type(addr_space).into()
+250 |                  inner_type.ptr_type(addr_space).into()
     |                             ^^^^^^^^
     |
     = note: `#[warn(deprecated)]` on by default
@@ -19,13 +19,13 @@ warning: field `is_mutable` is never read
    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: `chtholly_compiler` (bin "chtholly_compiler") generated 2 warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.81s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.86s
      Running `target/debug/chtholly_compiler test.cns`
 正在编译文件：test.cns
 --- 源代码 ---
 fn main(args: string[]): Result<i32, SystemError>
 {
-    let a: i32 = 10 > 5;
+    let a: i32 = 10 > 5 && !(1 > 2);
 }
 
 -------------------
@@ -67,13 +67,28 @@ Program {
                         ),
                         initializer: Some(
                             BinaryExpression {
-                                op: GreaterThan,
-                                left: IntegerLiteral(
-                                    10,
-                                ),
-                                right: IntegerLiteral(
-                                    5,
-                                ),
+                                op: LogicalAnd,
+                                left: BinaryExpression {
+                                    op: GreaterThan,
+                                    left: IntegerLiteral(
+                                        10,
+                                    ),
+                                    right: IntegerLiteral(
+                                        5,
+                                    ),
+                                },
+                                right: UnaryExpression {
+                                    op: Not,
+                                    operand: BinaryExpression {
+                                        op: GreaterThan,
+                                        left: IntegerLiteral(
+                                            1,
+                                        ),
+                                        right: IntegerLiteral(
+                                            2,
+                                        ),
+                                    },
+                                },
                             },
                         ),
                     },

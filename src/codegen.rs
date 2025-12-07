@@ -198,8 +198,17 @@ impl<'ctx> CodeGen<'ctx> {
                     ast::BinaryOperator::GreaterThan => self.builder.build_int_compare(IntPredicate::SGT, left, right, "gttmp").unwrap().into(),
                     ast::BinaryOperator::LessThanOrEqual => self.builder.build_int_compare(IntPredicate::SLE, left, right, "letmp").unwrap().into(),
                     ast::BinaryOperator::GreaterThanOrEqual => self.builder.build_int_compare(IntPredicate::SGE, left, right, "getmp").unwrap().into(),
+                    ast::BinaryOperator::LogicalAnd => self.builder.build_and(left, right, "andtmp").unwrap().into(),
+                    ast::BinaryOperator::LogicalOr => self.builder.build_or(left, right, "ortmp").unwrap().into(),
                 };
                 Ok(result)
+            }
+            ast::Expression::UnaryExpression { op, operand } => {
+                let operand = self.codegen_expression(operand)?.into_int_value();
+                let result = match op {
+                    ast::UnaryOperator::Not => self.builder.build_int_compare(IntPredicate::EQ, operand, self.context.bool_type().const_int(0, false), "nottmp").unwrap(),
+                };
+                Ok(result.into())
             }
             ast::Expression::FunctionCall { name, args } => {
                  let callee = self.module.get_function(name).ok_or(format!("Function '{}' not found in module", name))

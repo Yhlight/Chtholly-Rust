@@ -53,6 +53,13 @@ pub enum BinaryOperator {
     GreaterThan,
     LessThanOrEqual,
     GreaterThanOrEqual,
+    LogicalAnd,
+    LogicalOr,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum UnaryOperator {
+    Not,
 }
 
 #[derive(Debug, PartialEq)]
@@ -68,5 +75,9 @@ pub enum Expression {
         op: BinaryOperator,
         left: Box<Expression>,
         right: Box<Expression>,
+    },
+    UnaryExpression {
+        op: UnaryOperator,
+        operand: Box<Expression>,
     },
 }
