@@ -1,0 +1,15 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.out
+
+# IDE files
+.vscode/
+.idea/
+
+# Other
+*.log
