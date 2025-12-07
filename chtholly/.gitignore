@@ -1,0 +1,16 @@
+# Rust
+/target
+
+# Binaries
+*.exe
+*.o
+*.so
+*.a
+*.dll
+
+# IDEs
+.idea/
+.vscode/
+
+# OS
+.DS_Store
