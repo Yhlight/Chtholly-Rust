@@ -1,6 +1,6 @@
 ## Chtholly 珂朵莉
 
-Chtholly是一门基于C++17 + LLVM实现的编程语言，Chtholly以简洁，高性能，编译期安全为特征。
+Chtholly是一门基于Rust + LLVM实现的编程语言，Chtholly以简洁，高性能，编译期安全为特征。
 
 Chtholly遵循零成本抽象以及运行时极简原则，尽可能把事情交给编译期进行。
 
