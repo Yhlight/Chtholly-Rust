@@ -123,11 +123,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
-        let mut left = match self.current_token.clone() {
-            Token::Identifier(s) => Expression::Identifier(s),
-            Token::Integer(i) => Expression::IntegerLiteral(i),
-            _ => return None,
-        };
+        let mut left = match self.current_token {
+            Token::Identifier(_)
+            | Token::Integer(_)
+            | Token::True
+            | Token::False
+            | Token::Bang
+            | Token::Minus => self.parse_prefix_expression(),
+            _ => None,
+        }?;
 
         while !self.peek_token_is(Token::Semicolon) && precedence < self.peek_precedence() {
             self.next_token();
@@ -135,6 +139,22 @@ impl<'a> Parser<'a> {
         }
 
         Some(left)
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<Expression> {
+        match self.current_token.clone() {
+            Token::Identifier(s) => Some(Expression::Identifier(s)),
+            Token::Integer(i) => Some(Expression::IntegerLiteral(i)),
+            Token::True => Some(Expression::BooleanLiteral(true)),
+            Token::False => Some(Expression::BooleanLiteral(false)),
+            Token::Bang | Token::Minus => {
+                let token = self.current_token.clone();
+                self.next_token();
+                let right = self.parse_expression(Precedence::Prefix)?;
+                Some(Expression::Prefix(token, Box::new(right)))
+            }
+            _ => None,
+        }
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -189,10 +209,13 @@ fn token_to_precedence(token: &Token) -> Precedence {
         Token::NotEqual => Precedence::Equals,
         Token::LessThan => Precedence::LessGreater,
         Token::GreaterThan => Precedence::LessGreater,
+        Token::LessThanOrEqual => Precedence::LessGreater,
+        Token::GreaterThanOrEqual => Precedence::LessGreater,
         Token::Plus => Precedence::Sum,
         Token::Minus => Precedence::Sum,
         Token::Slash => Precedence::Product,
         Token::Asterisk => Precedence::Product,
+        Token::Percent => Precedence::Product,
         Token::LParen => Precedence::Call,
         _ => Precedence::Lowest,
     }

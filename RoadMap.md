@@ -4,15 +4,15 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 1: Basic Compiler Infrastructure
 
-*   [ ] Set up the basic project structure.
-*   [ ] Implement the lexer to tokenize the source code.
-*   [ ] Implement the parser to build the Abstract Syntax Tree (AST).
-*   [ ] Implement the code generator to produce LLVM IR.
+*   [x] Set up the basic project structure.
+*   [x] Implement the lexer to tokenize the source code.
+*   [x] Implement the parser to build the Abstract Syntax Tree (AST).
+*   [x] Implement the code generator to produce LLVM IR.
 *   [ ] Implement basic data types: `i32`, `f64`, `char`, `bool`, `string`.
 *   [ ] Implement basic operators: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `>`, `>=`, `<`, `<=`.
 *   [ ] Implement basic control flow: `if-else`.
 *   [ ] Implement basic functions.
-*   [ ] Add unit tests for all implemented features.
+*   [x] Add unit tests for all implemented features.
 
 ## Phase 2: Advanced Language Features
 

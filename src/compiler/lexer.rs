@@ -124,8 +124,28 @@ impl<'a> Lexer<'a> {
                     Token::Equal
                 }
             }
-            b'+' => Token::Plus,
-            b'-' => Token::Minus,
+            b'+' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::PlusEqual
+                } else if self.peek_char() == b'+' {
+                    self.read_char();
+                    Token::PlusPlus
+                } else {
+                    Token::Plus
+                }
+            }
+            b'-' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::MinusEqual
+                } else if self.peek_char() == b'-' {
+                    self.read_char();
+                    Token::MinusMinus
+                } else {
+                    Token::Minus
+                }
+            }
             b'!' => {
                 if self.peek_char() == b'=' {
                     self.read_char();
@@ -134,12 +154,37 @@ impl<'a> Lexer<'a> {
                     Token::Bang
                 }
             }
-            b'*' => Token::Asterisk,
-            b'/' => Token::Slash,
+            b'*' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::AsteriskEqual
+                } else {
+                    Token::Asterisk
+                }
+            }
+            b'/' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::SlashEqual
+                } else {
+                    Token::Slash
+                }
+            }
+            b'%' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::PercentEqual
+                } else {
+                    Token::Percent
+                }
+            }
             b'<' => {
                 if self.peek_char() == b'=' {
                     self.read_char();
                     Token::LessThanOrEqual
+                } else if self.peek_char() == b'<' {
+                    self.read_char();
+                    Token::LeftShift
                 } else {
                     Token::LessThan
                 }
@@ -148,10 +193,31 @@ impl<'a> Lexer<'a> {
                 if self.peek_char() == b'=' {
                     self.read_char();
                     Token::GreaterThanOrEqual
+                } else if self.peek_char() == b'>' {
+                    self.read_char();
+                    Token::RightShift
                 } else {
                     Token::GreaterThan
                 }
             }
+            b'&' => {
+                if self.peek_char() == b'&' {
+                    self.read_char();
+                    Token::AmpersandAmpersand
+                } else {
+                    Token::Ampersand
+                }
+            }
+            b'|' => {
+                if self.peek_char() == b'|' {
+                    self.read_char();
+                    Token::PipePipe
+                } else {
+                    Token::Pipe
+                }
+            }
+            b'^' => Token::Caret,
+            b'~' => Token::Tilde,
             b';' => Token::Semicolon,
             b'(' => Token::LParen,
             b')' => Token::RParen,
