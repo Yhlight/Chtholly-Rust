@@ -6,7 +6,9 @@ fn main() {
     let code = r#"
         fn main() {
             let a: i32 = 10;
-            let mut b = 20;
+            let b: f64 = 3.14;
+            let c: bool = true;
+            let d: string = "hello";
         }
     "#;
 

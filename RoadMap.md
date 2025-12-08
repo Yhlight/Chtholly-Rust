@@ -10,7 +10,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [x] Basic LLVM integration.
     - [x] Main function compilation.
     - [x] Variable declarations (let, let mut).
-    - [ ] Basic types (i32, f64, bool, string).
+    - [x] Basic types (i32, f64, bool, string).
 - [x] **Basic Syntax:**
     - [x] Comments (single-line and multi-line).
     - [x] Main function definition.

@@ -1,4 +1,4 @@
-use crate::ast::ASTNode;
+use crate::ast::{ASTNode, Type};
 use crate::lexer::{Lexer, Token};
 use std::iter::Peekable;
 use std::slice::Iter;
@@ -101,11 +101,7 @@ impl<'a> Parser<'a> {
 
         let type_annotation = if tokens.peek() == Some(&&Token::Colon) {
             tokens.next();
-            if let Some(Token::Identifier(type_name)) = tokens.next() {
-                Some(type_name.clone())
-            } else {
-                None
-            }
+            self.parse_type(tokens)
         } else {
             None
         };
@@ -129,9 +125,27 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_type(&self, tokens: &mut Peekable<Iter<Token>>) -> Option<Type> {
+        if let Some(Token::Identifier(type_name)) = tokens.next() {
+            match type_name.as_str() {
+                "i32" => Some(Type::I32),
+                "f64" => Some(Type::F64),
+                "bool" => Some(Type::Bool),
+                "string" => Some(Type::String),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     fn parse_expression(&self, tokens: &mut Peekable<Iter<Token>>) -> Option<ASTNode> {
         match tokens.next() {
             Some(Token::IntegerLiteral(value)) => Some(ASTNode::IntegerLiteral(*value)),
+            Some(Token::FloatLiteral(value)) => Some(ASTNode::FloatLiteral(*value)),
+            Some(Token::StringLiteral(value)) => Some(ASTNode::StringLiteral(value.clone())),
+            Some(Token::True) => Some(ASTNode::BoolLiteral(true)),
+            Some(Token::False) => Some(ASTNode::BoolLiteral(false)),
             _ => None,
         }
     }

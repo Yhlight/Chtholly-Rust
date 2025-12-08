@@ -6,8 +6,12 @@ pub enum Token {
     Fn,
     Let,
     Mut,
+    True,
+    False,
     Identifier(String),
     IntegerLiteral(i64),
+    FloatLiteral(f64),
+    StringLiteral(String),
     LParen,
     RParen,
     LBrace,
@@ -50,6 +54,17 @@ impl<'a> Iterator for Lexer<'a> {
             ',' => Some(Token::Comma),
             '=' => Some(Token::Assign),
             ';' => Some(Token::Semicolon),
+            '"' => {
+                let mut string = String::new();
+                while let Some(&c) = self.input.peek() {
+                    if c == '"' {
+                        break;
+                    }
+                    string.push(self.input.next().unwrap());
+                }
+                self.input.next(); // Consume the closing quote
+                Some(Token::StringLiteral(string))
+            }
             '-' if self.input.peek() == Some(&'>') => {
                 self.input.next();
                 Some(Token::Arrow)
@@ -85,6 +100,8 @@ impl<'a> Iterator for Lexer<'a> {
                     "fn" => Some(Token::Fn),
                     "let" => Some(Token::Let),
                     "mut" => Some(Token::Mut),
+                    "true" => Some(Token::True),
+                    "false" => Some(Token::False),
                     _ => Some(Token::Identifier(identifier)),
                 }
             }
@@ -92,12 +109,16 @@ impl<'a> Iterator for Lexer<'a> {
                 let mut number = String::new();
                 number.push(c);
                 while let Some(&c) = self.input.peek() {
-                    if !c.is_digit(10) {
+                    if !c.is_digit(10) && c != '.' {
                         break;
                     }
                     number.push(self.input.next().unwrap());
                 }
-                Some(Token::IntegerLiteral(number.parse().unwrap()))
+                if number.contains('.') {
+                    Some(Token::FloatLiteral(number.parse().unwrap()))
+                } else {
+                    Some(Token::IntegerLiteral(number.parse().unwrap()))
+                }
             }
             _ => Some(Token::Unknown(c)),
         }

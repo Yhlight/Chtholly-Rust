@@ -6,7 +6,9 @@ pub mod compiler;
 #[cfg(test)]
 mod tests {
     use crate::parser::Parser;
-    use crate::ast::ASTNode;
+    use crate::compiler::Compiler;
+    use crate::ast::{ASTNode, Type};
+    use inkwell::context::Context;
 
     #[test]
     fn test_parse_comment_and_function() {
@@ -51,7 +53,7 @@ mod tests {
                         ASTNode::VariableDeclaration {
                             is_mutable: false,
                             name: "a".to_string(),
-                            type_annotation: Some("i32".to_string()),
+                            type_annotation: Some(Type::I32),
                             value: Some(Box::new(ASTNode::IntegerLiteral(10))),
                         },
                         ASTNode::VariableDeclaration {
@@ -64,5 +66,65 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn test_parse_new_literal_types() {
+        let code = r#"
+            fn main() {
+                let a: f64 = 3.14;
+                let b: bool = true;
+                let c: string = "hello";
+            }
+        "#;
+        let parser = Parser::new(code);
+        let ast = parser.parse();
+
+        assert_eq!(
+            ast,
+            vec![
+                ASTNode::Function {
+                    name: "main".to_string(),
+                    args: vec![],
+                    body: vec![
+                        ASTNode::VariableDeclaration {
+                            is_mutable: false,
+                            name: "a".to_string(),
+                            type_annotation: Some(Type::F64),
+                            value: Some(Box::new(ASTNode::FloatLiteral(3.14))),
+                        },
+                        ASTNode::VariableDeclaration {
+                            is_mutable: false,
+                            name: "b".to_string(),
+                            type_annotation: Some(Type::Bool),
+                            value: Some(Box::new(ASTNode::BoolLiteral(true))),
+                        },
+                        ASTNode::VariableDeclaration {
+                            is_mutable: false,
+                            name: "c".to_string(),
+                            type_annotation: Some(Type::String),
+                            value: Some(Box::new(ASTNode::StringLiteral("hello".to_string()))),
+                        },
+                    ],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_compile_variable_declaration_with_type_inference() {
+        let code = r#"
+            fn main() {
+                let a = 10;
+            }
+        "#;
+        let parser = Parser::new(code);
+        let ast = parser.parse();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        let result = compiler.compile(&ast);
+
+        assert!(result.is_ok());
     }
 }
