@@ -11,6 +11,7 @@ TEST(LexerTest, NextToken) {
          */
         let result = five + ten;
         true false if else while for ++ --
+        "hello world"
     )";
     Lexer lexer(code);
 
@@ -40,6 +41,7 @@ TEST(LexerTest, NextToken) {
         {TokenType::FOR, "for"},
         {TokenType::INC, "++"},
         {TokenType::DEC, "--"},
+        {TokenType::STRING, "hello world"},
         {TokenType::END_OF_FILE, ""},
     };
 

@@ -76,6 +76,17 @@ Token Lexer::next_token() {
             return make_token(TokenType::BANG, "!");
         case '<': return make_token(TokenType::LT, "<");
         case '>': return make_token(TokenType::GT, ">");
+        case '"': {
+            std::string literal;
+            while (pos_ < code_.length() && peek() != '"') {
+                literal += advance();
+            }
+            if (peek() == '"') {
+                advance(); // consume the closing quote
+                return make_token(TokenType::STRING, literal);
+            }
+            return make_token(TokenType::ILLEGAL, literal); // Unterminated string
+        }
         case '(': return make_token(TokenType::LPAREN, "(");
         case ')': return make_token(TokenType::RPAREN, ")");
         case '{': return make_token(TokenType::LBRACE, "{");

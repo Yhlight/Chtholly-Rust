@@ -92,6 +92,16 @@ public:
     }
 };
 
+class StringLiteral : public Expression {
+public:
+    Token token;
+    std::string value;
+
+    std::string to_string() const override {
+        return token.literal;
+    }
+};
+
 class PrefixExpression : public Expression {
 public:
     Token token; // The operator token, e.g., !

@@ -32,7 +32,7 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [x] Logical operators (`!`)
   - [ ] Bitwise operators (`&`, `|`, `^`, `~`, `<<`, `>>`)
   - [ ] Assignment operators (`=`, `+=`, `-=`, `*=`, `/=`, `%=`)
-  - [ ] Increment and decrement operators (`++`, `--`)
+  - [x] Increment and decrement operators (`++`, `--`)
 - [ ] **Functions:**
   - [x] Function definition
   - [x] Function calls
@@ -41,7 +41,7 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [x] `if-else` statements
   - [ ] `switch-case` statements
   - [x] `while` loops
-  - [ ] `for` loops
+  - [x] `for` loops
   - [ ] `foreach` loops
   - [ ] `do-while` loops
 - [ ] **Error Handling:**

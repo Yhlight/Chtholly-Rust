@@ -198,6 +198,23 @@ TEST(ExpressionParserTest, CallExpression) {
     EXPECT_EQ(exp->arguments[2]->to_string(), "(4 + 5)");
 }
 
+TEST(ExpressionParserTest, StringLiteralExpression) {
+    std::string code = R"("hello world";)";
+    Lexer lexer(code);
+    Parser parser(lexer);
+
+    auto program = parser.parse_program();
+    ASSERT_NE(program, nullptr);
+    ASSERT_EQ(program->statements.size(), 1);
+
+    auto stmt = dynamic_cast<ExpressionStatement*>(program->statements[0].get());
+    ASSERT_NE(stmt, nullptr);
+
+    auto literal = dynamic_cast<StringLiteral*>(stmt->expression.get());
+    ASSERT_NE(literal, nullptr);
+    EXPECT_EQ(literal->value, "hello world");
+}
+
 TEST(ExpressionParserTest, PostfixExpressions) {
     std::vector<std::tuple<std::string, std::string, std::string>> tests = {
         {"i++;", "i", "++"},

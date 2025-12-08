@@ -312,6 +312,11 @@ std::unique_ptr<Expression> Parser::parse_expression(Precedence precedence) {
         lit->token = cur_token_;
         lit->value = std::stoll(cur_token_.literal);
         left_exp = std::move(lit);
+    } else if (cur_token_.type == TokenType::STRING) {
+        auto lit = std::make_unique<StringLiteral>();
+        lit->token = cur_token_;
+        lit->value = cur_token_.literal;
+        left_exp = std::move(lit);
     } else if (cur_token_.type == TokenType::TRUE || cur_token_.type == TokenType::FALSE) {
         auto bool_lit = std::make_unique<BooleanLiteral>();
         bool_lit->token = cur_token_;
