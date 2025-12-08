@@ -45,9 +45,49 @@ impl<'ctx> Compiler<'ctx> {
                 self.compile_expr(expr)?;
                 Ok(())
             }
+            Stmt::If(cond, then_block, else_block) => {
+                self.compile_if(cond, then_block, else_block.as_deref())
+            }
         }
     }
 
+    fn compile_block(&mut self, stmts: &[Stmt]) -> Result<(), &'static str> {
+        for stmt in stmts {
+            self.compile_stmt(stmt)?;
+        }
+        Ok(())
+    }
+
+    fn compile_if(
+        &mut self,
+        cond: &Expr,
+        then_block: &[Stmt],
+        else_block: Option<&[Stmt]>,
+    ) -> Result<(), &'static str> {
+        let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+        let cond = self.compile_expr(cond)?.into_int_value();
+        let then_bb = self.context.append_basic_block(function, "then");
+        let else_bb = self.context.append_basic_block(function, "else");
+        let merge_bb = self.context.append_basic_block(function, "merge");
+
+        self.builder
+            .build_conditional_branch(cond, then_bb, else_bb)
+            .map_err(|_| "Failed to build conditional branch")?;
+
+        self.builder.position_at_end(then_bb);
+        self.compile_block(then_block)?;
+        self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
+
+        self.builder.position_at_end(else_bb);
+        if let Some(else_block) = else_block {
+            self.compile_block(else_block)?;
+        }
+        self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
+
+        self.builder.position_at_end(merge_bb);
+        Ok(())
+    }
     /// Compiles an `Expr` into an LLVM value.
     pub fn compile_expr(&self, expr: &Expr) -> Result<BasicValueEnum<'ctx>, &'static str> {
         match expr {

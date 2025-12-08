@@ -108,7 +108,27 @@ pub fn parser() -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> {
         .then_ignore(just(Token::Semicolon))
         .map(Stmt::Expr);
 
-    let stmt = let_stmt.or(expr_stmt);
+    let stmt = recursive(|stmt| {
+        let block = stmt
+            .repeated()
+            .delimited_by(just(Token::LBrace), just(Token::RBrace));
+
+        let if_stmt = recursive(|if_stmt_parser| {
+            just(Token::If)
+                .ignore_then(expr.clone().delimited_by(just(Token::LParen), just(Token::RParen)))
+                .then(block.clone())
+                .then(
+                    just(Token::Else)
+                        .ignore_then(block.clone().or(if_stmt_parser.map(|s| vec![s])))
+                        .or_not(),
+                )
+                .map(|((cond, then_block), else_block)| {
+                    Stmt::If(Box::new(cond), then_block, else_block)
+                })
+        });
+
+        let_stmt.or(expr_stmt).or(if_stmt)
+    });
 
     stmt.repeated().then_ignore(end())
 }
@@ -203,6 +223,70 @@ mod tests {
                     BinaryOp::And,
                     Box::new(Expr::Literal(Literal::Bool(false))),
                 ),
+            )],
+        );
+    }
+
+    #[test]
+    fn test_if_statement() {
+        parse_test_helper(
+            "if (true) { let x = 1; }",
+            vec![Stmt::If(
+                Box::new(Expr::Literal(Literal::Bool(true))),
+                vec![Stmt::Let(
+                    "x".to_string(),
+                    false,
+                    Expr::Literal(Literal::Int(1)),
+                )],
+                None,
+            )],
+        );
+    }
+
+    #[test]
+    fn test_if_else_statement() {
+        parse_test_helper(
+            "if (true) { let x = 1; } else { let y = 2; }",
+            vec![Stmt::If(
+                Box::new(Expr::Literal(Literal::Bool(true))),
+                vec![Stmt::Let(
+                    "x".to_string(),
+                    false,
+                    Expr::Literal(Literal::Int(1)),
+                )],
+                Some(vec![Stmt::Let(
+                    "y".to_string(),
+                    false,
+                    Expr::Literal(Literal::Int(2)),
+                )]),
+            )],
+        );
+    }
+
+    #[test]
+    fn test_if_else_if_statement() {
+        parse_test_helper(
+            "if (true) { let x = 1; } else if (false) { let y = 2; } else { let z = 3; }",
+            vec![Stmt::If(
+                Box::new(Expr::Literal(Literal::Bool(true))),
+                vec![Stmt::Let(
+                    "x".to_string(),
+                    false,
+                    Expr::Literal(Literal::Int(1)),
+                )],
+                Some(vec![Stmt::If(
+                    Box::new(Expr::Literal(Literal::Bool(false))),
+                    vec![Stmt::Let(
+                        "y".to_string(),
+                        false,
+                        Expr::Literal(Literal::Int(2)),
+                    )],
+                    Some(vec![Stmt::Let(
+                        "z".to_string(),
+                        false,
+                        Expr::Literal(Literal::Int(3)),
+                    )]),
+                )]),
             )],
         );
     }

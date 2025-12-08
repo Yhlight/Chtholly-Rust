@@ -2,6 +2,7 @@
 pub enum Stmt {
     Let(String, bool, Expr), // name, is_mutable, value
     Expr(Expr),
+    If(Box<Expr>, Vec<Stmt>, Option<Vec<Stmt>>), // condition, then_block, else_block
 }
 
 #[derive(Debug, PartialEq, Clone)]

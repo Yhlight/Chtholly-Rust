@@ -15,7 +15,7 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 2: Control Flow and Functions
 
-- [ ] **`if-else` Statements:** Implement conditional branching.
+- [x] **`if-else` Statements:** Implement conditional branching.
 - [ ] **`switch-case` Statements:** Implement switch-case control flow.
 - [ ] **Looping Constructs:**
     - [ ] `while` loops
