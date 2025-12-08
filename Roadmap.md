@@ -19,7 +19,9 @@ This document outlines the development plan for the Chtholly programming languag
   - [ ] Code Generation
 - [x] **Operators:** Implement standard arithmetic, comparison, and logical operators.
   - [x] Parsing
-  - [x] Code Generation
+  - [x] Code Generation (Arithmetic)
+  - [x] Code Generation (Comparison)
+  - [ ] Code Generation (Logical)
 - [In Progress] **Functions:** Basic function definition and invocation.
   - [x] Parsing
   - [ ] Code Generation

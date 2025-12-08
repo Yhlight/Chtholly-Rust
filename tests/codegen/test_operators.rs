@@ -1,6 +1,6 @@
-use app::codegen::Compiler;
-use app::lexer::Lexer;
-use app::parser::Parser;
+use chtholly::codegen::Compiler;
+use chtholly::lexer::Lexer;
+use chtholly::parser::Parser;
 use inkwell::context::Context;
 
 #[test]
@@ -58,4 +58,37 @@ fn test_arithmetic_with_variables() {
     assert!(ir.contains("load i32, ptr %x"));
     assert!(ir.contains("load i32, ptr %y"));
     assert!(ir.contains("add i32"));
+}
+
+#[test]
+fn test_comparison_operators() {
+    let tests = vec![
+        ("let a = 5 == 5;", "store i1 true, ptr %a"),
+        ("let a = 5 != 10;", "store i1 true, ptr %a"),
+        ("let a = 2 < 8;", "store i1 true, ptr %a"),
+        ("let a = 10 > 5;", "store i1 true, ptr %a"),
+        ("let a = 5 == 6;", "store i1 false, ptr %a"),
+        ("let a = 5 != 5;", "store i1 false, ptr %a"),
+        ("let a = 8 < 2;", "store i1 false, ptr %a"),
+        ("let a = 5 > 10;", "store i1 false, ptr %a"),
+    ];
+
+    for (input, expected_ir) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        compiler.compile_program(program);
+
+        let ir = compiler.module.print_to_string().to_string();
+        assert!(
+            ir.contains(expected_ir),
+            "Failed on input '{}'. Expected to find '{}'. IR was:\n{}",
+            input,
+            expected_ir,
+            ir
+        );
+    }
 }

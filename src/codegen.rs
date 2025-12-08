@@ -2,6 +2,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::PointerValue;
+use inkwell::IntPredicate;
 use std::collections::HashMap;
 
 use crate::ast::{Expression, Identifier, InfixOperator, Literal, Program, Statement};
@@ -70,11 +71,9 @@ impl<'ctx> Compiler<'ctx> {
         let name = identifier.0;
         let value = self.compile_expression(expression);
 
-        let i32_type = self.context.i32_type();
-        let alloca = self.builder.build_alloca(i32_type, &name).unwrap();
-        self.builder
-            .build_store(alloca, value.into_int_value())
-            .unwrap();
+        let ty = value.get_type();
+        let alloca = self.builder.build_alloca(ty, &name).unwrap();
+        self.builder.build_store(alloca, value).unwrap();
         self.variables.insert(
             name,
             Variable {
@@ -93,9 +92,8 @@ impl<'ctx> Compiler<'ctx> {
             Expression::Identifier(identifier) => {
                 let name = identifier.0;
                 let variable = self.variables.get(&name).unwrap();
-                self.builder
-                    .build_load(self.context.i32_type(), variable.ptr, &name)
-                    .unwrap()
+                let ty = self.context.i32_type();
+                self.builder.build_load(ty, variable.ptr, &name).unwrap()
             }
             Expression::Infix(left, op, right) => {
                 if op == InfixOperator::Assign {
@@ -113,7 +111,7 @@ impl<'ctx> Compiler<'ctx> {
                     let value = self.compile_expression(*right);
 
                     self.builder
-                        .build_store(variable.ptr, value.into_int_value())
+                        .build_store(variable.ptr, value)
                         .unwrap();
                     return value;
                 }
@@ -126,6 +124,10 @@ impl<'ctx> Compiler<'ctx> {
                     InfixOperator::Minus => self.builder.build_int_sub(left_val, right_val, "subtmp").unwrap(),
                     InfixOperator::Multiply => self.builder.build_int_mul(left_val, right_val, "multmp").unwrap(),
                     InfixOperator::Divide => self.builder.build_int_signed_div(left_val, right_val, "divtmp").unwrap(),
+                    InfixOperator::Equal => self.builder.build_int_compare(IntPredicate::EQ, left_val, right_val, "eqtmp").unwrap(),
+                    InfixOperator::NotEqual => self.builder.build_int_compare(IntPredicate::NE, left_val, right_val, "netmp").unwrap(),
+                    InfixOperator::LessThan => self.builder.build_int_compare(IntPredicate::SLT, left_val, right_val, "lttmp").unwrap(),
+                    InfixOperator::GreaterThan => self.builder.build_int_compare(IntPredicate::SGT, left_val, right_val, "gttmp").unwrap(),
                     _ => unimplemented!(),
                 };
 
@@ -138,6 +140,7 @@ impl<'ctx> Compiler<'ctx> {
     fn compile_literal(&mut self, literal: Literal) -> inkwell::values::BasicValueEnum<'ctx> {
         match literal {
             Literal::Integer(value) => self.context.i32_type().const_int(value as u64, false).into(),
+            Literal::Boolean(value) => self.context.bool_type().const_int(value as u64, false).into(),
             _ => unimplemented!(),
         }
     }

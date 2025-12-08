@@ -1,6 +1,6 @@
-use app::codegen::Compiler;
-use app::lexer::Lexer;
-use app::parser::Parser;
+use chtholly::codegen::Compiler;
+use chtholly::lexer::Lexer;
+use chtholly::parser::Parser;
 use inkwell::context::Context;
 
 #[test]

@@ -1,8 +1,8 @@
 use std::fs;
 use inkwell::context::Context;
-use app::lexer::Lexer;
-use app::parser::Parser;
-use app::codegen::Compiler;
+use chtholly::lexer::Lexer;
+use chtholly::parser::Parser;
+use chtholly::codegen::Compiler;
 
 fn main() {
     let input = fs::read_to_string("input.cns").expect("Something went wrong reading the file");
