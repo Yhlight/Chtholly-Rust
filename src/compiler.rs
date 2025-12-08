@@ -2,9 +2,10 @@ use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::{FunctionValue, PointerValue, BasicValueEnum};
+use inkwell::{IntPredicate, FloatPredicate};
 use std::collections::HashMap;
 use thiserror::Error;
-use crate::ast::{ASTNode, Type};
+use crate::ast::{ASTNode, Type, BinaryOperator};
 
 #[derive(Debug, Error)]
 pub enum CompileError {
@@ -12,6 +13,8 @@ pub enum CompileError {
     BuilderError(#[from] BuilderError),
     #[error("Missing type annotation")]
     MissingTypeAnnotation,
+    #[error("Undefined variable: {0}")]
+    UndefinedVariable(String),
 }
 
 type CompileResult<T> = Result<T, CompileError>;
@@ -47,7 +50,7 @@ pub struct Compiler<'ctx> {
     context: &'ctx Context,
     builder: Builder<'ctx>,
     module: Module<'ctx>,
-    variables: HashMap<String, PointerValue<'ctx>>,
+    variables: HashMap<String, (PointerValue<'ctx>, Type)>,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -115,13 +118,17 @@ impl<'ctx> Compiler<'ctx> {
 
                 self.builder.position_at_end(then_bb);
                 self.compile_block(then_block)?;
-                self.builder.build_unconditional_branch(merge_bb)?;
+                if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                    self.builder.build_unconditional_branch(merge_bb)?;
+                }
 
                 self.builder.position_at_end(else_bb);
                 if let Some(else_block) = else_block {
                     self.compile_block(else_block)?;
                 }
-                self.builder.build_unconditional_branch(merge_bb)?;
+                if self.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                    self.builder.build_unconditional_branch(merge_bb)?;
+                }
 
                 self.builder.position_at_end(merge_bb);
             }
@@ -177,7 +184,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.builder.build_store(alloca, initial_value.to_basic_value())?;
                 }
 
-                self.variables.insert(name.clone(), alloca);
+                self.variables.insert(name.clone(), (alloca, ty));
             }
             _ => {}
         }
@@ -193,6 +200,118 @@ impl<'ctx> Compiler<'ctx> {
                 let str_ptr = self.builder.build_global_string_ptr(value, ".str")?;
                 Ok(Value::String(str_ptr.as_pointer_value()))
             }
+            ASTNode::Identifier(name) => {
+                let (ptr, ty) = self.variables.get(name).ok_or(CompileError::UndefinedVariable(name.clone()))?;
+                let loaded_value = match ty {
+                    Type::I32 => self.builder.build_load(self.context.i32_type(), *ptr, name)?,
+                    Type::F64 => self.builder.build_load(self.context.f64_type(), *ptr, name)?,
+                    Type::Bool => self.builder.build_load(self.context.bool_type(), *ptr, name)?,
+                    Type::String => self.builder.build_load(self.context.ptr_type(inkwell::AddressSpace::default()), *ptr, name)?,
+                };
+
+                match ty {
+                    Type::I32 => Ok(Value::Integer(loaded_value.into_int_value())),
+                    Type::F64 => Ok(Value::Float(loaded_value.into_float_value())),
+                    Type::Bool => Ok(Value::Bool(loaded_value.into_int_value())),
+                    Type::String => Ok(Value::String(loaded_value.into_pointer_value())),
+                }
+            }
+            ASTNode::BinaryExpression { op, left, right } => {
+                let left = self.compile_expression(left)?;
+                let right = self.compile_expression(right)?;
+
+                match (left, right) {
+                    (Value::Integer(left), Value::Integer(right)) => {
+                        match op {
+                            BinaryOperator::Add => {
+                                let result = self.builder.build_int_add(left, right, "addtmp")?;
+                                Ok(Value::Integer(result))
+                            }
+                            BinaryOperator::Subtract => {
+                                let result = self.builder.build_int_sub(left, right, "subtmp")?;
+                                Ok(Value::Integer(result))
+                            }
+                            BinaryOperator::Multiply => {
+                                let result = self.builder.build_int_mul(left, right, "multmp")?;
+                                Ok(Value::Integer(result))
+                            }
+                            BinaryOperator::Divide => {
+                                let result = self.builder.build_int_signed_div(left, right, "divtmp")?;
+                                Ok(Value::Integer(result))
+                            }
+                            BinaryOperator::Equal => {
+                                let result = self.builder.build_int_compare(IntPredicate::EQ, left, right, "eqtmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::NotEqual => {
+                                let result = self.builder.build_int_compare(IntPredicate::NE, left, right, "netmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::LessThan => {
+                                let result = self.builder.build_int_compare(IntPredicate::SLT, left, right, "lttmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::GreaterThan => {
+                                let result = self.builder.build_int_compare(IntPredicate::SGT, left, right, "gttmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::LessThanOrEqual => {
+                                let result = self.builder.build_int_compare(IntPredicate::SLE, left, right, "letmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::GreaterThanOrEqual => {
+                                let result = self.builder.build_int_compare(IntPredicate::SGE, left, right, "getmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                        }
+                    }
+                    (Value::Float(left), Value::Float(right)) => {
+                        match op {
+                            BinaryOperator::Add => {
+                                let result = self.builder.build_float_add(left, right, "addtmp")?;
+                                Ok(Value::Float(result))
+                            }
+                            BinaryOperator::Subtract => {
+                                let result = self.builder.build_float_sub(left, right, "subtmp")?;
+                                Ok(Value::Float(result))
+                            }
+                            BinaryOperator::Multiply => {
+                                let result = self.builder.build_float_mul(left, right, "multmp")?;
+                                Ok(Value::Float(result))
+                            }
+                            BinaryOperator::Divide => {
+                                let result = self.builder.build_float_div(left, right, "divtmp")?;
+                                Ok(Value::Float(result))
+                            }
+                            BinaryOperator::Equal => {
+                                let result = self.builder.build_float_compare(FloatPredicate::OEQ, left, right, "eqtmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::NotEqual => {
+                                let result = self.builder.build_float_compare(FloatPredicate::ONE, left, right, "netmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::LessThan => {
+                                let result = self.builder.build_float_compare(FloatPredicate::OLT, left, right, "lttmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::GreaterThan => {
+                                let result = self.builder.build_float_compare(FloatPredicate::OGT, left, right, "gttmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::LessThanOrEqual => {
+                                let result = self.builder.build_float_compare(FloatPredicate::OLE, left, right, "letmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                            BinaryOperator::GreaterThanOrEqual => {
+                                let result = self.builder.build_float_compare(FloatPredicate::OGE, left, right, "getmp")?;
+                                Ok(Value::Bool(result))
+                            }
+                        }
+                    }
+                    _ => todo!(), // Handle other types
+                }
+            }
             _ => todo!(),
         }
     }
@@ -204,7 +323,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn print_ir(&self) {
-        self.module.print_to_stderr();
+    pub fn to_string(&self) -> String {
+        self.module.to_string()
     }
 }

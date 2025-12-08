@@ -7,6 +7,20 @@ pub enum Type {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum ASTNode {
     Function {
         name: String,
@@ -32,5 +46,11 @@ pub enum ASTNode {
         condition: Box<ASTNode>,
         body: Vec<ASTNode>,
     },
+    BinaryExpression {
+        op: BinaryOperator,
+        left: Box<ASTNode>,
+        right: Box<ASTNode>,
+    },
+    Identifier(String),
     Comment(String),
 }

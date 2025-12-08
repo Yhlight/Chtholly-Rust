@@ -1,4 +1,4 @@
-use crate::ast::{ASTNode, Type};
+use crate::ast::{ASTNode, Type, BinaryOperator};
 use crate::lexer::{Lexer, Token, LexerError};
 use std::iter::Peekable;
 use thiserror::Error;
@@ -46,14 +46,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
-        match tokens.peek().ok_or(ParserError::UnexpectedEOF)? {
+        let statement = match tokens.peek().ok_or(ParserError::UnexpectedEOF)? {
             Token::Comment(_) => self.parse_comment(tokens),
             &Token::Fn => self.parse_function(tokens),
             &Token::Let => self.parse_variable_declaration(tokens),
             &Token::If => self.parse_if_statement(tokens),
             &Token::While => self.parse_while_statement(tokens),
-            _ => Err(ParserError::UnexpectedToken),
+            _ => self.parse_expression(tokens),
+        }?;
+
+        if tokens.peek() == Some(&&Token::Semicolon) {
+            tokens.next();
         }
+
+        Ok(statement)
     }
 
     fn parse_comment(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
@@ -112,10 +118,6 @@ impl<'a> Parser<'a> {
             None
         };
 
-        if tokens.peek() == Some(&&Token::Semicolon) {
-            tokens.next();
-        }
-
         Ok(ASTNode::VariableDeclaration {
             is_mutable,
             name,
@@ -138,13 +140,72 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
+        self.parse_expression_with_precedence(tokens, 0)
+    }
+
+    fn parse_expression_with_precedence(&self, tokens: &mut Peekable<Iter<Token>>, min_precedence: u8) -> ParseResult<ASTNode> {
+        let mut left = self.parse_primary_expression(tokens)?;
+
+        while let Some(&next_token) = tokens.peek() {
+            let precedence = self.get_precedence(next_token);
+            if precedence < min_precedence {
+                break;
+            }
+
+            if let Some(op) = self.parse_binary_operator(tokens) {
+                let right = self.parse_expression_with_precedence(tokens, precedence)?;
+                left = ASTNode::BinaryExpression {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                };
+            } else {
+                break;
+            }
+        }
+
+        Ok(left)
+    }
+
+    fn parse_primary_expression(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
         match tokens.next().ok_or(ParserError::UnexpectedEOF)? {
             Token::IntegerLiteral(value) => Ok(ASTNode::IntegerLiteral(*value)),
             Token::FloatLiteral(value) => Ok(ASTNode::FloatLiteral(*value)),
             Token::StringLiteral(value) => Ok(ASTNode::StringLiteral(value.clone())),
             Token::True => Ok(ASTNode::BoolLiteral(true)),
             Token::False => Ok(ASTNode::BoolLiteral(false)),
+            Token::Identifier(name) => Ok(ASTNode::Identifier(name.clone())),
             _ => Err(ParserError::UnexpectedToken),
+        }
+    }
+
+    fn parse_binary_operator(&self, tokens: &mut Peekable<Iter<Token>>) -> Option<BinaryOperator> {
+        let op = match tokens.peek() {
+            Some(Token::Plus) => Some(BinaryOperator::Add),
+            Some(Token::Minus) => Some(BinaryOperator::Subtract),
+            Some(Token::Asterisk) => Some(BinaryOperator::Multiply),
+            Some(Token::Slash) => Some(BinaryOperator::Divide),
+            Some(Token::Equal) => Some(BinaryOperator::Equal),
+            Some(Token::NotEqual) => Some(BinaryOperator::NotEqual),
+            Some(Token::LessThan) => Some(BinaryOperator::LessThan),
+            Some(Token::GreaterThan) => Some(BinaryOperator::GreaterThan),
+            Some(Token::LessThanOrEqual) => Some(BinaryOperator::LessThanOrEqual),
+            Some(Token::GreaterThanOrEqual) => Some(BinaryOperator::GreaterThanOrEqual),
+            _ => None,
+        };
+        if op.is_some() {
+            tokens.next();
+        }
+        op
+    }
+
+    fn get_precedence(&self, token: &Token) -> u8 {
+        match token {
+            Token::Equal | Token::NotEqual => 1,
+            Token::LessThan | Token::GreaterThan | Token::LessThanOrEqual | Token::GreaterThanOrEqual => 2,
+            Token::Plus | Token::Minus => 3,
+            Token::Asterisk | Token::Slash => 4,
+            _ => 0,
         }
     }
 

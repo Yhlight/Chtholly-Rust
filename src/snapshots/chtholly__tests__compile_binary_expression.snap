@@ -1,0 +1,13 @@
+---
+source: src/lib.rs
+expression: compiler.to_string()
+---
+; ModuleID = 'chtholly'
+source_filename = "chtholly"
+
+define i32 @main() {
+entry:
+  %a = alloca i32, align 4
+  store i32 30, ptr %a, align 4
+  ret i32 0
+}

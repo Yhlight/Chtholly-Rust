@@ -5,9 +5,7 @@ use inkwell::context::Context;
 fn main() {
     let code = r#"
         fn main() {
-            while (true) {
-                let a = 10;
-            }
+            let a = 10.0 + 20.0;
         }
     "#;
 
@@ -18,5 +16,5 @@ fn main() {
     let mut compiler = Compiler::new(&context);
     compiler.compile(&ast).unwrap();
 
-    compiler.print_ir();
+    println!("{}", compiler.to_string());
 }

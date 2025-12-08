@@ -7,7 +7,7 @@ pub mod compiler;
 mod tests {
     use crate::parser::Parser;
     use crate::compiler::Compiler;
-    use crate::ast::{ASTNode, Type};
+    use crate::ast::{ASTNode, Type, BinaryOperator};
     use inkwell::context::Context;
 
     #[test]
@@ -248,5 +248,54 @@ mod tests {
         let result = compiler.compile(&ast);
 
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_binary_expression() {
+        let code = r#"
+            fn main() {
+                1 + 2 * 3;
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        assert_eq!(
+            ast,
+            vec![
+                ASTNode::Function {
+                    name: "main".to_string(),
+                    args: vec![],
+                    body: vec![
+                        ASTNode::BinaryExpression {
+                            op: BinaryOperator::Add,
+                            left: Box::new(ASTNode::IntegerLiteral(1)),
+                            right: Box::new(ASTNode::BinaryExpression {
+                                op: BinaryOperator::Multiply,
+                                left: Box::new(ASTNode::IntegerLiteral(2)),
+                                right: Box::new(ASTNode::IntegerLiteral(3)),
+                            }),
+                        },
+                    ],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_compile_binary_expression() {
+        let code = r#"
+            fn main() {
+                let a = 10 + 20;
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        compiler.compile(&ast).unwrap();
+
+        insta::assert_snapshot!(compiler.to_string());
     }
 }

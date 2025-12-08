@@ -6,6 +6,8 @@ use thiserror::Error;
 pub enum LexerError {
     #[error("Invalid number literal")]
     InvalidNumberLiteral,
+    #[error("Unexpected character: {0}")]
+    UnexpectedCharacter(char),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -22,6 +24,19 @@ pub enum Token {
     IntegerLiteral(i64),
     FloatLiteral(f64),
     StringLiteral(String),
+
+    // Operators
+    Plus,
+    Minus,
+    Asterisk,
+    Slash,
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
+
     LParen,
     RParen,
     LBrace,
@@ -62,8 +77,41 @@ impl<'a> Iterator for Lexer<'a> {
             '}' => Ok(Token::RBrace),
             ':' => Ok(Token::Colon),
             ',' => Ok(Token::Comma),
-            '=' => Ok(Token::Assign),
             ';' => Ok(Token::Semicolon),
+            '+' => Ok(Token::Plus),
+            '*' => Ok(Token::Asterisk),
+            '=' => {
+                if self.input.peek() == Some(&'=') {
+                    self.input.next();
+                    Ok(Token::Equal)
+                } else {
+                    Ok(Token::Assign)
+                }
+            }
+            '!' => {
+                if self.input.peek() == Some(&'=') {
+                    self.input.next();
+                    Ok(Token::NotEqual)
+                } else {
+                    Err(LexerError::UnexpectedCharacter('!'))
+                }
+            }
+            '<' => {
+                if self.input.peek() == Some(&'=') {
+                    self.input.next();
+                    Ok(Token::LessThanOrEqual)
+                } else {
+                    Ok(Token::LessThan)
+                }
+            }
+            '>' => {
+                if self.input.peek() == Some(&'=') {
+                    self.input.next();
+                    Ok(Token::GreaterThanOrEqual)
+                } else {
+                    Ok(Token::GreaterThan)
+                }
+            }
             '"' => {
                 let mut string = String::new();
                 while let Some(&c) = self.input.peek() {
@@ -75,20 +123,28 @@ impl<'a> Iterator for Lexer<'a> {
                 self.input.next(); // Consume the closing quote
                 Ok(Token::StringLiteral(string))
             }
-            '-' if self.input.peek() == Some(&'>') => {
-                self.input.next();
-                Ok(Token::Arrow)
-            }
-            '/' if self.input.peek() == Some(&'/') => {
-                self.input.next();
-                let mut comment = String::new();
-                while let Some(&c) = self.input.peek() {
-                    if c == '\n' {
-                        break;
-                    }
-                    comment.push(self.input.next().unwrap());
+            '-' => {
+                if self.input.peek() == Some(&'>') {
+                    self.input.next();
+                    Ok(Token::Arrow)
+                } else {
+                    Ok(Token::Minus)
                 }
-                Ok(Token::Comment(comment))
+            }
+            '/' => {
+                if self.input.peek() == Some(&'/') {
+                    self.input.next();
+                    let mut comment = String::new();
+                    while let Some(&c) = self.input.peek() {
+                        if c == '\n' {
+                            break;
+                        }
+                        comment.push(self.input.next().unwrap());
+                    }
+                    Ok(Token::Comment(comment))
+                } else {
+                    Ok(Token::Slash)
+                }
             }
             c if c.is_whitespace() => {
                 if c == '\n' {
