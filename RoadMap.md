@@ -19,7 +19,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [ ] **`switch-case` Statements:** Implement switch-case control flow.
 - [ ] **Looping Constructs:**
     - [x] `while` loops
-    - [ ] `for` loops
+    - [x] `for` loops
     - [ ] `do-while` loops
 - [ ] **Function Definitions and Calls:** Implement function declarations, calls, and returns.
 - [ ] **Comments:** Support for single-line and multi-line comments.

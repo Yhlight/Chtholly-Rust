@@ -4,6 +4,7 @@ pub enum Stmt {
     Expr(Expr),
     If(Box<Expr>, Vec<Stmt>, Option<Vec<Stmt>>), // condition, then_block, else_block
     While(Box<Expr>, Vec<Stmt>), // condition, body
+    For(Box<Stmt>, Box<Expr>, Box<Expr>, Vec<Stmt>), // init, cond, incr, body
 }
 
 #[derive(Debug, PartialEq, Clone)]

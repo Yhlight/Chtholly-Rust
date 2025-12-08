@@ -55,7 +55,7 @@ fn main() {
             compiler.builder.position_at_end(basic_block);
 
             for stmt in ast {
-                if let Err(e) = compiler.compile_stmt(&stmt) {
+                if let Err(e) = compiler.compile_stmt(&stmt, function) {
                     eprintln!("Compiler error: {}", e);
                     return;
                 }

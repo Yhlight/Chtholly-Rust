@@ -95,13 +95,14 @@ pub fn parser() -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> {
         assignment.or(logical_or)
     });
 
-    let let_stmt = just(Token::Let)
+    let let_decl = just(Token::Let)
         .ignore_then(just(Token::Mut).or_not())
-        .then(ident)
+        .then(ident.clone())
         .then_ignore(just(Token::Eq))
         .then(expr.clone())
-        .then_ignore(just(Token::Semicolon))
         .map(|((is_mut, ident), expr)| Stmt::Let(ident, is_mut.is_some(), expr));
+
+    let let_stmt = let_decl.clone().then_ignore(just(Token::Semicolon));
 
     let expr_stmt = expr
         .clone()
@@ -132,7 +133,21 @@ pub fn parser() -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> {
             .then(block.clone())
             .map(|(cond, body)| Stmt::While(Box::new(cond), body));
 
-        let_stmt.or(expr_stmt).or(if_stmt).or(while_stmt)
+        let for_stmt = just(Token::For)
+            .ignore_then(
+                let_decl.clone()
+                    .then_ignore(just(Token::Semicolon))
+                    .then(expr.clone())
+                    .then_ignore(just(Token::Semicolon))
+                    .then(expr.clone())
+                    .delimited_by(just(Token::LParen), just(Token::RParen))
+            )
+            .then(block.clone())
+            .map(|(((init, cond), incr), body)| {
+                Stmt::For(Box::new(init), Box::new(cond), Box::new(incr), body)
+            });
+
+        let_stmt.clone().or(expr_stmt.clone()).or(if_stmt).or(while_stmt).or(for_stmt)
     });
 
     stmt.repeated().then_ignore(end())
@@ -302,6 +317,38 @@ mod tests {
             "while (true) { let x = 1; }",
             vec![Stmt::While(
                 Box::new(Expr::Literal(Literal::Bool(true))),
+                vec![Stmt::Let(
+                    "x".to_string(),
+                    false,
+                    Expr::Literal(Literal::Int(1)),
+                )],
+            )],
+        );
+    }
+
+    #[test]
+    fn test_for_statement() {
+        parse_test_helper(
+            "for (let i = 0; i < 10; i = i + 1) { let x = 1; }",
+            vec![Stmt::For(
+                Box::new(Stmt::Let(
+                    "i".to_string(),
+                    false,
+                    Expr::Literal(Literal::Int(0)),
+                )),
+                Box::new(Expr::Binary(
+                    Box::new(Expr::Ident("i".to_string())),
+                    BinaryOp::Lt,
+                    Box::new(Expr::Literal(Literal::Int(10))),
+                )),
+                Box::new(Expr::Assignment(
+                    "i".to_string(),
+                    Box::new(Expr::Binary(
+                        Box::new(Expr::Ident("i".to_string())),
+                        BinaryOp::Add,
+                        Box::new(Expr::Literal(Literal::Int(1))),
+                    )),
+                )),
                 vec![Stmt::Let(
                     "x".to_string(),
                     false,

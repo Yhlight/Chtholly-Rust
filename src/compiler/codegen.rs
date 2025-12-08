@@ -1,7 +1,7 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{BasicValueEnum, PointerValue};
+use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::types::BasicTypeEnum;
 use inkwell::IntPredicate;
 use inkwell::FloatPredicate;
@@ -14,7 +14,7 @@ pub struct Compiler<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
     pub module: Module<'ctx>,
-    variables: HashMap<String, (PointerValue<'ctx>, BasicTypeEnum<'ctx>, bool)>, // ptr, type, is_mutable
+    variables: Vec<HashMap<String, (PointerValue<'ctx>, BasicTypeEnum<'ctx>, bool)>>, // a stack of scopes
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -26,36 +26,47 @@ impl<'ctx> Compiler<'ctx> {
             context,
             builder,
             module,
-            variables: HashMap::new(),
+            variables: vec![HashMap::new()],
         }
     }
 
     /// Compiles a `Stmt` into LLVM IR.
-    pub fn compile_stmt(&mut self, stmt: &Stmt) -> Result<(), &'static str> {
+    pub fn compile_stmt(&mut self, stmt: &Stmt, function: FunctionValue<'ctx>) -> Result<(), &'static str> {
         match stmt {
             Stmt::Let(name, is_mutable, expr) => {
-                let value = self.compile_expr(expr)?;
+                let value = self.compile_expr(expr, function)?;
                 let ty = value.get_type();
                 let ptr = self.builder.build_alloca(ty, name).map_err(|_| "Failed to allocate variable")?;
                 self.builder.build_store(ptr, value).map_err(|_| "Failed to store variable")?;
-                self.variables.insert(name.clone(), (ptr, ty, *is_mutable));
+                self.variables.last_mut().unwrap().insert(name.clone(), (ptr, ty, *is_mutable));
                 Ok(())
             }
             Stmt::Expr(expr) => {
-                self.compile_expr(expr)?;
+                self.compile_expr(expr, function)?;
                 Ok(())
             }
             Stmt::If(cond, then_block, else_block) => {
-                self.compile_if(cond, then_block, else_block.as_deref())
+                self.compile_if(cond, then_block, else_block.as_deref(), function)
             }
-            Stmt::While(cond, body) => self.compile_while(cond, body),
+            Stmt::While(cond, body) => self.compile_while(cond, body, function),
+            Stmt::For(init, cond, incr, body) => self.compile_for(init, cond, incr, body, function),
         }
     }
 
-    fn compile_block(&mut self, stmts: &[Stmt]) -> Result<(), &'static str> {
+    fn enter_scope(&mut self) {
+        self.variables.push(HashMap::new());
+    }
+
+    fn leave_scope(&mut self) {
+        self.variables.pop();
+    }
+
+    fn compile_block(&mut self, stmts: &[Stmt], function: FunctionValue<'ctx>) -> Result<(), &'static str> {
+        self.enter_scope();
         for stmt in stmts {
-            self.compile_stmt(stmt)?;
+            self.compile_stmt(stmt, function)?;
         }
+        self.leave_scope();
         Ok(())
     }
 
@@ -64,10 +75,9 @@ impl<'ctx> Compiler<'ctx> {
         cond: &Expr,
         then_block: &[Stmt],
         else_block: Option<&[Stmt]>,
+        function: FunctionValue<'ctx>,
     ) -> Result<(), &'static str> {
-        let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
-
-        let cond = self.compile_expr(cond)?.into_int_value();
+        let cond = self.compile_expr(cond, function)?.into_int_value();
         let then_bb = self.context.append_basic_block(function, "then");
         let else_bb = self.context.append_basic_block(function, "else");
         let merge_bb = self.context.append_basic_block(function, "merge");
@@ -77,12 +87,12 @@ impl<'ctx> Compiler<'ctx> {
             .map_err(|_| "Failed to build conditional branch")?;
 
         self.builder.position_at_end(then_bb);
-        self.compile_block(then_block)?;
+        self.compile_block(then_block, function)?;
         self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
 
         self.builder.position_at_end(else_bb);
         if let Some(else_block) = else_block {
-            self.compile_block(else_block)?;
+            self.compile_block(else_block, function)?;
         }
         self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
 
@@ -90,8 +100,36 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    fn compile_while(&mut self, cond: &Expr, body: &[Stmt]) -> Result<(), &'static str> {
-        let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+    fn compile_while(&mut self, cond: &Expr, body: &[Stmt], function: FunctionValue<'ctx>) -> Result<(), &'static str> {
+        let loop_cond_bb = self.context.append_basic_block(function, "loop_cond");
+        let loop_body_bb = self.context.append_basic_block(function, "loop_body");
+        let after_loop_bb = self.context.append_basic_block(function, "after_loop");
+
+        self.builder.build_unconditional_branch(loop_cond_bb).map_err(|_| "Failed to build unconditional branch")?;
+        self.builder.position_at_end(loop_cond_bb);
+
+        let cond = self.compile_expr(cond, function)?.into_int_value();
+        self.builder.build_conditional_branch(cond, loop_body_bb, after_loop_bb).map_err(|_| "Failed to build conditional branch")?;
+
+        self.builder.position_at_end(loop_body_bb);
+        self.compile_block(body, function)?;
+        self.builder.build_unconditional_branch(loop_cond_bb).map_err(|_| "Failed to build unconditional branch")?;
+
+        self.builder.position_at_end(after_loop_bb);
+        Ok(())
+    }
+
+    fn compile_for(
+        &mut self,
+        init: &Stmt,
+        cond: &Expr,
+        incr: &Expr,
+        body: &[Stmt],
+        function: FunctionValue<'ctx>,
+    ) -> Result<(), &'static str> {
+        self.enter_scope();
+
+        self.compile_stmt(init, function)?;
 
         let loop_cond_bb = self.context.append_basic_block(function, "loop_cond");
         let loop_body_bb = self.context.append_basic_block(function, "loop_body");
@@ -100,42 +138,44 @@ impl<'ctx> Compiler<'ctx> {
         self.builder.build_unconditional_branch(loop_cond_bb).map_err(|_| "Failed to build unconditional branch")?;
         self.builder.position_at_end(loop_cond_bb);
 
-        let cond = self.compile_expr(cond)?.into_int_value();
+        let cond = self.compile_expr(cond, function)?.into_int_value();
         self.builder.build_conditional_branch(cond, loop_body_bb, after_loop_bb).map_err(|_| "Failed to build conditional branch")?;
 
         self.builder.position_at_end(loop_body_bb);
-        self.compile_block(body)?;
+        self.compile_block(body, function)?;
+        self.compile_expr(incr, function)?;
         self.builder.build_unconditional_branch(loop_cond_bb).map_err(|_| "Failed to build unconditional branch")?;
 
         self.builder.position_at_end(after_loop_bb);
+        self.leave_scope();
         Ok(())
     }
     /// Compiles an `Expr` into an LLVM value.
-    pub fn compile_expr(&self, expr: &Expr) -> Result<BasicValueEnum<'ctx>, &'static str> {
+    pub fn compile_expr(&self, expr: &Expr, function: FunctionValue<'ctx>) -> Result<BasicValueEnum<'ctx>, &'static str> {
         match expr {
             Expr::Literal(literal) => self.compile_literal(literal),
             Expr::Ident(name) => {
-                match self.variables.get(name) {
-                    Some((ptr, ty, _)) => {
-                        self.builder.build_load(*ty, *ptr, name).map_err(|_| "Failed to build load")
-                    },
-                    None => Err("Undefined variable"),
+                for scope in self.variables.iter().rev() {
+                    if let Some((ptr, ty, _)) = scope.get(name) {
+                        return self.builder.build_load(*ty, *ptr, name).map_err(|_| "Failed to build load");
+                    }
                 }
+                Err("Undefined variable")
             }
             Expr::Assignment(name, expr) => {
-                match self.variables.get(name) {
-                    Some((ptr, _, is_mutable)) => {
-                        if !is_mutable {
+                for scope in self.variables.iter().rev() {
+                    if let Some((ptr, _, is_mutable)) = scope.get(name) {
+                        if !*is_mutable {
                             return Err("Cannot assign to immutable variable");
                         }
-                        let value = self.compile_expr(expr)?;
+                        let value = self.compile_expr(expr, function)?;
                         self.builder.build_store(*ptr, value).map_err(|_| "Failed to store variable")?;
-                        Ok(value)
-                    },
-                    None => Err("Undefined variable"),
+                        return Ok(value);
+                    }
                 }
+                Err("Undefined variable")
             }
-            Expr::Binary(lhs, op, rhs) => self.compile_binary(lhs, op, rhs),
+            Expr::Binary(lhs, op, rhs) => self.compile_binary(lhs, op, rhs, function),
         }
     }
 
@@ -156,12 +196,12 @@ impl<'ctx> Compiler<'ctx> {
         lhs: &Expr,
         op: &BinaryOp,
         rhs: &Expr,
+        function: FunctionValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>, &'static str> {
         if *op == BinaryOp::And || *op == BinaryOp::Or {
-            let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
             let bool_type = self.context.bool_type();
 
-            let lhs_val = self.compile_expr(lhs)?.into_int_value();
+            let lhs_val = self.compile_expr(lhs, function)?.into_int_value();
             let lhs_bb = self.builder.get_insert_block().unwrap();
 
             let rhs_bb = self.context.append_basic_block(function, "rhs");
@@ -178,7 +218,7 @@ impl<'ctx> Compiler<'ctx> {
             }
 
             self.builder.position_at_end(rhs_bb);
-            let rhs_val = self.compile_expr(rhs)?.into_int_value();
+            let rhs_val = self.compile_expr(rhs, function)?.into_int_value();
             self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
             let rhs_bb = self.builder.get_insert_block().unwrap();
 
@@ -193,8 +233,8 @@ impl<'ctx> Compiler<'ctx> {
             return Ok(phi.as_basic_value());
         }
 
-        let lhs = self.compile_expr(lhs)?;
-        let rhs = self.compile_expr(rhs)?;
+        let lhs = self.compile_expr(lhs, function)?;
+        let rhs = self.compile_expr(rhs, function)?;
 
         if lhs.get_type() != rhs.get_type() {
             return Err("Type mismatch in binary operation");
