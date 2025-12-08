@@ -4,16 +4,16 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 1: Core Language Features
 
-- [ ] **Lexer:** Tokenize the source code.
-- [ ] **Parser:** Build the Abstract Syntax Tree (AST).
-- [ ] **Compiler:**
-    - [ ] Basic LLVM integration.
-    - [ ] Main function compilation.
-    - [ ] Variable declarations (let, let mut).
+- [x] **Lexer:** Tokenize the source code.
+- [x] **Parser:** Build the Abstract Syntax Tree (AST).
+- [x] **Compiler:**
+    - [x] Basic LLVM integration.
+    - [x] Main function compilation.
+    - [x] Variable declarations (let, let mut).
     - [ ] Basic types (i32, f64, bool, string).
-- [ ] **Basic Syntax:**
-    - [ ] Comments (single-line and multi-line).
-    - [ ] Main function definition.
+- [x] **Basic Syntax:**
+    - [x] Comments (single-line and multi-line).
+    - [x] Main function definition.
 
 ## Phase 2: Advanced Language Features
 

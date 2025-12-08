@@ -4,13 +4,18 @@ use std::str::Chars;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Fn,
+    Let,
+    Mut,
     Identifier(String),
+    IntegerLiteral(i64),
     LParen,
     RParen,
     LBrace,
     RBrace,
     Colon,
     Comma,
+    Assign,
+    Semicolon,
     Arrow,
     Comment(String),
     Whitespace,
@@ -43,6 +48,8 @@ impl<'a> Iterator for Lexer<'a> {
             '}' => Some(Token::RBrace),
             ':' => Some(Token::Colon),
             ',' => Some(Token::Comma),
+            '=' => Some(Token::Assign),
+            ';' => Some(Token::Semicolon),
             '-' if self.input.peek() == Some(&'>') => {
                 self.input.next();
                 Some(Token::Arrow)
@@ -76,8 +83,21 @@ impl<'a> Iterator for Lexer<'a> {
                 }
                 match identifier.as_str() {
                     "fn" => Some(Token::Fn),
+                    "let" => Some(Token::Let),
+                    "mut" => Some(Token::Mut),
                     _ => Some(Token::Identifier(identifier)),
                 }
+            }
+            c if c.is_digit(10) => {
+                let mut number = String::new();
+                number.push(c);
+                while let Some(&c) = self.input.peek() {
+                    if !c.is_digit(10) {
+                        break;
+                    }
+                    number.push(self.input.next().unwrap());
+                }
+                Some(Token::IntegerLiteral(number.parse().unwrap()))
             }
             _ => Some(Token::Unknown(c)),
         }
