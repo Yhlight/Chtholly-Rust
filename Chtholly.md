@@ -57,19 +57,19 @@ let e2: i32[] = [1, 2, 3, 4];
 
 ### 可变变量 (Mutable Variables)
 
-你可以使用`mut`声明可变变量。
+你可以使用`let mut`声明可变变量。
 
-  * **可变性：** `mut` 关键字允许所有者通过该变量**操作或修改**它所拥有的资源。可变性是作用于当前绑定的**权限**。
+  * **可变性：** `let mut` 关键字允许所有者通过该变量**操作或修改**它所拥有的资源。可变性是作用于当前绑定的**权限**。
 
 ```chtholly
-mut a = 10;
+let mut a = 10;
 ```
 
 ### 变量间的传递：移动语义 (Move Semantics)
 
-变量间以**移动**进行传递。`let`和`mut`声明的变量相互之间可以自由赋值，这是因为变量相互之间的传递属于**资源转移**。
+变量间以**移动**进行传递。`let`和`let mut`声明的变量相互之间可以自由赋值，这是因为变量相互之间的传递属于**资源转移**。
 
-`let`和`mut`仅决定指向的资源是否可以被操作。
+`let`和`let mut`仅决定指向的资源是否可以被操作。
 
   * **资源移动：** 当所有权发生转移（例如赋值给新变量、作为参数传递给函数）时，资源的所有权从原变量转移给新变量。**原变量在移动后立即失效且不可用**，防止了资源被二次释放。
   * **零成本复制 (`Copy` Trait)：** 对于基本数据类型（如整数、浮点数、字符等），赋值操作不是移动，而是**零成本的按位复制**。在这种情况下，**原变量在赋值后仍然有效**。
@@ -78,7 +78,7 @@ mut a = 10;
 ```chtholly
 let a = 10;
 a = 10;  // 错误，不可变变量无法操控这部分资源
-mut a2 = a; // 对于 Copy 类型 10，这里是复制，a 仍然可用。
+let mut a2 = a; // 对于 Copy 类型 10，这里是复制，a 仍然可用。
 a2 = 20;  // 正确，可变变量可以操控这部分资源
 ```
 
@@ -202,7 +202,7 @@ let test = [](): void {
 
 Chtholly使用`let`声明不可变成员变量。
 
-Chtholly使用`mut`声明可变成员变量。
+Chtholly使用`let mut`声明可变成员变量.
 
 ```Chtholly
 class Person
@@ -210,7 +210,7 @@ class Person
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
     let age: i32;
 
-    mut des: string;  // 可变成员变量，也可以赋予默认值
+    let mut des: string;  // 可变成员变量，也可以赋予默认值
 }
 ```
 
@@ -224,7 +224,7 @@ class Person
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
     let age: i32;
 
-    mut des: string;  // 可变成员变量，也可以赋予默认值
+    let mut des: string;  // 可变成员变量，也可以赋予默认值
 
     Person(age: i32, des: string)
     {
@@ -277,7 +277,7 @@ class Person
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
     let age: i32;
 
-    mut des: srting;  // 可变成员变量，也可以赋予默认值
+    let mut des: srting;  // 可变成员变量，也可以赋予默认值
 
     Person(age: i32, des: string)
     {
@@ -316,7 +316,7 @@ class Person
 public:
     let name: string = "yhlight";
     let age: i32;
-    mut des: string;
+    let mut des: string;
 
 private:
     fn show(self): void
@@ -356,7 +356,7 @@ struct Person
 {
     let name: string;  // 支持默认值
     let age: i32;
-    mut des: string;
+    let mut des: string;
 
     fn show(self): void
     {
