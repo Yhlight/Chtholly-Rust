@@ -1,7 +1,13 @@
-let mut x = 10;
-if (x > 5) {
-    x = 1;
-} else {
-    x = 0;
-}
-x;
+let mut x = 0;
+let mut y = 0;
+
+// Test short-circuiting for &&
+let a = false && (x = 1);
+
+// Test short-circuiting for ||
+let b = true || (y = 1);
+
+x; // Should be 0
+y; // Should be 0
+a; // Should be false
+b; // Should be true

@@ -127,7 +127,12 @@ pub fn parser() -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> {
                 })
         });
 
-        let_stmt.or(expr_stmt).or(if_stmt)
+        let while_stmt = just(Token::While)
+            .ignore_then(expr.clone().delimited_by(just(Token::LParen), just(Token::RParen)))
+            .then(block.clone())
+            .map(|(cond, body)| Stmt::While(Box::new(cond), body));
+
+        let_stmt.or(expr_stmt).or(if_stmt).or(while_stmt)
     });
 
     stmt.repeated().then_ignore(end())
@@ -287,6 +292,21 @@ mod tests {
                         Expr::Literal(Literal::Int(3)),
                     )]),
                 )]),
+            )],
+        );
+    }
+
+    #[test]
+    fn test_while_statement() {
+        parse_test_helper(
+            "while (true) { let x = 1; }",
+            vec![Stmt::While(
+                Box::new(Expr::Literal(Literal::Bool(true))),
+                vec![Stmt::Let(
+                    "x".to_string(),
+                    false,
+                    Expr::Literal(Literal::Int(1)),
+                )],
             )],
         );
     }

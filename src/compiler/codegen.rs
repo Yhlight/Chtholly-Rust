@@ -48,6 +48,7 @@ impl<'ctx> Compiler<'ctx> {
             Stmt::If(cond, then_block, else_block) => {
                 self.compile_if(cond, then_block, else_block.as_deref())
             }
+            Stmt::While(cond, body) => self.compile_while(cond, body),
         }
     }
 
@@ -86,6 +87,27 @@ impl<'ctx> Compiler<'ctx> {
         self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
 
         self.builder.position_at_end(merge_bb);
+        Ok(())
+    }
+
+    fn compile_while(&mut self, cond: &Expr, body: &[Stmt]) -> Result<(), &'static str> {
+        let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+        let loop_cond_bb = self.context.append_basic_block(function, "loop_cond");
+        let loop_body_bb = self.context.append_basic_block(function, "loop_body");
+        let after_loop_bb = self.context.append_basic_block(function, "after_loop");
+
+        self.builder.build_unconditional_branch(loop_cond_bb).map_err(|_| "Failed to build unconditional branch")?;
+        self.builder.position_at_end(loop_cond_bb);
+
+        let cond = self.compile_expr(cond)?.into_int_value();
+        self.builder.build_conditional_branch(cond, loop_body_bb, after_loop_bb).map_err(|_| "Failed to build conditional branch")?;
+
+        self.builder.position_at_end(loop_body_bb);
+        self.compile_block(body)?;
+        self.builder.build_unconditional_branch(loop_cond_bb).map_err(|_| "Failed to build unconditional branch")?;
+
+        self.builder.position_at_end(after_loop_bb);
         Ok(())
     }
     /// Compiles an `Expr` into an LLVM value.
@@ -136,27 +158,39 @@ impl<'ctx> Compiler<'ctx> {
         rhs: &Expr,
     ) -> Result<BasicValueEnum<'ctx>, &'static str> {
         if *op == BinaryOp::And || *op == BinaryOp::Or {
-            let lhs = self.compile_expr(lhs)?;
-            if !lhs.is_int_value() || lhs.into_int_value().get_type().get_bit_width() != 1 {
-                return Err("Logical operators can only be used with booleans");
-            }
+            let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+            let bool_type = self.context.bool_type();
 
-            let rhs = self.compile_expr(rhs)?;
-            if !rhs.is_int_value() || rhs.into_int_value().get_type().get_bit_width() != 1 {
-                return Err("Logical operators can only be used with booleans");
-            }
+            let lhs_val = self.compile_expr(lhs)?.into_int_value();
+            let lhs_bb = self.builder.get_insert_block().unwrap();
 
-            return match op {
-                BinaryOp::And => self.builder
-                    .build_and(lhs.into_int_value(), rhs.into_int_value(), "andtmp")
-                    .map(|v| v.into())
-                    .map_err(|_| "Failed to build and"),
-                BinaryOp::Or => self.builder
-                    .build_or(lhs.into_int_value(), rhs.into_int_value(), "ortmp")
-                    .map(|v| v.into())
-                    .map_err(|_| "Failed to build or"),
+            let rhs_bb = self.context.append_basic_block(function, "rhs");
+            let merge_bb = self.context.append_basic_block(function, "merge");
+
+            match op {
+                BinaryOp::And => {
+                    self.builder.build_conditional_branch(lhs_val, rhs_bb, merge_bb).map_err(|_| "Failed to build conditional branch")?;
+                }
+                BinaryOp::Or => {
+                    self.builder.build_conditional_branch(lhs_val, merge_bb, rhs_bb).map_err(|_| "Failed to build conditional branch")?;
+                }
                 _ => unreachable!(),
-            };
+            }
+
+            self.builder.position_at_end(rhs_bb);
+            let rhs_val = self.compile_expr(rhs)?.into_int_value();
+            self.builder.build_unconditional_branch(merge_bb).map_err(|_| "Failed to build unconditional branch")?;
+            let rhs_bb = self.builder.get_insert_block().unwrap();
+
+            self.builder.position_at_end(merge_bb);
+            let phi = self.builder.build_phi(bool_type, "phi").map_err(|_| "Failed to build phi node")?;
+
+            phi.add_incoming(&[
+                (&lhs_val, lhs_bb),
+                (&rhs_val, rhs_bb),
+            ]);
+
+            return Ok(phi.as_basic_value());
         }
 
         let lhs = self.compile_expr(lhs)?;

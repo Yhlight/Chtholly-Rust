@@ -18,7 +18,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **`if-else` Statements:** Implement conditional branching.
 - [ ] **`switch-case` Statements:** Implement switch-case control flow.
 - [ ] **Looping Constructs:**
-    - [ ] `while` loops
+    - [x] `while` loops
     - [ ] `for` loops
     - [ ] `do-while` loops
 - [ ] **Function Definitions and Calls:** Implement function declarations, calls, and returns.
