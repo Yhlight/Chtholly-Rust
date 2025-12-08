@@ -1,8 +1,10 @@
-## Chtholly 珂朵莉
+## Chtholly 珂朵莉：系统编程的新平衡
 
-Chtholly是一门基于C++17 + LLVM实现的编程语言，Chtholly以简洁，高性能，编译期安全为特征。
+Chtholly 是一门**编译型、通用**的系统编程语言。它旨在为开发者提供一个**兼具 C++ 性能和 Rust 内存安全**的优雅环境。
 
-Chtholly遵循零成本抽象以及运行时极简原则，尽可能把事情交给编译期进行。
+Chtholly 遵循**零成本抽象**以及**运行时极简**原则，尽可能把事情交给编译期进行，实现：
+1.  **默认安全 (Safety by Default)：** 采用所有权与借用模型，在编译期根除内存错误。
+2.  **人体工程学 (Ergonomics)：** 采用经典的类/结构体语法和智能的生命周期推导，降低系统编程的学习成本。
 
 Chtholly文件后缀为`.cns`。
 
@@ -57,19 +59,19 @@ let e2: i32[] = [1, 2, 3, 4];
 
 ### 可变变量 (Mutable Variables)
 
-你可以使用`mut`声明可变变量。
+你可以使用`mut`修饰不可变变量，使其可变。
 
   * **可变性：** `mut` 关键字允许所有者通过该变量**操作或修改**它所拥有的资源。可变性是作用于当前绑定的**权限**。
 
 ```chtholly
-mut a = 10;
+let mut a = 10;
 ```
 
 ### 变量间的传递：移动语义 (Move Semantics)
 
-变量间以**移动**进行传递。`let`和`mut`声明的变量相互之间可以自由赋值，这是因为变量相互之间的传递属于**资源转移**。
+变量间以**移动**进行传递。`let`和`let mut`声明的变量相互之间可以自由赋值，这是因为变量相互之间的传递属于**资源转移**。
 
-`let`和`mut`仅决定指向的资源是否可以被操作。
+`let`和`let mut`仅决定指向的资源是否可以被操作。
 
   * **资源移动：** 当所有权发生转移（例如赋值给新变量、作为参数传递给函数）时，资源的所有权从原变量转移给新变量。**原变量在移动后立即失效且不可用**，防止了资源被二次释放。
   * **零成本复制 (`Copy` Trait)：** 对于基本数据类型（如整数、浮点数、字符等），赋值操作不是移动，而是**零成本的按位复制**。在这种情况下，**原变量在赋值后仍然有效**。
@@ -78,7 +80,7 @@ mut a = 10;
 ```chtholly
 let a = 10;
 a = 10;  // 错误，不可变变量无法操控这部分资源
-mut a2 = a; // 对于 Copy 类型 10，这里是复制，a 仍然可用。
+let mut a2 = a; // 对于 Copy 类型 10，这里是复制，a 仍然可用。
 a2 = 20;  // 正确，可变变量可以操控这部分资源
 ```
 
@@ -91,6 +93,7 @@ a2 = 20;  // 正确，可变变量可以操控这部分资源
   * 使用`&mut`创建**可变引用（独占引用）**。
 
 **借用规则（核心原则：读写互斥）：**
+
 在任何时间点，对于同一份资源，以下两种借用情况只能存在一种：
 
   * **任意数量的共享引用 ($\&$)：** 允许多个共享引用同时存在，但它们都不能修改资源。
@@ -114,6 +117,14 @@ let m2 = &mut x; // 正确：现在可以创建可变引用 M2
 // let r2 = &x;     // 错误：在 M2 存在时，不能创建共享引用 R2
 ```
 
+### 生命周期
+
+生命周期是借用机制的核心，它用于确保所有引用都比它们指向的数据存活的时间短，从而防止悬垂引用。
+
+#### 智能生命周期省略
+
+Chtholly引入了智能的生命周期省略规则，旨在在 90% 的情况下消除手动生命周期注解，最大程度地减轻心智负担，同时保留 Rust 级别的编译期安全。
+
 ### 数据类型 (Data Types)
 
 Chtholly有如下内置数据类型：
@@ -136,18 +147,16 @@ Chtholly有如下内置数据类型：
 
 ### 类型转换
 
-Chtholly支持类型转换，使用type_cast<T>()。
-
-这是一个静态类型转换函数。
-
-此函数为内置函数，不需要导入。
+Chtholly倾向于使用显式的 as 关键字进行原始类型之间的强制转换，以替代冗长的函数调用（如 type_cast<T>()）。
 
 ```chtholly
-let a: i8 = type_cast<i8>(10.5);
+let float_val = 10.5;
+let a: i8 = float_val as i8; // 结果为 10
 ```
 
 ### 溢出处理
-所有溢出行为皆进行回绕  
+
+所有溢出行为皆进行回绕。
 
 ### 运算符
 
@@ -202,7 +211,7 @@ let test = [](): void {
 
 Chtholly使用`let`声明不可变成员变量。
 
-Chtholly使用`mut`声明可变成员变量。
+Chtholly使用`let mut`声明可变成员变量。
 
 ```Chtholly
 class Person
@@ -210,7 +219,7 @@ class Person
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
     let age: i32;
 
-    mut des: string;  // 可变成员变量，也可以赋予默认值
+    let mut des: string;  // 可变成员变量，也可以赋予默认值
 }
 ```
 
@@ -224,12 +233,12 @@ class Person
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
     let age: i32;
 
-    mut des: string;  // 可变成员变量，也可以赋予默认值
+    let mut des: string;  // 可变成员变量，也可以赋予默认值
 
     Person(age: i32, des: string)
     {
-        Self.age = age;  // 使用 Self 表示本身
-        Self.des = des;
+        self.age = age;
+        self.des = des;
     }
 }
 
@@ -277,12 +286,12 @@ class Person
     let name: string = "yhlight";  // 不可变成员变量，可以赋予默认值
     let age: i32;
 
-    mut des: srting;  // 可变成员变量，也可以赋予默认值
+    let mut des: srting;  // 可变成员变量，也可以赋予默认值
 
     Person(age: i32, des: string)
     {
-        Self.age = age;  // 使用 Self 表示本身
-        Self.des = des;
+        self.age = age;
+        self.des = des;
     }
 
     fn show(self): void
@@ -316,7 +325,7 @@ class Person
 public:
     let name: string = "yhlight";
     let age: i32;
-    mut des: string;
+    let mut des: string;
 
 private:
     fn show(self): void
@@ -356,7 +365,7 @@ struct Person
 {
     let name: string;  // 支持默认值
     let age: i32;
-    mut des: string;
+    let mut des: string;
 
     fn show(self): void
     {
@@ -379,7 +388,7 @@ Chtholly的枚举支持状态，即它们能够存储信息。
 例如在if语句中，if(color::RGB(r, g, b)) {} r, g, b就是解构的变量。
 
 ```Chtholly
-enum color
+enum color<T>
 {
     red,
     green,
@@ -474,11 +483,11 @@ item : container 为移动，对应iterator模块的iterator_move约束。
 
 如果你需要决定如何安全地创建迭代器，请使用create_iterator_move约束，这将决定迭代器对象如何被创建。
 
-item : container 为不可变引用，对应iterator模块的iterator_let约束。
+&item : container 为不可变引用，对应iterator模块的iterator_let约束。
 
 如果你需要决定如何安全地创建迭代器，请使用create_iterator_let约束，这将决定迭代器对象如何被创建。
 
-item : container 为可变引用，对应iterator模块的iterator_mut约束。
+&mut item : container 为可变引用，对应iterator模块的iterator_mut约束。
 
 如果你需要决定如何安全地创建迭代器，请使用create_iterator_mut约束，这将决定迭代器对象如何被创建。
 
@@ -627,12 +636,12 @@ optional类型有两个主要方法，unwrap和unwarp_or。
 let a = optional<i32>(10);
 ```
 
-### request
+### contract
 
-现在，你可以使用request来创建一个类的约束。
+现在，你可以使用contract来创建一个类的约束。
 
 ```chtholly
-request compare<T>  // 支持泛型
+contract compare<T>  // 支持泛型
 {
     fn compare<K>(self, other: K);  // 必须实现这个函数
 
@@ -670,10 +679,8 @@ class Test require compare
 
 泛型无法实现这样的功能，为此你可以使用关联类型，以便类型可以被复用。
 
-关联类型仅限于约束使用。
-
 ```Chtholly
-request iterator
+contract iterator
 {
     type item;
     fn next(&mut self): optional<Self::item>;  // 由实现类确定
@@ -722,7 +729,7 @@ class container requier iterator
 create_iterator_move和iterator_move可以相互请求，这不会导致问题的产生，但为了简洁性，我们始终推荐开发者进行线性的规划。
 
 ```Chtholly
-request iterator_move require create_iterator_move
+contract iterator_move require create_iterator_move
 {
     type item;
     fn next(&mut self): optional<item>;
@@ -735,7 +742,7 @@ request iterator_move require create_iterator_move
 
 
 ```Chtholly
-request create_iterator_move
+contract create_iterator_move
 {
     type IntoMoveIter: iterator_move;  // 要求一个实现了iterator_move的类型
     fn into_iter(self): Self::IntoMoveIter;
@@ -753,37 +760,37 @@ Chtholly提供了一系列的内置约束，来提供给开发者使用。
 需要iterator模块的支持。
 
 ```Chtholly
-request iterator_move require create_iterator_move
+contract iterator_move require create_iterator_move
 {
     type item;
     fn next(&mut self): optional<Self::item>;
 }
 
-request iterator_let require create_iterator_let
+contract iterator_let require create_iterator_let
 {
     type item;
     fn next(&mut self): optional<Self::item>;
 }
 
-request iterator_mut require create_iterator_mut
+contract iterator_mut require create_iterator_mut
 {
     type item;
     fn next(&mut self): optional<Self::item>;
 }
 
-request create_iterator_move
+contract create_iterator_move
 {
     type IntoMoveIter: iterator_move;
     fn into_iter(self): Self::IntoMoveIter;
 }
 
-request create_iterator_let
+contract create_iterator_let
 {
     type RefIter: iterator_let;
     fn iter(&self): Self::RefIter;
 }
 
-request create_iterator_mut
+contract create_iterator_mut
 {
     type MutIter: iterator_mut;
     fn iter_mut(&mut self): Self::MutIter;
@@ -870,6 +877,14 @@ import "math.cns" as math2;
 ### 包
 模块被收录在哪一个包？  
 
+模块与物理结构的目录存在关联。
+
+例如package std;那么此模块将会被存放在std文件夹之中。
+
+package std::math;你可以使用这样在方式表达具有一定结构的模块。
+
+所有的模块都应该被收录在module文件夹之中。
+
 ```nota
 // 例如这个是数学模块
 package packageName;
@@ -897,8 +912,8 @@ Result<T, E> 是一个枚举，用于封装可能成功或失败的操作结果�
 ```chtholly
 enum Result<T, E>
 {
-    Pass(T),    // 成功，包含一个值 T
-    Fail(E)    // 失败，包含一个错误 E
+    Ok(T),    // 成功，包含一个值 T
+    Err(E)    // 失败，包含一个错误 E
 }
 ```
 
@@ -906,17 +921,17 @@ enum Result<T, E>
 
 为了简洁地在函数间传递错误，Chtholly 提供了 ? 操作符。该操作符只能用于返回 Result 类型的函数内部：
 
-1.  如果 Result 是 Pass(T)，解包出值 T。
-2.  如果 Result 是 Fail(E)，立即将错误 E 从当前函数返回，实现错误传播。
+1.  如果 Result 是 Ok(T)，解包出值 T。
+2.  如果 Result 是 Err(E)，立即将错误 E 从当前函数返回，实现错误传播。
 
 ```chtholly
 fn process_file(path: string): Result<i32, ErrorType>
 {
-    // 如果 file::open 失败，函数立即返回 Fail(ErrorType)
+    // 如果 file::open 失败，函数立即返回 Err(ErrorType)
     let handle = file::open(path)?; 
     
     // ... 使用 handle ...
-    return Pass(1); 
+    return Ok(1); 
 }
 ```
 
@@ -929,12 +944,12 @@ let operation_result = read_and_process("test.cns");
 
 switch (operation_result)
 {
-    case Pass(data):
+    case Ok(data):
     {
         println("处理成功，数据为:", data);
         break;
     }
-    case Fail(error):
+    case Err(error):
     {
         println("处理失败，错误信息:", error.message);
         break;
