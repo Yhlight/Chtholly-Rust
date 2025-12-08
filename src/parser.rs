@@ -4,6 +4,7 @@ use crate::ast::*;
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
+    Assign,      // =
     Equals,      // ==
     LessGreater, // > or <
     Sum,         // +
@@ -14,6 +15,7 @@ enum Precedence {
 
 fn token_to_precedence(token: &Token) -> Precedence {
     match token {
+        Token::Assign => Precedence::Assign,
         Token::Equal | Token::NotEqual => Precedence::Equals,
         Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
         Token::Plus | Token::Minus => Precedence::Sum,
@@ -156,7 +158,7 @@ impl<'a> Parser<'a> {
 
     fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
         match self.current_token {
-            Token::Plus | Token::Minus | Token::Multiply | Token::Divide | Token::Equal | Token::NotEqual | Token::LessThan | Token::GreaterThan => {
+            Token::Plus | Token::Minus | Token::Multiply | Token::Divide | Token::Equal | Token::NotEqual | Token::LessThan | Token::GreaterThan | Token::Assign => {
                 self.parse_infix_expression(left)
             }
             Token::LParen => self.parse_call_expression(left),
@@ -269,6 +271,7 @@ impl<'a> Parser<'a> {
             Token::NotEqual => InfixOperator::NotEqual,
             Token::LessThan => InfixOperator::LessThan,
             Token::GreaterThan => InfixOperator::GreaterThan,
+            Token::Assign => InfixOperator::Assign,
             _ => return None,
         };
 

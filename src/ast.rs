@@ -52,6 +52,7 @@ pub enum InfixOperator {
     NotEqual,
     LessThan,
     GreaterThan,
+    Assign,
 }
 
 #[derive(Debug, PartialEq, Clone)]
