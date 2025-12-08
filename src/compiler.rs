@@ -98,6 +98,33 @@ impl<'ctx> Compiler<'ctx> {
 
     fn compile_statement(&mut self, node: &ASTNode) -> CompileResult<()> {
         match node {
+            ASTNode::IfStatement { condition, then_block, else_block } => {
+                let condition_value = self.compile_expression(condition)?;
+                let condition_value = match condition_value {
+                    Value::Bool(v) => v,
+                    _ => return Err(CompileError::MissingTypeAnnotation), // TODO: better error
+                };
+
+                let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+                let then_bb = self.context.append_basic_block(function, "then");
+                let else_bb = self.context.append_basic_block(function, "else");
+                let merge_bb = self.context.append_basic_block(function, "merge");
+
+                self.builder.build_conditional_branch(condition_value, then_bb, else_bb)?;
+
+                self.builder.position_at_end(then_bb);
+                self.compile_block(then_block)?;
+                self.builder.build_unconditional_branch(merge_bb)?;
+
+                self.builder.position_at_end(else_bb);
+                if let Some(else_block) = else_block {
+                    self.compile_block(else_block)?;
+                }
+                self.builder.build_unconditional_branch(merge_bb)?;
+
+                self.builder.position_at_end(merge_bb);
+            }
             ASTNode::VariableDeclaration {
                 name,
                 type_annotation,
@@ -144,6 +171,13 @@ impl<'ctx> Compiler<'ctx> {
             }
             _ => todo!(),
         }
+    }
+
+    fn compile_block(&mut self, block: &[ASTNode]) -> CompileResult<()> {
+        for node in block {
+            self.compile_statement(node)?;
+        }
+        Ok(())
     }
 
     pub fn print_ir(&self) {

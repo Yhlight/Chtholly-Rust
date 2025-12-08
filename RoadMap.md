@@ -18,7 +18,7 @@ This document outlines the development plan for the Chtholly programming languag
 ## Phase 2: Advanced Language Features
 
 - [ ] **Control Flow:**
-    - [ ] if-else statements.
+    - [x] if-else statements.
     - [ ] while loops.
     - [ ] for loops.
 - [ ] **Functions:**

@@ -1,11 +1,20 @@
 use std::iter::Peekable;
 use std::str::Chars;
+use thiserror::Error;
+
+#[derive(Debug, Error, PartialEq)]
+pub enum LexerError {
+    #[error("Invalid number literal")]
+    InvalidNumberLiteral,
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Fn,
     Let,
     Mut,
+    If,
+    Else,
     True,
     False,
     Identifier(String),
@@ -40,20 +49,20 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Token;
+    type Item = Result<Token, LexerError>;
 
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self) -> Option<Self::Item> {
         let c = self.input.next()?;
 
-        match c {
-            '(' => Some(Token::LParen),
-            ')' => Some(Token::RParen),
-            '{' => Some(Token::LBrace),
-            '}' => Some(Token::RBrace),
-            ':' => Some(Token::Colon),
-            ',' => Some(Token::Comma),
-            '=' => Some(Token::Assign),
-            ';' => Some(Token::Semicolon),
+        let result = match c {
+            '(' => Ok(Token::LParen),
+            ')' => Ok(Token::RParen),
+            '{' => Ok(Token::LBrace),
+            '}' => Ok(Token::RBrace),
+            ':' => Ok(Token::Colon),
+            ',' => Ok(Token::Comma),
+            '=' => Ok(Token::Assign),
+            ';' => Ok(Token::Semicolon),
             '"' => {
                 let mut string = String::new();
                 while let Some(&c) = self.input.peek() {
@@ -63,11 +72,11 @@ impl<'a> Iterator for Lexer<'a> {
                     string.push(self.input.next().unwrap());
                 }
                 self.input.next(); // Consume the closing quote
-                Some(Token::StringLiteral(string))
+                Ok(Token::StringLiteral(string))
             }
             '-' if self.input.peek() == Some(&'>') => {
                 self.input.next();
-                Some(Token::Arrow)
+                Ok(Token::Arrow)
             }
             '/' if self.input.peek() == Some(&'/') => {
                 self.input.next();
@@ -78,13 +87,13 @@ impl<'a> Iterator for Lexer<'a> {
                     }
                     comment.push(self.input.next().unwrap());
                 }
-                Some(Token::Comment(comment))
+                Ok(Token::Comment(comment))
             }
             c if c.is_whitespace() => {
                 if c == '\n' {
-                    Some(Token::Newline)
+                    Ok(Token::Newline)
                 } else {
-                    Some(Token::Whitespace)
+                    Ok(Token::Whitespace)
                 }
             }
             c if c.is_alphabetic() => {
@@ -97,12 +106,14 @@ impl<'a> Iterator for Lexer<'a> {
                     identifier.push(self.input.next().unwrap());
                 }
                 match identifier.as_str() {
-                    "fn" => Some(Token::Fn),
-                    "let" => Some(Token::Let),
-                    "mut" => Some(Token::Mut),
-                    "true" => Some(Token::True),
-                    "false" => Some(Token::False),
-                    _ => Some(Token::Identifier(identifier)),
+                    "fn" => Ok(Token::Fn),
+                    "let" => Ok(Token::Let),
+                    "mut" => Ok(Token::Mut),
+                    "if" => Ok(Token::If),
+                    "else" => Ok(Token::Else),
+                    "true" => Ok(Token::True),
+                    "false" => Ok(Token::False),
+                    _ => Ok(Token::Identifier(identifier)),
                 }
             }
             c if c.is_digit(10) => {
@@ -115,12 +126,13 @@ impl<'a> Iterator for Lexer<'a> {
                     number.push(self.input.next().unwrap());
                 }
                 if number.contains('.') {
-                    Some(Token::FloatLiteral(number.parse().unwrap()))
+                    number.parse().map(Token::FloatLiteral).map_err(|_| LexerError::InvalidNumberLiteral)
                 } else {
-                    Some(Token::IntegerLiteral(number.parse().unwrap()))
+                    number.parse().map(Token::IntegerLiteral).map_err(|_| LexerError::InvalidNumberLiteral)
                 }
             }
-            _ => Some(Token::Unknown(c)),
-        }
+            _ => Ok(Token::Unknown(c)),
+        };
+        Some(result)
     }
 }

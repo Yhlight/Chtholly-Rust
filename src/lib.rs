@@ -16,8 +16,8 @@ mod tests {
             // This is a comment.
             fn main() {}
         "#;
-        let parser = Parser::new(code);
-        let ast = parser.parse();
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
 
         assert_eq!(
             ast,
@@ -40,8 +40,8 @@ mod tests {
                 let mut b = 20;
             }
         "#;
-        let parser = Parser::new(code);
-        let ast = parser.parse();
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
 
         assert_eq!(
             ast,
@@ -77,8 +77,8 @@ mod tests {
                 let c: string = "hello";
             }
         "#;
-        let parser = Parser::new(code);
-        let ast = parser.parse();
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
 
         assert_eq!(
             ast,
@@ -118,8 +118,75 @@ mod tests {
                 let a = 10;
             }
         "#;
-        let parser = Parser::new(code);
-        let ast = parser.parse();
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        let result = compiler.compile(&ast);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_if_else_statement() {
+        let code = r#"
+            fn main() {
+                if (true) {
+                    let a = 10;
+                } else {
+                    let b = 20;
+                }
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        assert_eq!(
+            ast,
+            vec![
+                ASTNode::Function {
+                    name: "main".to_string(),
+                    args: vec![],
+                    body: vec![
+                        ASTNode::IfStatement {
+                            condition: Box::new(ASTNode::BoolLiteral(true)),
+                            then_block: vec![
+                                ASTNode::VariableDeclaration {
+                                    is_mutable: false,
+                                    name: "a".to_string(),
+                                    type_annotation: None,
+                                    value: Some(Box::new(ASTNode::IntegerLiteral(10))),
+                                },
+                            ],
+                            else_block: Some(vec![
+                                ASTNode::VariableDeclaration {
+                                    is_mutable: false,
+                                    name: "b".to_string(),
+                                    type_annotation: None,
+                                    value: Some(Box::new(ASTNode::IntegerLiteral(20))),
+                                },
+                            ]),
+                        },
+                    ],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_compile_if_else_statement() {
+        let code = r#"
+            fn main() {
+                if (true) {
+                    let a = 10;
+                } else {
+                    let b = 20;
+                }
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
 
         let context = Context::create();
         let mut compiler = Compiler::new(&context);

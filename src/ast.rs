@@ -23,5 +23,10 @@ pub enum ASTNode {
     FloatLiteral(f64),
     BoolLiteral(bool),
     StringLiteral(String),
+    IfStatement {
+        condition: Box<ASTNode>,
+        then_block: Vec<ASTNode>,
+        else_block: Option<Vec<ASTNode>>,
+    },
     Comment(String),
 }
