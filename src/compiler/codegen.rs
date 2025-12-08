@@ -1,7 +1,7 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{BasicValueEnum, FloatValue, IntValue, PointerValue};
+use inkwell::values::{BasicValueEnum, PointerValue};
 use inkwell::types::BasicTypeEnum;
 use inkwell::IntPredicate;
 use inkwell::FloatPredicate;
@@ -14,7 +14,7 @@ pub struct Compiler<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
     pub module: Module<'ctx>,
-    variables: HashMap<String, (PointerValue<'ctx>, BasicTypeEnum<'ctx>)>,
+    variables: HashMap<String, (PointerValue<'ctx>, BasicTypeEnum<'ctx>, bool)>, // ptr, type, is_mutable
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -33,12 +33,12 @@ impl<'ctx> Compiler<'ctx> {
     /// Compiles a `Stmt` into LLVM IR.
     pub fn compile_stmt(&mut self, stmt: &Stmt) -> Result<(), &'static str> {
         match stmt {
-            Stmt::Let(name, expr) => {
+            Stmt::Let(name, is_mutable, expr) => {
                 let value = self.compile_expr(expr)?;
                 let ty = value.get_type();
-                let ptr = self.builder.build_alloca(ty, name).map_err(|_| "Failed to build alloca")?;
-                self.builder.build_store(ptr, value).map_err(|_| "Failed to build store")?;
-                self.variables.insert(name.clone(), (ptr, ty));
+                let ptr = self.builder.build_alloca(ty, name).map_err(|_| "Failed to allocate variable")?;
+                self.builder.build_store(ptr, value).map_err(|_| "Failed to store variable")?;
+                self.variables.insert(name.clone(), (ptr, ty, *is_mutable));
                 Ok(())
             }
             Stmt::Expr(expr) => {
@@ -54,8 +54,21 @@ impl<'ctx> Compiler<'ctx> {
             Expr::Literal(literal) => self.compile_literal(literal),
             Expr::Ident(name) => {
                 match self.variables.get(name) {
-                    Some((ptr, ty)) => {
+                    Some((ptr, ty, _)) => {
                         self.builder.build_load(*ty, *ptr, name).map_err(|_| "Failed to build load")
+                    },
+                    None => Err("Undefined variable"),
+                }
+            }
+            Expr::Assignment(name, expr) => {
+                match self.variables.get(name) {
+                    Some((ptr, _, is_mutable)) => {
+                        if !is_mutable {
+                            return Err("Cannot assign to immutable variable");
+                        }
+                        let value = self.compile_expr(expr)?;
+                        self.builder.build_store(*ptr, value).map_err(|_| "Failed to store variable")?;
+                        Ok(value)
                     },
                     None => Err("Undefined variable"),
                 }
@@ -82,6 +95,30 @@ impl<'ctx> Compiler<'ctx> {
         op: &BinaryOp,
         rhs: &Expr,
     ) -> Result<BasicValueEnum<'ctx>, &'static str> {
+        if *op == BinaryOp::And || *op == BinaryOp::Or {
+            let lhs = self.compile_expr(lhs)?;
+            if !lhs.is_int_value() || lhs.into_int_value().get_type().get_bit_width() != 1 {
+                return Err("Logical operators can only be used with booleans");
+            }
+
+            let rhs = self.compile_expr(rhs)?;
+            if !rhs.is_int_value() || rhs.into_int_value().get_type().get_bit_width() != 1 {
+                return Err("Logical operators can only be used with booleans");
+            }
+
+            return match op {
+                BinaryOp::And => self.builder
+                    .build_and(lhs.into_int_value(), rhs.into_int_value(), "andtmp")
+                    .map(|v| v.into())
+                    .map_err(|_| "Failed to build and"),
+                BinaryOp::Or => self.builder
+                    .build_or(lhs.into_int_value(), rhs.into_int_value(), "ortmp")
+                    .map(|v| v.into())
+                    .map_err(|_| "Failed to build or"),
+                _ => unreachable!(),
+            };
+        }
+
         let lhs = self.compile_expr(lhs)?;
         let rhs = self.compile_expr(rhs)?;
 
@@ -290,7 +327,7 @@ impl<'ctx> Compiler<'ctx> {
                         .map_err(|_| "Failed to build float compare")
                 }
             }
-            _ => Err("Unsupported binary operator"),
+            BinaryOp::And | BinaryOp::Or => unreachable!(),
         }
     }
 }

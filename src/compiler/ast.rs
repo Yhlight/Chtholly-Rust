@@ -1,6 +1,6 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
-    Let(String, Expr),
+    Let(String, bool, Expr), // name, is_mutable, value
     Expr(Expr),
 }
 
@@ -8,6 +8,7 @@ pub enum Stmt {
 pub enum Expr {
     Literal(Literal),
     Ident(String),
+    Assignment(String, Box<Expr>),
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
 }
 

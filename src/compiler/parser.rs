@@ -23,7 +23,7 @@ pub fn parser() -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> {
 
         let atom = literal
             .or(expr.delimited_by(just(Token::LParen), just(Token::RParen)))
-            .or(ident.map(Expr::Ident))
+            .or(ident.clone().map(Expr::Ident))
             .labelled("atom");
 
         let op = |op, op_type| just(op).to(op_type);
@@ -66,15 +66,42 @@ pub fn parser() -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> {
             .foldl(|lhs, (op, rhs)| Expr::Binary(Box::new(lhs), op, Box::new(rhs)))
             .labelled("comparison");
 
-        comparison
+        let logical_and = comparison
+            .clone()
+            .then(
+                op(Token::AndAnd, BinaryOp::And)
+                    .then(comparison)
+                    .repeated(),
+            )
+            .foldl(|lhs, (op, rhs)| Expr::Binary(Box::new(lhs), op, Box::new(rhs)))
+            .labelled("logical_and");
+
+        let logical_or = logical_and
+            .clone()
+            .then(
+                op(Token::OrOr, BinaryOp::Or)
+                    .then(logical_and)
+                    .repeated(),
+            )
+            .foldl(|lhs, (op, rhs)| Expr::Binary(Box::new(lhs), op, Box::new(rhs)))
+            .labelled("logical_or");
+
+        let assignment = ident
+            .clone()
+            .then_ignore(just(Token::Eq))
+            .then(logical_or.clone())
+            .map(|(ident, expr)| Expr::Assignment(ident, Box::new(expr)));
+
+        assignment.or(logical_or)
     });
 
     let let_stmt = just(Token::Let)
-        .ignore_then(ident)
+        .ignore_then(just(Token::Mut).or_not())
+        .then(ident)
         .then_ignore(just(Token::Eq))
         .then(expr.clone())
         .then_ignore(just(Token::Semicolon))
-        .map(|(ident, expr)| Stmt::Let(ident, expr));
+        .map(|((is_mut, ident), expr)| Stmt::Let(ident, is_mut.is_some(), expr));
 
     let expr_stmt = expr
         .clone()
@@ -117,7 +144,65 @@ mod tests {
             "let x = 5;",
             vec![Stmt::Let(
                 "x".to_string(),
+                false,
                 Expr::Literal(Literal::Int(5)),
+            )],
+        );
+    }
+
+    #[test]
+    fn test_mut_let_statement() {
+        parse_test_helper(
+            "let mut x = 5;",
+            vec![Stmt::Let(
+                "x".to_string(),
+                true,
+                Expr::Literal(Literal::Int(5)),
+            )],
+        );
+    }
+
+    #[test]
+    fn test_assignment() {
+        parse_test_helper(
+            "x = 10;",
+            vec![Stmt::Expr(Expr::Assignment(
+                "x".to_string(),
+                Box::new(Expr::Literal(Literal::Int(10))),
+            ))],
+        );
+    }
+
+    #[test]
+    fn test_multiple_statements() {
+        parse_test_helper(
+            "let mut x = 5; x = 10;",
+            vec![
+                Stmt::Let(
+                    "x".to_string(),
+                    true,
+                    Expr::Literal(Literal::Int(5)),
+                ),
+                Stmt::Expr(Expr::Assignment(
+                    "x".to_string(),
+                    Box::new(Expr::Literal(Literal::Int(10))),
+                )),
+            ],
+        );
+    }
+
+    #[test]
+    fn test_logical_operators() {
+        parse_test_helper(
+            "let a = true && false;",
+            vec![Stmt::Let(
+                "a".to_string(),
+                false,
+                Expr::Binary(
+                    Box::new(Expr::Literal(Literal::Bool(true))),
+                    BinaryOp::And,
+                    Box::new(Expr::Literal(Literal::Bool(false))),
+                ),
             )],
         );
     }

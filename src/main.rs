@@ -62,7 +62,7 @@ fn main() {
             }
 
             // For now, we just return 0 from main
-            compiler.builder.build_return(Some(&i64_type.const_int(0, false)));
+            let _ = compiler.builder.build_return(Some(&i64_type.const_int(0, false)));
 
             println!("{}", compiler.module.print_to_string().to_string());
         } else {
