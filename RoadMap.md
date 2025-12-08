@@ -8,7 +8,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] **Parser:** Build a parser that takes the token stream and generates an Abstract Syntax Tree (AST).
 - [x] **Basic AST:** Define AST nodes for fundamental language constructs like variables, literals, and expressions.
 - [x] **LLVM Integration:** Set up the LLVM backend for code generation.
-- [x] **Variable Declarations:** Implement `let` and `mut` for variable declarations.
+- [x] **Variable Declarations:** Implement `let` and `let mut` for variable declarations.
 - [x] **Primitive Data Types:** Support for `i32`, `f64`, `char`, `bool`, and `string`.
 - [x] **Basic Operators:** Implement arithmetic, comparison, and logical operators.
 - [x] **Main Function:** The entry point of a Chtholly program.
