@@ -19,7 +19,7 @@ This document outlines the development plan for the Chtholly programming languag
 
 - [ ] **Control Flow:**
     - [x] if-else statements.
-    - [ ] while loops.
+    - [x] while loops.
     - [ ] for loops.
 - [ ] **Functions:**
     - [ ] Function definitions and calls.

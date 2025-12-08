@@ -28,5 +28,9 @@ pub enum ASTNode {
         then_block: Vec<ASTNode>,
         else_block: Option<Vec<ASTNode>>,
     },
+    WhileStatement {
+        condition: Box<ASTNode>,
+        body: Vec<ASTNode>,
+    },
     Comment(String),
 }

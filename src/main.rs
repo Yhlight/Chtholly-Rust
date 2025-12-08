@@ -5,10 +5,8 @@ use inkwell::context::Context;
 fn main() {
     let code = r#"
         fn main() {
-            if (true) {
-                let a = 20;
-            } else {
-                let b = 30;
+            while (true) {
+                let a = 10;
             }
         }
     "#;

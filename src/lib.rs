@@ -194,4 +194,59 @@ mod tests {
 
         assert!(result.is_ok());
     }
+
+    #[test]
+    fn test_parse_while_statement() {
+        let code = r#"
+            fn main() {
+                while (true) {
+                    let a = 10;
+                }
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        assert_eq!(
+            ast,
+            vec![
+                ASTNode::Function {
+                    name: "main".to_string(),
+                    args: vec![],
+                    body: vec![
+                        ASTNode::WhileStatement {
+                            condition: Box::new(ASTNode::BoolLiteral(true)),
+                            body: vec![
+                                ASTNode::VariableDeclaration {
+                                    is_mutable: false,
+                                    name: "a".to_string(),
+                                    type_annotation: None,
+                                    value: Some(Box::new(ASTNode::IntegerLiteral(10))),
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_compile_while_statement() {
+        let code = r#"
+            fn main() {
+                while (true) {
+                    let a = 10;
+                }
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        let result = compiler.compile(&ast);
+
+        assert!(result.is_ok());
+    }
 }

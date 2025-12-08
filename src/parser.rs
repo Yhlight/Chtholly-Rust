@@ -51,6 +51,7 @@ impl<'a> Parser<'a> {
             &Token::Fn => self.parse_function(tokens),
             &Token::Let => self.parse_variable_declaration(tokens),
             &Token::If => self.parse_if_statement(tokens),
+            &Token::While => self.parse_while_statement(tokens),
             _ => Err(ParserError::UnexpectedToken),
         }
     }
@@ -180,6 +181,21 @@ impl<'a> Parser<'a> {
         tokens.next(); // Consume '}'
 
         Ok(body)
+    }
+
+    fn parse_while_statement(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
+        tokens.next(); // Consume 'while'
+
+        if tokens.next() != Some(&Token::LParen) { return Err(ParserError::UnexpectedToken); }
+        let condition = self.parse_expression(tokens)?;
+        if tokens.next() != Some(&Token::RParen) { return Err(ParserError::UnexpectedToken); }
+
+        let body = self.parse_block(tokens)?;
+
+        Ok(ASTNode::WhileStatement {
+            condition: Box::new(condition),
+            body,
+        })
     }
 
     fn skip_until_matching(&self, tokens: &mut Peekable<Iter<Token>>, open: &Token, close: &Token) {

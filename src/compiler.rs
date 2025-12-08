@@ -125,6 +125,30 @@ impl<'ctx> Compiler<'ctx> {
 
                 self.builder.position_at_end(merge_bb);
             }
+            ASTNode::WhileStatement { condition, body } => {
+                let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+                let loop_cond_bb = self.context.append_basic_block(function, "loop_cond");
+                let loop_body_bb = self.context.append_basic_block(function, "loop_body");
+                let after_loop_bb = self.context.append_basic_block(function, "after_loop");
+
+                self.builder.build_unconditional_branch(loop_cond_bb)?;
+                self.builder.position_at_end(loop_cond_bb);
+
+                let condition_value = self.compile_expression(condition)?;
+                let condition_value = match condition_value {
+                    Value::Bool(v) => v,
+                    _ => return Err(CompileError::MissingTypeAnnotation), // TODO: better error
+                };
+
+                self.builder.build_conditional_branch(condition_value, loop_body_bb, after_loop_bb)?;
+
+                self.builder.position_at_end(loop_body_bb);
+                self.compile_block(body)?;
+                self.builder.build_unconditional_branch(loop_cond_bb)?;
+
+                self.builder.position_at_end(after_loop_bb);
+            }
             ASTNode::VariableDeclaration {
                 name,
                 type_annotation,
