@@ -58,9 +58,36 @@ impl<'ctx> Compiler<'ctx> {
             Statement::Expression(expression) => {
                 self.compile_expression(expression);
             }
+            Statement::While { condition, body } => {
+                self.compile_while_statement(condition, body);
+            }
             _ => unimplemented!(),
         }
     }
+
+    fn compile_while_statement(&mut self, condition: Expression, body: BlockStatement) {
+        let parent_function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+        let loop_cond_bb = self.context.append_basic_block(parent_function, "loop_cond");
+        let loop_body_bb = self.context.append_basic_block(parent_function, "loop_body");
+        let after_loop_bb = self.context.append_basic_block(parent_function, "after_loop");
+
+        self.builder.build_unconditional_branch(loop_cond_bb).unwrap();
+
+        // Compile loop condition block
+        self.builder.position_at_end(loop_cond_bb);
+        let cond = self.compile_expression(condition).into_int_value();
+        self.builder.build_conditional_branch(cond, loop_body_bb, after_loop_bb).unwrap();
+
+        // Compile loop body block
+        self.builder.position_at_end(loop_body_bb);
+        self.compile_block_statement(body);
+        self.builder.build_unconditional_branch(loop_cond_bb).unwrap();
+
+        // Position builder after the loop
+        self.builder.position_at_end(after_loop_bb);
+    }
+
 
     fn compile_block_statement(&mut self, block: BlockStatement) -> Option<inkwell::values::BasicValueEnum<'ctx>> {
         let mut last_val = None;
