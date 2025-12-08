@@ -12,6 +12,19 @@ pub enum Expression {
     Literal(Literal),
     Prefix(PrefixOperator, Box<Expression>),
     Infix(Box<Expression>, InfixOperator, Box<Expression>),
+    FunctionLiteral {
+        parameters: Vec<Identifier>,
+        body: BlockStatement,
+    },
+    Call {
+        function: Box<Expression>,
+        arguments: Vec<Expression>,
+    },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

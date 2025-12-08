@@ -4,17 +4,17 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 1: Core Compiler Infrastructure (In Progress)
 
-- [ ] **Lexer:** Implement a tokenizer to convert Chtholly source code into a stream of tokens.
-- [ ] **Parser:** Develop a parser to build an Abstract Syntax Tree (AST) from the token stream.
-- [ ] **AST:** Define the structure of the AST to represent the code's syntax.
+- [x] **Lexer:** Implement a tokenizer to convert Chtholly source code into a stream of tokens.
+- [x] **Parser:** Develop a parser to build an Abstract Syntax Tree (AST) from the token stream.
+- [x] **AST:** Define the structure of the AST to represent the code's syntax.
 - [ ] **LLVM Integration:** Set up the basic infrastructure to interact with the LLVM backend.
 
 ## Phase 2: Basic Language Features
 
-- [ ] **Variable Declarations:** Implement `let` and `let mut` for immutable and mutable variables.
-- [ ] **Data Types:** Support for basic data types (`i32`, `f64`, `char`, `string`, `bool`).
-- [ ] **Operators:** Implement standard arithmetic, comparison, and logical operators.
-- [ ] **Functions:** Basic function definition and invocation.
+- [x] **Variable Declarations:** Implement `let` and `let mut` for immutable and mutable variables.
+- [x] **Data Types:** Support for basic data types (`i32`, `f64`, `char`, `string`, `bool`).
+- [x] **Operators:** Implement standard arithmetic, comparison, and logical operators.
+- [x] **Functions:** Basic function definition and invocation.
 - [ ] **Control Flow:** `if-else` and `while` loops.
 
 ## Phase 3: Advanced Language Features

@@ -18,6 +18,7 @@ fn token_to_precedence(token: &Token) -> Precedence {
         Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
         Token::Plus | Token::Minus => Precedence::Sum,
         Token::Multiply | Token::Divide => Precedence::Product,
+        Token::LParen => Precedence::Call,
         _ => Precedence::Lowest,
     }
 }
@@ -145,28 +146,19 @@ impl<'a> Parser<'a> {
             Token::True => Some(Expression::Literal(Literal::Boolean(true))),
             Token::False => Some(Expression::Literal(Literal::Boolean(false))),
             Token::Minus => self.parse_prefix_expression(),
+            Token::Fn => self.parse_function_literal(),
             _ => None,
         }
     }
 
     fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
-        let operator = match self.current_token {
-            Token::Plus => InfixOperator::Plus,
-            Token::Minus => InfixOperator::Minus,
-            Token::Multiply => InfixOperator::Multiply,
-            Token::Divide => InfixOperator::Divide,
-            Token::Equal => InfixOperator::Equal,
-            Token::NotEqual => InfixOperator::NotEqual,
-            Token::LessThan => InfixOperator::LessThan,
-            Token::GreaterThan => InfixOperator::GreaterThan,
-            _ => return None,
-        };
-
-        let precedence = token_to_precedence(&self.current_token);
-        self.next_token();
-        let right = self.parse_expression(precedence)?;
-
-        Some(Expression::Infix(Box::new(left), operator, Box::new(right)))
+        match self.current_token {
+            Token::Plus | Token::Minus | Token::Multiply | Token::Divide | Token::Equal | Token::NotEqual | Token::LessThan | Token::GreaterThan => {
+                self.parse_infix_expression(left)
+            }
+            Token::LParen => self.parse_call_expression(left),
+            _ => None,
+        }
     }
 
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
@@ -195,6 +187,121 @@ impl<'a> Parser<'a> {
     fn peek_error(&mut self, token: &Token) {
         let msg = format!("expected next token to be {:?}, got {:?} instead", token, self.peek_token);
         self.errors.push(msg);
+    }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
+        let operator = match self.current_token {
+            Token::Plus => InfixOperator::Plus,
+            Token::Minus => InfixOperator::Minus,
+            Token::Multiply => InfixOperator::Multiply,
+            Token::Divide => InfixOperator::Divide,
+            Token::Equal => InfixOperator::Equal,
+            Token::NotEqual => InfixOperator::NotEqual,
+            Token::LessThan => InfixOperator::LessThan,
+            Token::GreaterThan => InfixOperator::GreaterThan,
+            _ => return None,
+        };
+
+        let precedence = token_to_precedence(&self.current_token);
+        self.next_token();
+        let right = self.parse_expression(precedence)?;
+
+        Some(Expression::Infix(Box::new(left), operator, Box::new(right)))
+    }
+
+    fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
+        let arguments = self.parse_call_arguments()?;
+        Some(Expression::Call {
+            function: Box::new(function),
+            arguments,
+        })
+    }
+
+    fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
+        let mut args = Vec::new();
+
+        if self.peek_token == Token::RParen {
+            self.next_token();
+            return Some(args);
+        }
+
+        self.next_token();
+        args.push(self.parse_expression(Precedence::Lowest)?);
+
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            args.push(self.parse_expression(Precedence::Lowest)?);
+        }
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        Some(args)
+    }
+
+    fn parse_function_literal(&mut self) -> Option<Expression> {
+        if !self.expect_peek(&Token::LParen) {
+            return None;
+        }
+
+        let parameters = self.parse_function_parameters()?;
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Expression::FunctionLiteral { parameters, body })
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<Identifier>> {
+        let mut identifiers = Vec::new();
+
+        if self.peek_token == Token::RParen {
+            self.next_token();
+            return Some(identifiers);
+        }
+
+        self.next_token();
+
+        let ident = match self.current_token.clone() {
+            Token::Identifier(name) => Identifier(name),
+            _ => return None,
+        };
+        identifiers.push(ident);
+
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            let ident = match self.current_token.clone() {
+                Token::Identifier(name) => Identifier(name),
+                _ => return None,
+            };
+            identifiers.push(ident);
+        }
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        Some(identifiers)
+    }
+
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let mut statements = Vec::new();
+        self.next_token();
+
+        while self.current_token != Token::RBrace && self.current_token != Token::Eof {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        BlockStatement { statements }
     }
 }
 
@@ -348,5 +455,48 @@ mod tests {
 
         let errors = result.unwrap_err();
         assert_eq!(errors.len(), 2);
+    }
+
+    #[test]
+    fn test_function_literal_parsing() {
+        let input = "fn(x, y) { x + y; }";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+
+        if let Statement::Expression(Expression::FunctionLiteral { parameters, body }) = &program.statements[0] {
+            assert_eq!(parameters.len(), 2);
+            assert_eq!(parameters[0].0, "x");
+            assert_eq!(parameters[1].0, "y");
+
+            assert_eq!(body.statements.len(), 1);
+        } else {
+            panic!("statement not a function literal");
+        }
+    }
+
+    #[test]
+    fn test_call_expression_parsing() {
+        let input = "add(1, 2 * 3, 4 + 5);";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+
+        if let Statement::Expression(Expression::Call { function, arguments }) = &program.statements[0] {
+            if let Expression::Identifier(Identifier(name)) = &**function {
+                assert_eq!(name, "add");
+            } else {
+                panic!("function not an identifier");
+            }
+            assert_eq!(arguments.len(), 3);
+        } else {
+            panic!("statement not a call expression");
+        }
     }
 }
