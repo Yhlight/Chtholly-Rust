@@ -27,7 +27,8 @@ This document outlines the development plan for the Chtholly programming languag
   - [ ] Code Generation
 - [In Progress] **Control Flow:** `if-else` and `while` loops.
   - [x] Parsing
-  - [ ] Code Generation
+  - [x] Code Generation (if-else)
+  - [ ] Code Generation (while)
 
 ## Phase 3: Advanced Language Features
 
