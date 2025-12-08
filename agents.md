@@ -74,3 +74,5 @@ inkwell = { git = "https://github.com/TheDan64/inkwell.git", rev = "b9c53276e309
 4. 每一个计划的推进前，都需要重新阅读 `Chtholly.md` 中相关语法规范。
 
 5. 需要创建一个 `RoadMap.md`（尽可能详细）记录项目的进度，每一个功能的实现都需要通过此文档进行反馈。
+
+6. 请务必根据agents.md进行环境的配置
