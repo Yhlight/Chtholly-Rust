@@ -22,7 +22,7 @@ This document outlines the development plan and tracks the progress of the Chtho
   - [ ] Character type (`char`)
   - [x] Boolean type (`bool`)
   - [ ] Void type (`void`)
-  - [ ] String type (`string`)
+  - [x] String type (`string`)
   - [ ] Array types (`T[]`, `T[N]`)
 - [ ] **Type Casting:**
   - [ ] `type_cast<T>()`

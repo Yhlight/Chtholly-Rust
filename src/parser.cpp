@@ -65,6 +65,9 @@ std::unique_ptr<Statement> Parser::parse_statement() {
     if (cur_token_.type == TokenType::FOR) {
         return parse_for_statement();
     }
+    if (cur_token_.type == TokenType::DO) {
+        return parse_do_while_statement();
+    }
 
     auto stmt = std::make_unique<ExpressionStatement>();
     stmt->token = cur_token_;
@@ -261,6 +264,43 @@ std::unique_ptr<ForStatement> Parser::parse_for_statement() {
     next_token();
 
     stmt->body = parse_block_statement();
+
+    return stmt;
+}
+
+std::unique_ptr<DoWhileStatement> Parser::parse_do_while_statement() {
+    auto stmt = std::make_unique<DoWhileStatement>();
+    stmt->token = cur_token_;
+
+    if (peek_token_.type != TokenType::LBRACE) {
+        return nullptr;
+    }
+    next_token();
+
+    stmt->body = parse_block_statement();
+
+    if (peek_token_.type != TokenType::WHILE) {
+        return nullptr;
+    }
+    next_token();
+
+    if (peek_token_.type != TokenType::LPAREN) {
+        return nullptr;
+    }
+    next_token();
+    next_token();
+
+    stmt->condition = parse_expression(LOWEST);
+
+    if (peek_token_.type != TokenType::RPAREN) {
+        return nullptr;
+    }
+    next_token();
+
+    if (peek_token_.type != TokenType::SEMICOLON) {
+        return nullptr;
+    }
+    next_token();
 
     return stmt;
 }

@@ -102,6 +102,33 @@ TEST(ParserTest, WhileStatement) {
     EXPECT_EQ(body_stmt->expression->to_string(), "x");
 }
 
+TEST(ParserTest, DoWhileStatement) {
+    std::string code = "do { x } while (x < y);";
+    Lexer lexer(code);
+    Parser parser(lexer);
+
+    auto program = parser.parse_program();
+    ASSERT_NE(program, nullptr);
+    ASSERT_EQ(program->statements.size(), 1);
+
+    auto stmt = dynamic_cast<DoWhileStatement*>(program->statements[0].get());
+    ASSERT_NE(stmt, nullptr);
+
+    ASSERT_NE(stmt->body, nullptr);
+    ASSERT_EQ(stmt->body->statements.size(), 1);
+
+    auto body_stmt = dynamic_cast<ExpressionStatement*>(stmt->body->statements[0].get());
+    ASSERT_NE(body_stmt, nullptr);
+
+    EXPECT_EQ(body_stmt->expression->to_string(), "x");
+
+    auto condition = dynamic_cast<InfixExpression*>(stmt->condition.get());
+    ASSERT_NE(condition, nullptr);
+    EXPECT_EQ(condition->left->to_string(), "x");
+    EXPECT_EQ(condition->token.literal, "<");
+    EXPECT_EQ(condition->right->to_string(), "y");
+}
+
 TEST(ParserTest, ForStatement) {
     std::string code = "for (let i = 0; i < 10; i++) { x }";
     Lexer lexer(code);

@@ -14,6 +14,7 @@ enum class TokenType {
     ELSE,
     WHILE,
     FOR,
+    DO,
 
     // Identifiers and literals
     IDENTIFIER,

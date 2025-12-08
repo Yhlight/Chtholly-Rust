@@ -30,6 +30,7 @@ Token Lexer::next_token() {
             {"else", TokenType::ELSE},
             {"while", TokenType::WHILE},
             {"for", TokenType::FOR},
+            {"do", TokenType::DO},
         };
 
         if (keywords.count(literal)) {

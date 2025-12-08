@@ -10,7 +10,7 @@ TEST(LexerTest, NextToken) {
          * This is a multi-line comment
          */
         let result = five + ten;
-        true false if else while for ++ --
+        true false if else while for ++ -- do
         "hello world"
     )";
     Lexer lexer(code);
@@ -41,6 +41,7 @@ TEST(LexerTest, NextToken) {
         {TokenType::FOR, "for"},
         {TokenType::INC, "++"},
         {TokenType::DEC, "--"},
+        {TokenType::DO, "do"},
         {TokenType::STRING, "hello world"},
         {TokenType::END_OF_FILE, ""},
     };

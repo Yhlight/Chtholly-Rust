@@ -29,6 +29,7 @@ private:
     std::unique_ptr<FunctionStatement> parse_function_statement();
     std::unique_ptr<WhileStatement> parse_while_statement();
     std::unique_ptr<ForStatement> parse_for_statement();
+    std::unique_ptr<DoWhileStatement> parse_do_while_statement();
     std::unique_ptr<BlockStatement> parse_block_statement();
     std::unique_ptr<Expression> parse_expression(Precedence precedence);
     std::unique_ptr<Type> parse_type();

@@ -211,6 +211,18 @@ public:
     }
 };
 
+class DoWhileStatement : public Statement {
+public:
+    Token token; // The 'do' token
+    std::unique_ptr<BlockStatement> body;
+    std::unique_ptr<Expression> condition;
+
+    std::string to_string() const override {
+        std::string out = "do " + body->to_string() + " while (" + condition->to_string() + ");";
+        return out;
+    }
+};
+
 class FunctionStatement : public Statement {
 public:
     Token token; // The FN token
