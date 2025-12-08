@@ -17,9 +17,9 @@ This document outlines the development plan for the Chtholly programming languag
 - [In Progress] **Data Types:** Support for basic data types (`i32`, `f64`, `char`, `string`, `bool`).
   - [x] Parsing
   - [ ] Code Generation
-- [In Progress] **Operators:** Implement standard arithmetic, comparison, and logical operators.
+- [x] **Operators:** Implement standard arithmetic, comparison, and logical operators.
   - [x] Parsing
-  - [ ] Code Generation
+  - [x] Code Generation
 - [In Progress] **Functions:** Basic function definition and invocation.
   - [x] Parsing
   - [ ] Code Generation

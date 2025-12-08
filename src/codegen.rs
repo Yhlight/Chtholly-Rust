@@ -118,7 +118,18 @@ impl<'ctx> Compiler<'ctx> {
                     return value;
                 }
 
-                unimplemented!()
+                let left_val = self.compile_expression(*left).into_int_value();
+                let right_val = self.compile_expression(*right).into_int_value();
+
+                let result = match op {
+                    InfixOperator::Plus => self.builder.build_int_add(left_val, right_val, "addtmp").unwrap(),
+                    InfixOperator::Minus => self.builder.build_int_sub(left_val, right_val, "subtmp").unwrap(),
+                    InfixOperator::Multiply => self.builder.build_int_mul(left_val, right_val, "multmp").unwrap(),
+                    InfixOperator::Divide => self.builder.build_int_signed_div(left_val, right_val, "divtmp").unwrap(),
+                    _ => unimplemented!(),
+                };
+
+                result.into()
             }
             _ => unimplemented!(),
         }
