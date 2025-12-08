@@ -52,5 +52,9 @@ pub enum ASTNode {
         right: Box<ASTNode>,
     },
     Identifier(String),
+    AssignmentExpression {
+        name: String,
+        value: Box<ASTNode>,
+    },
     Comment(String),
 }

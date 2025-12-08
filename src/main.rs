@@ -5,7 +5,8 @@ use inkwell::context::Context;
 fn main() {
     let code = r#"
         fn main() {
-            let a = 10.0 + 20.0;
+            let mut a = 10;
+            a = 20;
         }
     "#;
 

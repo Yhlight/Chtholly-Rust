@@ -21,6 +21,8 @@ This document outlines the development plan for the Chtholly programming languag
     - [x] if-else statements.
     - [x] while loops.
     - [ ] for loops.
+- [x] **Assignment:**
+    - [x] Variable assignment (e.g., `a = 10;`).
 - [ ] **Functions:**
     - [ ] Function definitions and calls.
     - [ ] Return values.

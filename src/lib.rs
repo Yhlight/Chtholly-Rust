@@ -298,4 +298,67 @@ mod tests {
 
         insta::assert_snapshot!(compiler.to_string());
     }
+
+    #[test]
+    fn test_parse_assignment_expression() {
+        let code = r#"
+            fn main() {
+                a = 10;
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        assert_eq!(
+            ast,
+            vec![
+                ASTNode::Function {
+                    name: "main".to_string(),
+                    args: vec![],
+                    body: vec![
+                        ASTNode::AssignmentExpression {
+                            name: "a".to_string(),
+                            value: Box::new(ASTNode::IntegerLiteral(10)),
+                        },
+                    ],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_compile_assignment_expression() {
+        let code = r#"
+            fn main() {
+                let mut a = 10;
+                a = 20;
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        compiler.compile(&ast).unwrap();
+
+        insta::assert_snapshot!(compiler.to_string());
+    }
+
+    #[test]
+    fn test_compile_assignment_to_immutable_variable() {
+        let code = r#"
+            fn main() {
+                let a = 10;
+                a = 20;
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        let result = compiler.compile(&ast);
+
+        assert!(result.is_err());
+    }
 }

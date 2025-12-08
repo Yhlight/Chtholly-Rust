@@ -15,6 +15,8 @@ pub enum CompileError {
     MissingTypeAnnotation,
     #[error("Undefined variable: {0}")]
     UndefinedVariable(String),
+    #[error("Cannot assign to immutable variable: {0}")]
+    CannotAssignToImmutableVariable(String),
 }
 
 type CompileResult<T> = Result<T, CompileError>;
@@ -50,7 +52,7 @@ pub struct Compiler<'ctx> {
     context: &'ctx Context,
     builder: Builder<'ctx>,
     module: Module<'ctx>,
-    variables: HashMap<String, (PointerValue<'ctx>, Type)>,
+    variables: HashMap<String, (PointerValue<'ctx>, Type, bool)>,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -156,11 +158,20 @@ impl<'ctx> Compiler<'ctx> {
 
                 self.builder.position_at_end(after_loop_bb);
             }
+            ASTNode::AssignmentExpression { name, value } => {
+                let (ptr, _, is_mutable) = self.variables.get(name).ok_or(CompileError::UndefinedVariable(name.clone()))?;
+                if !is_mutable {
+                    return Err(CompileError::CannotAssignToImmutableVariable(name.clone()));
+                }
+
+                let value = self.compile_expression(value)?;
+                self.builder.build_store(*ptr, value.to_basic_value())?;
+            }
             ASTNode::VariableDeclaration {
                 name,
                 type_annotation,
                 value,
-                ..
+                is_mutable,
             } => {
                 let initial_value = value
                     .as_ref()
@@ -184,7 +195,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.builder.build_store(alloca, initial_value.to_basic_value())?;
                 }
 
-                self.variables.insert(name.clone(), (alloca, ty));
+                self.variables.insert(name.clone(), (alloca, ty, *is_mutable));
             }
             _ => {}
         }
@@ -201,7 +212,7 @@ impl<'ctx> Compiler<'ctx> {
                 Ok(Value::String(str_ptr.as_pointer_value()))
             }
             ASTNode::Identifier(name) => {
-                let (ptr, ty) = self.variables.get(name).ok_or(CompileError::UndefinedVariable(name.clone()))?;
+                let (ptr, ty, _) = self.variables.get(name).ok_or(CompileError::UndefinedVariable(name.clone()))?;
                 let loaded_value = match ty {
                     Type::I32 => self.builder.build_load(self.context.i32_type(), *ptr, name)?,
                     Type::F64 => self.builder.build_load(self.context.f64_type(), *ptr, name)?,

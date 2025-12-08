@@ -52,6 +52,15 @@ impl<'a> Parser<'a> {
             &Token::Let => self.parse_variable_declaration(tokens),
             &Token::If => self.parse_if_statement(tokens),
             &Token::While => self.parse_while_statement(tokens),
+            Token::Identifier(_) => {
+                let mut temp_tokens = tokens.clone();
+                temp_tokens.next();
+                if temp_tokens.peek() == Some(&&Token::Assign) {
+                    self.parse_assignment_expression(tokens)
+                } else {
+                    self.parse_expression(tokens)
+                }
+            }
             _ => self.parse_expression(tokens),
         }?;
 
@@ -256,6 +265,22 @@ impl<'a> Parser<'a> {
         Ok(ASTNode::WhileStatement {
             condition: Box::new(condition),
             body,
+        })
+    }
+
+    fn parse_assignment_expression(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
+        let name = match tokens.next().ok_or(ParserError::UnexpectedEOF)? {
+            Token::Identifier(name) => name.clone(),
+            _ => return Err(ParserError::UnexpectedToken),
+        };
+
+        tokens.next(); // Consume '='
+
+        let value = self.parse_expression(tokens)?;
+
+        Ok(ASTNode::AssignmentExpression {
+            name,
+            value: Box::new(value),
         })
     }
 
