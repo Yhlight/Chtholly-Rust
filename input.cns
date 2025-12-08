@@ -1,0 +1,9 @@
+let x = 5;
+let y = 10;
+let foobar = 838383;
+
+let add = fn(x, y) {
+    x + y;
+};
+
+add(x, y);

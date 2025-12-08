@@ -11,11 +11,21 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 2: Basic Language Features
 
-- [x] **Variable Declarations:** Implement `let` and `let mut` for immutable and mutable variables.
-- [x] **Data Types:** Support for basic data types (`i32`, `f64`, `char`, `string`, `bool`).
-- [x] **Operators:** Implement standard arithmetic, comparison, and logical operators.
-- [x] **Functions:** Basic function definition and invocation.
-- [ ] **Control Flow:** `if-else` and `while` loops.
+- [In Progress] **Variable Declarations:** Implement `let` and `let mut` for immutable and mutable variables.
+  - [x] Parsing
+  - [ ] Code Generation
+- [In Progress] **Data Types:** Support for basic data types (`i32`, `f64`, `char`, `string`, `bool`).
+  - [x] Parsing
+  - [ ] Code Generation
+- [In Progress] **Operators:** Implement standard arithmetic, comparison, and logical operators.
+  - [x] Parsing
+  - [ ] Code Generation
+- [In Progress] **Functions:** Basic function definition and invocation.
+  - [x] Parsing
+  - [ ] Code Generation
+- [In Progress] **Control Flow:** `if-else` and `while` loops.
+  - [x] Parsing
+  - [ ] Code Generation
 
 ## Phase 3: Advanced Language Features
 

@@ -69,6 +69,7 @@ impl<'a> Parser<'a> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
+            Token::While => self.parse_while_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -145,8 +146,10 @@ impl<'a> Parser<'a> {
             Token::String(value) => Some(Expression::Literal(Literal::String(value))),
             Token::True => Some(Expression::Literal(Literal::Boolean(true))),
             Token::False => Some(Expression::Literal(Literal::Boolean(false))),
-            Token::Minus => self.parse_prefix_expression(),
+            Token::Minus | Token::Bang => self.parse_prefix_expression(),
             Token::Fn => self.parse_function_literal(),
+            Token::If => self.parse_if_expression(),
+            Token::LParen => self.parse_grouped_expression(),
             _ => None,
         }
     }
@@ -164,6 +167,7 @@ impl<'a> Parser<'a> {
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
         let operator = match self.current_token {
             Token::Minus => PrefixOperator::Minus,
+            Token::Bang => PrefixOperator::Bang,
             _ => return None,
         };
 
@@ -187,6 +191,72 @@ impl<'a> Parser<'a> {
     fn peek_error(&mut self, token: &Token) {
         let msg = format!("expected next token to be {:?}, got {:?} instead", token, self.peek_token);
         self.errors.push(msg);
+    }
+
+    fn parse_grouped_expression(&mut self) -> Option<Expression> {
+        self.next_token();
+        let exp = self.parse_expression(Precedence::Lowest);
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+        exp
+    }
+
+    fn parse_while_statement(&mut self) -> Option<Statement> {
+        if !self.expect_peek(&Token::LParen) {
+            return None;
+        }
+
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Statement::While { condition, body })
+    }
+
+    fn parse_if_expression(&mut self) -> Option<Expression> {
+        if !self.expect_peek(&Token::LParen) {
+            return None;
+        }
+
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(&Token::RParen) {
+            return None;
+        }
+
+        if !self.expect_peek(&Token::LBrace) {
+            return None;
+        }
+
+        let consequence = self.parse_block_statement();
+
+        let mut alternative = None;
+        if self.peek_token == Token::Else {
+            self.next_token();
+
+            if !self.expect_peek(&Token::LBrace) {
+                return None;
+            }
+
+            alternative = Some(self.parse_block_statement());
+        }
+
+        Some(Expression::If {
+            condition: Box::new(condition),
+            consequence,
+            alternative,
+        })
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -339,7 +409,8 @@ mod tests {
     #[test]
     fn test_prefix_expressions() {
         let prefix_tests = vec![
-            ("-15;", PrefixOperator::Minus, 15),
+            ("-15;", PrefixOperator::Minus, Literal::Integer(15)),
+            ("!true;", PrefixOperator::Bang, Literal::Boolean(true)),
         ];
 
         for (input, operator, value) in prefix_tests {
@@ -351,10 +422,10 @@ mod tests {
 
             if let Statement::Expression(Expression::Prefix(op, exp)) = &program.statements[0] {
                 assert_eq!(*op, operator);
-                if let Expression::Literal(Literal::Integer(val)) = **exp {
-                    assert_eq!(val, value);
+                if let Expression::Literal(val) = &**exp {
+                    assert_eq!(*val, value);
                 } else {
-                    panic!("expression not an integer literal");
+                    panic!("expression not a literal");
                 }
             } else {
                 panic!("statement not a prefix expression");
@@ -497,6 +568,86 @@ mod tests {
             assert_eq!(arguments.len(), 3);
         } else {
             panic!("statement not a call expression");
+        }
+    }
+
+    #[test]
+    fn test_if_expression_parsing() {
+        let input = "if (x < y) { x }";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+
+        if let Statement::Expression(Expression::If { condition, consequence, alternative }) = &program.statements[0] {
+            assert!(alternative.is_none());
+        } else {
+            panic!("statement not an if expression");
+        }
+    }
+
+    #[test]
+    fn test_if_else_expression_parsing() {
+        let input = "if (x < y) { x } else { y }";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+
+        if let Statement::Expression(Expression::If { condition, consequence, alternative }) = &program.statements[0] {
+            assert!(alternative.is_some());
+        } else {
+            panic!("statement not an if expression");
+        }
+    }
+
+    #[test]
+    fn test_while_statement_parsing() {
+        let input = "while (x < y) { x }";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+
+        if let Statement::While { condition, body } = &program.statements[0] {
+            // we can add more assertions later
+        } else {
+            panic!("statement not a while statement");
+        }
+    }
+
+    #[test]
+    fn test_operator_precedence_parsing() {
+        let tests = vec![
+            (
+                "-(5 + 5)",
+                "Expression(Prefix(Minus, Infix(Literal(Integer(5)), Plus, Literal(Integer(5)))))",
+            ),
+            (
+                "a + b * c",
+                "Expression(Infix(Identifier(Identifier(\"a\")), Plus, Infix(Identifier(Identifier(\"b\")), Multiply, Identifier(Identifier(\"c\")))))",
+            ),
+            (
+                "(a + b) * c",
+                "Expression(Infix(Infix(Identifier(Identifier(\"a\")), Plus, Identifier(Identifier(\"b\"))), Multiply, Identifier(Identifier(\"c\"))))",
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program().unwrap();
+
+            // This is a bit of a hack to test precedence.
+            // We're just checking the string representation of the AST.
+            // A better way would be to implement a Display trait for the AST.
+            assert_eq!(format!("{:?}", program.statements[0]), expected);
         }
     }
 }

@@ -4,6 +4,10 @@ pub enum Statement {
     Let(Identifier, bool, Expression),
     Return(Expression),
     Expression(Expression),
+    While {
+        condition: Expression,
+        body: BlockStatement,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -20,6 +24,11 @@ pub enum Expression {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+    If {
+        condition: Box<Expression>,
+        consequence: BlockStatement,
+        alternative: Option<BlockStatement>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -29,8 +38,8 @@ pub struct BlockStatement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum PrefixOperator {
-    Not,
     Minus,
+    Bang,
 }
 
 #[derive(Debug, PartialEq, Clone)]
