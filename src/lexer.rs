@@ -31,6 +31,8 @@ pub enum Token {
     GreaterThan,
     LessThanOrEqual,
     GreaterThanOrEqual,
+    LogicalAnd,
+    LogicalOr,
 
     // Delimiters
     LParen,
@@ -116,6 +118,22 @@ impl<'a> Lexer<'a> {
                     Token::NotEqual
                 } else {
                     Token::Bang
+                }
+            }
+            b'&' => {
+                if self.peek_char() == b'&' {
+                    self.read_char();
+                    Token::LogicalAnd
+                } else {
+                    Token::Illegal
+                }
+            }
+            b'|' => {
+                if self.peek_char() == b'|' {
+                    self.read_char();
+                    Token::LogicalOr
+                } else {
+                    Token::Illegal
                 }
             }
             b'(' => Token::LParen,
@@ -233,6 +251,8 @@ mod tests {
             } else {
                 return false;
             }
+            true && false;
+            true || false;
         "#;
 
         let tests = vec![
@@ -290,6 +310,14 @@ mod tests {
             Token::False,
             Token::Semicolon,
             Token::RBrace,
+            Token::True,
+            Token::LogicalAnd,
+            Token::False,
+            Token::Semicolon,
+            Token::True,
+            Token::LogicalOr,
+            Token::False,
+            Token::Semicolon,
             Token::Eof,
         ];
 

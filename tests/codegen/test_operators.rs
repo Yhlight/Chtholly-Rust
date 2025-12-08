@@ -6,13 +6,13 @@ use inkwell::context::Context;
 #[test]
 fn test_integer_arithmetic() {
     let tests = vec![
-        ("let z = 5 + 5;", "store i32 10, ptr %z"),
-        ("let z = 10 - 5;", "store i32 5, ptr %z"),
-        ("let z = 2 * 8;", "store i32 16, ptr %z"),
-        ("let z = 10 / 2;", "store i32 5, ptr %z"),
+        ("let z = 5 + 5; return z;", 10),
+        ("let z = 10 - 5; return z;", 5),
+        ("let z = 2 * 8; return z;", 16),
+        ("let z = 10 / 2; return z;", 5),
     ];
 
-    for (input, expected_ir) in tests {
+    for (input, expected_val) in tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
@@ -21,14 +21,39 @@ fn test_integer_arithmetic() {
         let mut compiler = Compiler::new(&context);
         compiler.compile_program(program);
 
-        let ir = compiler.module.print_to_string().to_string();
-        assert!(
-            ir.contains(expected_ir),
-            "Failed on input '{}'. Expected to find '{}'. IR was:\n{}",
-            input,
-            expected_ir,
-            ir
-        );
+        let execution_engine = compiler.module.create_jit_execution_engine(inkwell::OptimizationLevel::None).unwrap();
+        let main = unsafe { execution_engine.get_function::<unsafe extern "C" fn() -> i32>("main").unwrap() };
+
+        unsafe {
+            assert_eq!(main.call(), expected_val);
+        }
+    }
+}
+
+#[test]
+fn test_logical_operators() {
+    let tests = vec![
+        ("return true && false;", 0),
+        ("return true || false;", 1),
+        ("return false && true;", 0),
+        ("return false || false;", 0),
+    ];
+
+    for (input, expected_val) in tests {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        compiler.compile_program(program);
+
+        let execution_engine = compiler.module.create_jit_execution_engine(inkwell::OptimizationLevel::None).unwrap();
+        let main = unsafe { execution_engine.get_function::<unsafe extern "C" fn() -> i32>("main").unwrap() };
+
+        unsafe {
+            assert_eq!(main.call(), expected_val);
+        }
     }
 }
 
@@ -37,7 +62,7 @@ fn test_arithmetic_with_variables() {
     let input = r#"
         let x = 10;
         let y = 20;
-        let z = x + y;
+        return x + y;
     "#;
 
     let lexer = Lexer::new(input);
@@ -48,32 +73,28 @@ fn test_arithmetic_with_variables() {
     let mut compiler = Compiler::new(&context);
     compiler.compile_program(program);
 
-    let ir = compiler.module.print_to_string().to_string();
+    let execution_engine = compiler.module.create_jit_execution_engine(inkwell::OptimizationLevel::None).unwrap();
+    let main = unsafe { execution_engine.get_function::<unsafe extern "C" fn() -> i32>("main").unwrap() };
 
-    assert!(ir.contains("%x = alloca i32"));
-    assert!(ir.contains("store i32 10, ptr %x"));
-    assert!(ir.contains("%y = alloca i32"));
-    assert!(ir.contains("store i32 20, ptr %y"));
-    assert!(ir.contains("%z = alloca i32"));
-    assert!(ir.contains("load i32, ptr %x"));
-    assert!(ir.contains("load i32, ptr %y"));
-    assert!(ir.contains("add i32"));
+    unsafe {
+        assert_eq!(main.call(), 30);
+    }
 }
 
 #[test]
 fn test_comparison_operators() {
     let tests = vec![
-        ("let a = 5 == 5;", "store i1 true, ptr %a"),
-        ("let a = 5 != 10;", "store i1 true, ptr %a"),
-        ("let a = 2 < 8;", "store i1 true, ptr %a"),
-        ("let a = 10 > 5;", "store i1 true, ptr %a"),
-        ("let a = 5 == 6;", "store i1 false, ptr %a"),
-        ("let a = 5 != 5;", "store i1 false, ptr %a"),
-        ("let a = 8 < 2;", "store i1 false, ptr %a"),
-        ("let a = 5 > 10;", "store i1 false, ptr %a"),
+        ("return 5 == 5;", 1),
+        ("return 5 != 10;", 1),
+        ("return 2 < 8;", 1),
+        ("return 10 > 5;", 1),
+        ("return 5 == 6;", 0),
+        ("return 5 != 5;", 0),
+        ("return 8 < 2;", 0),
+        ("return 5 > 10;", 0),
     ];
 
-    for (input, expected_ir) in tests {
+    for (input, expected_val) in tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
@@ -82,13 +103,11 @@ fn test_comparison_operators() {
         let mut compiler = Compiler::new(&context);
         compiler.compile_program(program);
 
-        let ir = compiler.module.print_to_string().to_string();
-        assert!(
-            ir.contains(expected_ir),
-            "Failed on input '{}'. Expected to find '{}'. IR was:\n{}",
-            input,
-            expected_ir,
-            ir
-        );
+        let execution_engine = compiler.module.create_jit_execution_engine(inkwell::OptimizationLevel::None).unwrap();
+        let main = unsafe { execution_engine.get_function::<unsafe extern "C" fn() -> i32>("main").unwrap() };
+
+        unsafe {
+            assert_eq!(main.call(), expected_val);
+        }
     }
 }

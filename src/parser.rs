@@ -5,6 +5,8 @@ use crate::ast::*;
 enum Precedence {
     Lowest,
     Assign,      // =
+    LogicalOr,   // ||
+    LogicalAnd,  // &&
     Equals,      // ==
     LessGreater, // > or <
     Sum,         // +
@@ -16,6 +18,8 @@ enum Precedence {
 fn token_to_precedence(token: &Token) -> Precedence {
     match token {
         Token::Assign => Precedence::Assign,
+        Token::LogicalOr => Precedence::LogicalOr,
+        Token::LogicalAnd => Precedence::LogicalAnd,
         Token::Equal | Token::NotEqual => Precedence::Equals,
         Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
         Token::Plus | Token::Minus => Precedence::Sum,
@@ -158,7 +162,7 @@ impl<'a> Parser<'a> {
 
     fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
         match self.current_token {
-            Token::Plus | Token::Minus | Token::Multiply | Token::Divide | Token::Equal | Token::NotEqual | Token::LessThan | Token::GreaterThan | Token::Assign => {
+            Token::Plus | Token::Minus | Token::Multiply | Token::Divide | Token::Equal | Token::NotEqual | Token::LessThan | Token::GreaterThan | Token::LogicalAnd | Token::LogicalOr | Token::Assign => {
                 self.parse_infix_expression(left)
             }
             Token::LParen => self.parse_call_expression(left),
@@ -272,6 +276,8 @@ impl<'a> Parser<'a> {
             Token::LessThan => InfixOperator::LessThan,
             Token::GreaterThan => InfixOperator::GreaterThan,
             Token::Assign => InfixOperator::Assign,
+            Token::LogicalAnd => InfixOperator::And,
+            Token::LogicalOr => InfixOperator::Or,
             _ => return None,
         };
 

@@ -21,7 +21,7 @@ This document outlines the development plan for the Chtholly programming languag
   - [x] Parsing
   - [x] Code Generation (Arithmetic)
   - [x] Code Generation (Comparison)
-  - [ ] Code Generation (Logical)
+  - [x] Code Generation (Logical)
 - [In Progress] **Functions:** Basic function definition and invocation.
   - [x] Parsing
   - [ ] Code Generation

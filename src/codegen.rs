@@ -1,7 +1,8 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::PointerValue;
+use inkwell::values::{BasicValueEnum, PointerValue};
+use inkwell::types::BasicTypeEnum;
 use inkwell::IntPredicate;
 use std::collections::HashMap;
 
@@ -11,6 +12,7 @@ use crate::ast::{BlockStatement, Expression, Identifier, InfixOperator, Literal,
 pub struct Variable<'ctx> {
     pub ptr: PointerValue<'ctx>,
     pub is_mutable: bool,
+    pub ty: BasicTypeEnum<'ctx>,
 }
 
 pub struct Compiler<'ctx> {
@@ -61,7 +63,15 @@ impl<'ctx> Compiler<'ctx> {
             Statement::While { condition, body } => {
                 self.compile_while_statement(condition, body);
             }
-            _ => unimplemented!(),
+            Statement::Return(expression) => {
+                let value = self.compile_expression(expression);
+                if value.is_int_value() && value.get_type().into_int_type().get_bit_width() == 1 {
+                    let value = self.builder.build_int_z_extend(value.into_int_value(), self.context.i32_type(), "zext").unwrap();
+                    self.builder.build_return(Some(&value)).unwrap();
+                } else {
+                    self.builder.build_return(Some(&value)).unwrap();
+                }
+            }
         }
     }
 
@@ -74,22 +84,19 @@ impl<'ctx> Compiler<'ctx> {
 
         self.builder.build_unconditional_branch(loop_cond_bb).unwrap();
 
-        // Compile loop condition block
         self.builder.position_at_end(loop_cond_bb);
         let cond = self.compile_expression(condition).into_int_value();
         self.builder.build_conditional_branch(cond, loop_body_bb, after_loop_bb).unwrap();
 
-        // Compile loop body block
         self.builder.position_at_end(loop_body_bb);
         self.compile_block_statement(body);
         self.builder.build_unconditional_branch(loop_cond_bb).unwrap();
 
-        // Position builder after the loop
         self.builder.position_at_end(after_loop_bb);
     }
 
 
-    fn compile_block_statement(&mut self, block: BlockStatement) -> Option<inkwell::values::BasicValueEnum<'ctx>> {
+    fn compile_block_statement(&mut self, block: BlockStatement) -> Option<BasicValueEnum<'ctx>> {
         let mut last_val = None;
         for stmt in block.statements {
             match stmt {
@@ -110,15 +117,17 @@ impl<'ctx> Compiler<'ctx> {
     ) {
         let name = identifier.0;
         let value = self.compile_expression(expression);
-
         let ty = value.get_type();
+
         let alloca = self.builder.build_alloca(ty, &name).unwrap();
         self.builder.build_store(alloca, value).unwrap();
+
         self.variables.insert(
             name,
             Variable {
                 ptr: alloca,
                 is_mutable,
+                ty,
             },
         );
     }
@@ -126,20 +135,13 @@ impl<'ctx> Compiler<'ctx> {
     fn compile_expression(
         &mut self,
         expression: Expression,
-    ) -> inkwell::values::BasicValueEnum<'ctx> {
+    ) -> BasicValueEnum<'ctx> {
         match expression {
             Expression::Literal(literal) => self.compile_literal(literal),
             Expression::Identifier(identifier) => {
                 let name = identifier.0;
-                let variable = self.variables.get(&name).unwrap();
-                // This is still a simplification. A proper type system is needed.
-                let ty: inkwell::types::BasicTypeEnum = if name == "true" || name == "false" {
-                    self.context.bool_type().into()
-                } else {
-                    self.context.i32_type().into()
-                };
-
-                self.builder.build_load(ty, variable.ptr, &name).unwrap()
+                let variable = self.variables.get(&name).expect("Variable not found");
+                self.builder.build_load(variable.ty, variable.ptr, &name).unwrap()
             }
             Expression::Infix(left, op, right) => self.compile_infix_expression(*left, op, *right),
             Expression::If { condition, consequence, alternative } => {
@@ -154,21 +156,17 @@ impl<'ctx> Compiler<'ctx> {
         left: Expression,
         op: InfixOperator,
         right: Expression,
-    ) -> inkwell::values::BasicValueEnum<'ctx> {
+    ) -> BasicValueEnum<'ctx> {
         if op == InfixOperator::Assign {
             let name = match left {
                 Expression::Identifier(id) => id.0,
                 _ => panic!("Expected identifier on the left side of assignment"),
             };
-
             let variable = self.variables.get(&name).unwrap().clone();
-
             if !variable.is_mutable {
                 panic!("Cannot assign to immutable variable");
             }
-
             let value = self.compile_expression(right);
-
             self.builder.build_store(variable.ptr, value).unwrap();
             return value;
         }
@@ -185,6 +183,8 @@ impl<'ctx> Compiler<'ctx> {
             InfixOperator::NotEqual => self.builder.build_int_compare(IntPredicate::NE, left_val, right_val, "netmp").unwrap().into(),
             InfixOperator::LessThan => self.builder.build_int_compare(IntPredicate::SLT, left_val, right_val, "lttmp").unwrap().into(),
             InfixOperator::GreaterThan => self.builder.build_int_compare(IntPredicate::SGT, left_val, right_val, "gttmp").unwrap().into(),
+            InfixOperator::And => self.builder.build_and(left_val, right_val, "andtmp").unwrap().into(),
+            InfixOperator::Or => self.builder.build_or(left_val, right_val, "ortmp").unwrap().into(),
             _ => unimplemented!(),
         }
     }
@@ -194,9 +194,8 @@ impl<'ctx> Compiler<'ctx> {
         condition: Expression,
         consequence: BlockStatement,
         alternative: Option<BlockStatement>,
-    ) -> inkwell::values::BasicValueEnum<'ctx> {
+    ) -> BasicValueEnum<'ctx> {
         let parent_function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
-
         let cond = self.compile_expression(condition).into_int_value();
 
         let then_bb = self.context.append_basic_block(parent_function, "then");
@@ -205,34 +204,28 @@ impl<'ctx> Compiler<'ctx> {
 
         self.builder.build_conditional_branch(cond, then_bb, else_bb).unwrap();
 
-        // Build then block
         self.builder.position_at_end(then_bb);
         let then_val = self.compile_block_statement(consequence).unwrap();
         self.builder.build_unconditional_branch(merge_bb).unwrap();
-        let then_bb = self.builder.get_insert_block().unwrap();
+        let then_bb_end = self.builder.get_insert_block().unwrap();
 
-        // Build else block
         self.builder.position_at_end(else_bb);
         let else_val = if let Some(alt_block) = alternative {
             self.compile_block_statement(alt_block).unwrap()
         } else {
-            // If there's no else, the expression implicitly returns a default value.
-            // For now, let's use 0 for i32. A proper type system would handle this better.
             self.context.i32_type().const_int(0, false).into()
         };
         self.builder.build_unconditional_branch(merge_bb).unwrap();
-        let else_bb = self.builder.get_insert_block().unwrap();
+        let else_bb_end = self.builder.get_insert_block().unwrap();
 
-        // Build merge block
         self.builder.position_at_end(merge_bb);
         let phi = self.builder.build_phi(self.context.i32_type(), "iftmp").unwrap();
-        phi.add_incoming(&[(&then_val, then_bb), (&else_val, else_bb)]);
+        phi.add_incoming(&[(&then_val, then_bb_end), (&else_val, else_bb_end)]);
 
         phi.as_basic_value()
     }
 
-
-    fn compile_literal(&mut self, literal: Literal) -> inkwell::values::BasicValueEnum<'ctx> {
+    fn compile_literal(&mut self, literal: Literal) -> BasicValueEnum<'ctx> {
         match literal {
             Literal::Integer(value) => self.context.i32_type().const_int(value as u64, false).into(),
             Literal::Boolean(value) => self.context.bool_type().const_int(value as u64, false).into(),
