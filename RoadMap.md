@@ -22,7 +22,7 @@ This document outlines the development plan for the Chtholly programming languag
     - [x] `for` loops
     - [ ] `do-while` loops
 - [ ] **Function Definitions and Calls:** Implement function declarations, calls, and returns.
-- [ ] **Comments:** Support for single-line and multi-line comments.
+- [x] **Comments:** Support for single-line and multi-line comments.
 
 ## Phase 3: Ownership and Memory Management
 

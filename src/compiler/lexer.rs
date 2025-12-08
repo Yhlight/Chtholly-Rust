@@ -169,7 +169,11 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, <Simple<char> as chumsky::Error<
         .or(just('.').to(Token::Dot))
         .or(ident);
 
-    let comment = just("//").then(take_until(just('\n'))).padded();
+    let line_comment = just("//").then(take_until(just('\n'))).ignored();
+
+    let block_comment = just("/*").then(take_until(just("*/"))).ignored();
+
+    let comment = line_comment.or(block_comment);
 
     token
         .map_with_span(|tok, span| (tok, span))
@@ -249,6 +253,20 @@ mod tests {
     fn test_comment() {
         lex_test_helper(
             "// this is a comment\nlet x = 5;",
+            vec![
+                Token::Let,
+                Token::Ident("x".to_string()),
+                Token::Eq,
+                Token::Int("5".to_string()),
+                Token::Semicolon,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_multiline_comment() {
+        lex_test_helper(
+            "/* this is a multiline comment */let x = 5;",
             vec![
                 Token::Let,
                 Token::Ident("x".to_string()),
