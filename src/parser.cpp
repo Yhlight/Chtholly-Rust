@@ -15,6 +15,8 @@ Parser::Parser(Lexer& lexer) : lexer_(lexer) {
         {TokenType::SLASH, PRODUCT},
         {TokenType::ASTERISK, PRODUCT},
         {TokenType::LPAREN, CALL},
+        {TokenType::INC, POSTFIX},
+        {TokenType::DEC, POSTFIX},
     };
 }
 
@@ -59,6 +61,9 @@ std::unique_ptr<Statement> Parser::parse_statement() {
     }
     if (cur_token_.type == TokenType::WHILE) {
         return parse_while_statement();
+    }
+    if (cur_token_.type == TokenType::FOR) {
+        return parse_for_statement();
     }
 
     auto stmt = std::make_unique<ExpressionStatement>();
@@ -222,6 +227,44 @@ std::unique_ptr<WhileStatement> Parser::parse_while_statement() {
     return stmt;
 }
 
+std::unique_ptr<ForStatement> Parser::parse_for_statement() {
+    auto stmt = std::make_unique<ForStatement>();
+    stmt->token = cur_token_;
+
+    if (peek_token_.type != TokenType::LPAREN) {
+        return nullptr;
+    }
+    next_token();
+    next_token();
+
+    stmt->init = parse_statement();
+    next_token();
+
+    stmt->condition = parse_expression(LOWEST);
+
+    if (peek_token_.type != TokenType::SEMICOLON) {
+        return nullptr;
+    }
+    next_token();
+    next_token();
+
+    stmt->increment = parse_expression(LOWEST);
+
+    if (peek_token_.type != TokenType::RPAREN) {
+        return nullptr;
+    }
+    next_token();
+
+    if (peek_token_.type != TokenType::LBRACE) {
+        return nullptr;
+    }
+    next_token();
+
+    stmt->body = parse_block_statement();
+
+    return stmt;
+}
+
 std::unique_ptr<BlockStatement> Parser::parse_block_statement() {
     auto block = std::make_unique<BlockStatement>();
     block->token = cur_token_;
@@ -319,6 +362,12 @@ std::unique_ptr<Expression> Parser::parse_expression(Precedence precedence) {
             call_exp->function = std::move(left_exp);
             call_exp->arguments = parse_call_arguments();
             left_exp = std::move(call_exp);
+        } else if (peek_token_.type == TokenType::INC || peek_token_.type == TokenType::DEC) {
+            next_token();
+            auto postfix_exp = std::make_unique<PostfixExpression>();
+            postfix_exp->token = cur_token_;
+            postfix_exp->left = std::move(left_exp);
+            left_exp = std::move(postfix_exp);
         } else {
             next_token();
             auto infix_exp = std::make_unique<InfixExpression>();

@@ -29,6 +29,7 @@ Token Lexer::next_token() {
             {"if", TokenType::IF},
             {"else", TokenType::ELSE},
             {"while", TokenType::WHILE},
+            {"for", TokenType::FOR},
         };
 
         if (keywords.count(literal)) {
@@ -53,8 +54,18 @@ Token Lexer::next_token() {
                 return make_token(TokenType::EQ, "==");
             }
             return make_token(TokenType::ASSIGN, "=");
-        case '+': return make_token(TokenType::PLUS, "+");
-        case '-': return make_token(TokenType::MINUS, "-");
+        case '+':
+            if (peek() == '+') {
+                advance();
+                return make_token(TokenType::INC, "++");
+            }
+            return make_token(TokenType::PLUS, "+");
+        case '-':
+            if (peek() == '-') {
+                advance();
+                return make_token(TokenType::DEC, "--");
+            }
+            return make_token(TokenType::MINUS, "-");
         case '*': return make_token(TokenType::ASTERISK, "*");
         case '/': return make_token(TokenType::SLASH, "/");
         case '!':

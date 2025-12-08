@@ -197,3 +197,27 @@ TEST(ExpressionParserTest, CallExpression) {
     EXPECT_EQ(exp->arguments[1]->to_string(), "(2 * 3)");
     EXPECT_EQ(exp->arguments[2]->to_string(), "(4 + 5)");
 }
+
+TEST(ExpressionParserTest, PostfixExpressions) {
+    std::vector<std::tuple<std::string, std::string, std::string>> tests = {
+        {"i++;", "i", "++"},
+        {"j--;", "j", "--"},
+    };
+
+    for (const auto& test : tests) {
+        Lexer lexer(std::get<0>(test));
+        Parser parser(lexer);
+
+        auto program = parser.parse_program();
+        ASSERT_NE(program, nullptr);
+        ASSERT_EQ(program->statements.size(), 1);
+
+        auto stmt = dynamic_cast<ExpressionStatement*>(program->statements[0].get());
+        ASSERT_NE(stmt, nullptr);
+
+        auto exp = dynamic_cast<PostfixExpression*>(stmt->expression.get());
+        ASSERT_NE(exp, nullptr);
+        EXPECT_EQ(exp->left->to_string(), std::get<1>(test));
+        EXPECT_EQ(exp->token.literal, std::get<2>(test));
+    }
+}

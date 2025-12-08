@@ -101,3 +101,40 @@ TEST(ParserTest, WhileStatement) {
 
     EXPECT_EQ(body_stmt->expression->to_string(), "x");
 }
+
+TEST(ParserTest, ForStatement) {
+    std::string code = "for (let i = 0; i < 10; i++) { x }";
+    Lexer lexer(code);
+    Parser parser(lexer);
+
+    auto program = parser.parse_program();
+    ASSERT_NE(program, nullptr);
+    ASSERT_EQ(program->statements.size(), 1);
+
+    auto stmt = dynamic_cast<ForStatement*>(program->statements[0].get());
+    ASSERT_NE(stmt, nullptr);
+
+    auto init = dynamic_cast<VarDeclarationStatement*>(stmt->init.get());
+    ASSERT_NE(init, nullptr);
+    EXPECT_EQ(init->name->value, "i");
+    EXPECT_EQ(init->value->to_string(), "0");
+
+    auto cond = dynamic_cast<InfixExpression*>(stmt->condition.get());
+    ASSERT_NE(cond, nullptr);
+    EXPECT_EQ(cond->left->to_string(), "i");
+    EXPECT_EQ(cond->token.literal, "<");
+    EXPECT_EQ(cond->right->to_string(), "10");
+
+    auto inc = dynamic_cast<PostfixExpression*>(stmt->increment.get());
+    ASSERT_NE(inc, nullptr);
+    EXPECT_EQ(inc->left->to_string(), "i");
+    EXPECT_EQ(inc->token.literal, "++");
+
+    ASSERT_NE(stmt->body, nullptr);
+    ASSERT_EQ(stmt->body->statements.size(), 1);
+
+    auto body_stmt = dynamic_cast<ExpressionStatement*>(stmt->body->statements[0].get());
+    ASSERT_NE(body_stmt, nullptr);
+
+    EXPECT_EQ(body_stmt->expression->to_string(), "x");
+}

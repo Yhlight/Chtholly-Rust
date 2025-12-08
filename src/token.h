@@ -13,6 +13,7 @@ enum class TokenType {
     IF,
     ELSE,
     WHILE,
+    FOR,
 
     // Identifiers and literals
     IDENTIFIER,
@@ -29,6 +30,8 @@ enum class TokenType {
     GT,
     EQ,
     NOT_EQ,
+    INC,
+    DEC,
 
     // Delimiters
     LPAREN,

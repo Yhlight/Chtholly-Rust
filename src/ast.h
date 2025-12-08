@@ -102,6 +102,16 @@ public:
     }
 };
 
+class PostfixExpression : public Expression {
+public:
+    Token token; // The operator token, e.g., ++
+    std::unique_ptr<Expression> left;
+
+    std::string to_string() const override {
+        return "(" + left->to_string() + token.literal + ")";
+    }
+};
+
 class InfixExpression : public Expression {
 public:
     Token token; // The operator token, e.g., +
@@ -161,6 +171,32 @@ public:
 
     std::string to_string() const override {
         std::string out = "while (" + condition->to_string() + ") " + body->to_string();
+        return out;
+    }
+};
+
+class ForStatement : public Statement {
+public:
+    Token token; // The 'for' token
+    std::unique_ptr<Statement> init;
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<Expression> increment;
+    std::unique_ptr<BlockStatement> body;
+
+    std::string to_string() const override {
+        std::string out = "for (";
+        if (init) {
+            out += init->to_string();
+        }
+        out += "; ";
+        if (condition) {
+            out += condition->to_string();
+        }
+        out += "; ";
+        if (increment) {
+            out += increment->to_string();
+        }
+        out += ") " + body->to_string();
         return out;
     }
 };
