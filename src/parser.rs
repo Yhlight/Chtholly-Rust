@@ -53,16 +53,7 @@ impl<'a> Parser<'a> {
             &Token::If => self.parse_if_statement(tokens),
             &Token::While => self.parse_while_statement(tokens),
             &Token::For => self.parse_for_statement(tokens),
-            Token::Identifier(_) => {
-                let mut temp_tokens = tokens.clone();
-                temp_tokens.next();
-                if temp_tokens.peek() == Some(&&Token::Assign) {
-                    self.parse_assignment_expression(tokens)
-                } else {
-                    self.parse_expression(tokens)
-                }
-            }
-            _ => self.parse_expression(tokens),
+            _ => self.parse_assignment_or_expression(tokens),
         }?;
 
         if tokens.peek() == Some(&&Token::Semicolon) {
@@ -70,6 +61,20 @@ impl<'a> Parser<'a> {
         }
 
         Ok(statement)
+    }
+
+    fn parse_assignment_or_expression(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
+        let left = self.parse_expression(tokens)?;
+        if tokens.peek() == Some(&&Token::Assign) {
+            tokens.next(); // Consume '='
+            let right = self.parse_expression(tokens)?;
+            Ok(ASTNode::AssignmentExpression {
+                left: Box::new(left),
+                right: Box::new(right),
+            })
+        } else {
+            Ok(left)
+        }
     }
 
     fn parse_comment(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
@@ -217,8 +222,17 @@ impl<'a> Parser<'a> {
             }
             Token::Ampersand => {
                 tokens.next(); // Consume '&'
+                let is_mutable = if tokens.peek() == Some(&&Token::Mut) {
+                    tokens.next(); // Consume 'mut'
+                    true
+                } else {
+                    false
+                };
                 let expr = self.parse_primary_expression(tokens)?;
-                Ok(ASTNode::Reference(Box::new(expr)))
+                Ok(ASTNode::Reference {
+                    expression: Box::new(expr),
+                    is_mutable,
+                })
             }
             Token::Asterisk => {
                 tokens.next(); // Consume '*'
@@ -312,21 +326,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_assignment_expression(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
-        let name = match tokens.next().ok_or(ParserError::UnexpectedEOF)? {
-            Token::Identifier(name) => name.clone(),
-            _ => return Err(ParserError::UnexpectedToken),
-        };
-
-        tokens.next(); // Consume '='
-
-        let value = self.parse_expression(tokens)?;
-
-        Ok(ASTNode::AssignmentExpression {
-            name,
-            value: Box::new(value),
-        })
-    }
 
     fn skip_until_matching(&self, tokens: &mut Peekable<Iter<Token>>, open: &Token, close: &Token) {
         let mut depth = 1;
@@ -390,13 +389,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression_or_assignment(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
-        if let Some(Token::Identifier(_)) = tokens.peek() {
-            let mut temp_tokens = tokens.clone();
-            temp_tokens.next();
-            if temp_tokens.peek() == Some(&&Token::Assign) {
-                return self.parse_assignment_expression(tokens);
-            }
+        let left = self.parse_expression(tokens)?;
+        if tokens.peek() == Some(&&Token::Assign) {
+            tokens.next(); // Consume '='
+            let right = self.parse_expression(tokens)?;
+            Ok(ASTNode::AssignmentExpression {
+                left: Box::new(left),
+                right: Box::new(right),
+            })
+        } else {
+            Ok(left)
         }
-        self.parse_expression(tokens)
     }
 }

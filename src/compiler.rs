@@ -86,6 +86,12 @@ pub enum CompileError {
     CannotBorrowAsMutable(String),
     #[error("Cannot borrow '{0}' as immutable because it is already borrowed as mutable")]
     CannotBorrowAsImmutable(String),
+    #[error("Cannot assign to '{0}' because it is borrowed")]
+    CannotAssignToBorrowedVariable(String),
+    #[error("Cannot use '{0}' because it is mutably borrowed")]
+    CannotUseMutablyBorrowedVariable(String),
+    #[error("Cannot dereference a non-pointer type")]
+    DereferenceNonPointer,
 }
 
 type CompileResult<T> = Result<T, CompileError>;
@@ -96,6 +102,7 @@ pub enum Value<'ctx> {
     Float(inkwell::values::FloatValue<'ctx>),
     Bool(inkwell::values::IntValue<'ctx>),
     String(inkwell::values::PointerValue<'ctx>),
+    Pointer(inkwell::values::PointerValue<'ctx>, Type),
 }
 
 impl<'ctx> Value<'ctx> {
@@ -105,6 +112,7 @@ impl<'ctx> Value<'ctx> {
             Value::Float(v) => v.into(),
             Value::Bool(v) => v.into(),
             Value::String(v) => v.into(),
+            Value::Pointer(v, _) => v.into(),
         }
     }
 
@@ -114,6 +122,7 @@ impl<'ctx> Value<'ctx> {
             Value::Float(_) => Type::F64,
             Value::Bool(_) => Type::Bool,
             Value::String(_) => Type::String,
+            Value::Pointer(_, ty) => ty.clone(),
         }
     }
 }
@@ -268,8 +277,8 @@ impl<'ctx> Compiler<'ctx> {
 
                 self.builder.position_at_end(after_loop_bb);
             }
-            ASTNode::AssignmentExpression { name, value } => {
-                self.compile_assignment(name, value)?;
+            ASTNode::AssignmentExpression { left, right } => {
+                self.compile_assignment(left, right)?;
             }
             ASTNode::VariableDeclaration {
                 name,
@@ -338,8 +347,17 @@ impl<'ctx> Compiler<'ctx> {
                 Ok(Value::String(str_ptr.as_pointer_value()))
             }
             ASTNode::Identifier(name) => {
-                if let Some(OwnershipState::Moved) = self.ownership_tracker.get_state(name) {
-                    return Err(CompileError::VariableMoved(name.clone()));
+                let state = self.ownership_tracker.get_state(name).cloned();
+                match state {
+                    Some(OwnershipState::Moved) => {
+                        return Err(CompileError::VariableMoved(name.clone()))
+                    }
+                    Some(OwnershipState::MutableBorrow) => {
+                        return Err(CompileError::CannotUseMutablyBorrowedVariable(
+                            name.clone(),
+                        ))
+                    }
+                    _ => {}
                 }
 
                 let (ptr, ty, _) = self
@@ -461,20 +479,46 @@ impl<'ctx> Compiler<'ctx> {
                     _ => todo!(),
                 }
             }
-            ASTNode::AssignmentExpression { name, value } => self.compile_assignment(name, value),
-            ASTNode::Reference(expr) => {
-                if let ASTNode::Identifier(name) = &**expr {
-                    self.ownership_tracker.borrow_variable(name, false)?; // Assuming immutable borrow for now
-                    let (ptr, _, _) = self
+            ASTNode::AssignmentExpression { left, right } => self.compile_assignment(left, right),
+            ASTNode::Reference {
+                expression,
+                is_mutable,
+            } => {
+                if let ASTNode::Identifier(name) = &**expression {
+                    self.ownership_tracker
+                        .borrow_variable(name, *is_mutable)?;
+                    let (ptr, ty, _) = self
                         .variables
                         .get(name)
                         .ok_or_else(|| CompileError::UndefinedVariable(name.clone()))?;
-                    Ok(Value::String(*ptr)) // Returning as a pointer-like value
+                    Ok(Value::Pointer(*ptr, ty.clone()))
                 } else {
                     todo!() // Handle references to complex expressions
                 }
             }
-            ASTNode::Dereference(_) => todo!(),
+            ASTNode::Dereference(expr) => {
+                let value = self.compile_expression(expr)?;
+                if let Value::Pointer(ptr, ty) = value {
+                    let loaded_value = match ty {
+                        Type::I32 => self.builder.build_load(self.context.i32_type(), ptr, "deref")?,
+                        Type::F64 => self.builder.build_load(self.context.f64_type(), ptr, "deref")?,
+                        Type::Bool => self.builder.build_load(self.context.bool_type(), ptr, "deref")?,
+                        Type::String => self.builder.build_load(
+                            self.context.ptr_type(inkwell::AddressSpace::default()),
+                            ptr,
+                            "deref",
+                        )?,
+                    };
+                    match ty {
+                        Type::I32 => Ok(Value::Integer(loaded_value.into_int_value())),
+                        Type::F64 => Ok(Value::Float(loaded_value.into_float_value())),
+                        Type::Bool => Ok(Value::Bool(loaded_value.into_int_value())),
+                        Type::String => Ok(Value::String(loaded_value.into_pointer_value())),
+                    }
+                } else {
+                    Err(CompileError::DereferenceNonPointer)
+                }
+            }
             _ => todo!(),
         }
     }
@@ -488,39 +532,62 @@ impl<'ctx> Compiler<'ctx> {
 
     fn compile_assignment(
         &mut self,
-        name: &str,
+        name: &ASTNode,
         value_node: &ASTNode,
     ) -> CompileResult<Value<'ctx>> {
-        let (ptr, is_mutable) = {
-            let (ptr_val, _, is_mut) = self
-                .variables
-                .get(name)
-                .ok_or_else(|| CompileError::UndefinedVariable(name.to_string()))?;
-            (*ptr_val, *is_mut)
-        };
-
-        if !is_mutable {
-            return Err(CompileError::CannotAssignToImmutableVariable(
-                name.to_string(),
-            ));
-        }
-
         let value = self.compile_expression(value_node)?;
 
-        if let ASTNode::Identifier(source_name) = value_node {
-            let (_, ty, _) = self
-                .variables
-                .get(source_name)
-                .ok_or_else(|| CompileError::UndefinedVariable(source_name.clone()))?;
+        match name {
+            ASTNode::Identifier(name) => {
+                if let Some(OwnershipState::ImmutableBorrow { .. })
+                | Some(OwnershipState::MutableBorrow) = self.ownership_tracker.get_state(name)
+                {
+                    return Err(CompileError::CannotAssignToBorrowedVariable(
+                        name.to_string(),
+                    ));
+                }
 
-            if !ty.is_copy() {
-                self.ownership_tracker.move_variable(source_name);
+                let (ptr, is_mutable) = {
+                    let (ptr_val, _, is_mut) = self
+                        .variables
+                        .get(name)
+                        .ok_or_else(|| CompileError::UndefinedVariable(name.to_string()))?;
+                    (*ptr_val, *is_mut)
+                };
+
+                if !is_mutable {
+                    return Err(CompileError::CannotAssignToImmutableVariable(
+                        name.to_string(),
+                    ));
+                }
+
+                if let ASTNode::Identifier(source_name) = value_node {
+                    let (_, ty, _) = self
+                        .variables
+                        .get(source_name)
+                        .ok_or_else(|| CompileError::UndefinedVariable(source_name.clone()))?;
+
+                    if !ty.is_copy() {
+                        self.ownership_tracker.move_variable(source_name);
+                    }
+                }
+
+                self.builder
+                    .build_store(ptr, value.clone().to_basic_value())?;
+                Ok(value)
             }
+            ASTNode::Dereference(expr) => {
+                let ptr_value = self.compile_expression(expr)?;
+                if let Value::Pointer(ptr, _) = ptr_value {
+                    self.builder
+                        .build_store(ptr, value.clone().to_basic_value())?;
+                    Ok(value)
+                } else {
+                    Err(CompileError::DereferenceNonPointer)
+                }
+            }
+            _ => todo!(),
         }
-
-        self.builder
-            .build_store(ptr, value.clone().to_basic_value())?;
-        Ok(value)
     }
 
     pub fn to_string(&self) -> String {
@@ -607,5 +674,52 @@ mod tests {
             ownership_tracker.get_state("s"),
             Some(&OwnershipState::ImmutableBorrow { count: 2 })
         );
+    }
+
+    #[test]
+    fn test_mutable_borrow() {
+        let code = r#"
+            fn main() {
+                let mut s: string = "hello";
+                let r1 = &mut s;
+            }
+        "#;
+        let ownership_tracker = compile_code(code).unwrap();
+        assert_eq!(
+            ownership_tracker.get_state("s"),
+            Some(&OwnershipState::MutableBorrow)
+        );
+    }
+
+    #[test]
+    fn test_cannot_borrow_as_mutable_when_immutable_borrow_exists() {
+        let code = r#"
+            fn main() {
+                let mut s: string = "hello";
+                let r1 = &s;
+                let r2 = &mut s;
+            }
+        "#;
+        let result = compile_code(code);
+        assert!(matches!(
+            result,
+            Err(CompileError::CannotBorrowAsMutable(_))
+        ));
+    }
+
+    #[test]
+    fn test_cannot_borrow_as_immutable_when_mutable_borrow_exists() {
+        let code = r#"
+            fn main() {
+                let mut s: string = "hello";
+                let r1 = &mut s;
+                let r2 = &s;
+            }
+        "#;
+        let result = compile_code(code);
+        assert!(matches!(
+            result,
+            Err(CompileError::CannotBorrowAsImmutable(_))
+        ));
     }
 }

@@ -317,8 +317,8 @@ mod tests {
                     args: vec![],
                     body: vec![
                         ASTNode::AssignmentExpression {
-                            name: "a".to_string(),
-                            value: Box::new(ASTNode::IntegerLiteral(10)),
+                            left: Box::new(ASTNode::Identifier("a".to_string())),
+                            right: Box::new(ASTNode::IntegerLiteral(10)),
                         },
                     ],
                 },
@@ -394,8 +394,8 @@ mod tests {
                                 right: Box::new(ASTNode::IntegerLiteral(10)),
                             })),
                             increment: Some(Box::new(ASTNode::AssignmentExpression {
-                                name: "i".to_string(),
-                                value: Box::new(ASTNode::BinaryExpression {
+                                left: Box::new(ASTNode::Identifier("i".to_string())),
+                                right: Box::new(ASTNode::BinaryExpression {
                                     op: BinaryOperator::Add,
                                     left: Box::new(ASTNode::Identifier("i".to_string())),
                                     right: Box::new(ASTNode::IntegerLiteral(1)),

@@ -59,8 +59,8 @@ pub enum ASTNode {
     },
     Identifier(String),
     AssignmentExpression {
-        name: String,
-        value: Box<ASTNode>,
+        left: Box<ASTNode>,
+        right: Box<ASTNode>,
     },
     Comment(String),
     ForStatement {
@@ -69,6 +69,9 @@ pub enum ASTNode {
         increment: Option<Box<ASTNode>>,
         body: Vec<ASTNode>,
     },
-    Reference(Box<ASTNode>),
+    Reference {
+        expression: Box<ASTNode>,
+        is_mutable: bool,
+    },
     Dereference(Box<ASTNode>),
 }
