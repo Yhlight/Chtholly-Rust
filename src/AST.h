@@ -9,6 +9,7 @@
 
 // Forward declaration for the pretty print helper
 std::string indent(int level);
+class SemanticAnalyzer;
 
 // Base class for all AST nodes
 class ASTNode {
@@ -32,8 +33,8 @@ class ExprAST : public ASTNode {};
 
 // Expression class for numeric literals
 class NumberExprAST : public ExprAST {
-    double value;
 public:
+    double value;
     NumberExprAST(double val) : value(val) {}
     void print(int level = 0) const override {
         std::cout << indent(level) << "NumberExprAST: " << value << std::endl;
@@ -42,8 +43,8 @@ public:
 
 // Expression class for referencing a variable
 class VariableExprAST : public ExprAST {
-    std::string name;
 public:
+    std::string name;
     VariableExprAST(std::string name) : name(std::move(name)) {}
     void print(int level = 0) const override {
         std::cout << indent(level) << "VariableExprAST: " << name << std::endl;
@@ -52,9 +53,9 @@ public:
 
 // Expression class for a binary operator
 class BinaryExprAST : public ExprAST {
+public:
     TokenType op;
     std::unique_ptr<ExprAST> lhs, rhs;
-public:
     BinaryExprAST(TokenType op, std::unique_ptr<ExprAST> lhs, std::unique_ptr<ExprAST> rhs)
         : op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
@@ -70,10 +71,10 @@ class StmtAST : public ASTNode {};
 
 // Statement class for variable declarations
 class VarDeclStmtAST : public StmtAST {
+public:
     std::string varName;
     bool isMutable;
     std::unique_ptr<ExprAST> initExpr; // Optional initializer
-public:
     VarDeclStmtAST(std::string varName, bool isMutable, std::unique_ptr<ExprAST> initExpr)
         : varName(std::move(varName)), isMutable(isMutable), initExpr(std::move(initExpr)) {}
 
@@ -95,11 +96,11 @@ struct FunctionArg {
 
 // Statement class for function declarations
 class FunctionDeclAST : public StmtAST {
+public:
     std::string name;
     std::vector<FunctionArg> args;
     std::unique_ptr<TypeNameAST> returnType;
     std::unique_ptr<BlockStmtAST> body;
-public:
     FunctionDeclAST(std::string name, std::vector<FunctionArg> args, std::unique_ptr<TypeNameAST> returnType, std::unique_ptr<BlockStmtAST> body)
         : name(std::move(name)), args(std::move(args)), returnType(std::move(returnType)), body(std::move(body)) {}
 

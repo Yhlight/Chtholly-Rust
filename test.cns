@@ -1,5 +1,1 @@
-// A simple Chtholly program to test the parser
-fn main(args: string): i32 {
-    let x = (10 + 20) * 3;
-    let mut y = x / 2;
-}
+fn main(args: string): i32 { let x = y; }

@@ -1,6 +1,7 @@
 #include "Lexer.h"
 #include "Parser.h"
 #include "AST.h"
+#include "SemanticAnalyzer.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -29,14 +30,24 @@ int main(int argc, char** argv) {
     std::vector<Token> tokens = lexer.tokenize();
 
     Parser parser(tokens);
+    std::unique_ptr<BlockStmtAST> ast;
     try {
-        std::unique_ptr<BlockStmtAST> ast = parser.parse();
-        if (ast) {
-            ast->print();
-        }
+        ast = parser.parse();
     } catch (const std::exception& e) {
         std::cerr << "Parsing error: " << e.what() << std::endl;
         return 1;
+    }
+
+    if (ast) {
+        try {
+            SemanticAnalyzer analyzer;
+            analyzer.analyze(*ast);
+            std::cout << "Semantic analysis passed." << std::endl;
+            // ast->print(); // Optionally print AST on success
+        } catch (const std::exception& e) {
+            std::cerr << "Semantic error: " << e.what() << std::endl;
+            return 1;
+        }
     }
 
     return 0;
