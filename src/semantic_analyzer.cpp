@@ -304,6 +304,14 @@ namespace Chtholly
         }
     }
 
+    void SemanticAnalyzer::visit(const ContinueStmt& stmt)
+    {
+        if (currentLoop != LoopType::LOOP)
+        {
+            throw std::runtime_error("Cannot continue from outside a loop.");
+        }
+    }
+
     void SemanticAnalyzer::visit(const FallthroughStmt& stmt)
     {
         if (currentLoop != LoopType::SWITCH)

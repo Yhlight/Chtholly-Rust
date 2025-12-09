@@ -117,6 +117,12 @@ namespace Chtholly
             consume(TokenType::SEMICOLON, "Expect ';' after 'break'.");
             return std::make_shared<BreakStmt>(keyword);
         }
+        if (match({ TokenType::CONTINUE }))
+        {
+            Token keyword = previous();
+            consume(TokenType::SEMICOLON, "Expect ';' after 'continue'.");
+            return std::make_shared<ContinueStmt>(keyword);
+        }
         if (match({TokenType::FALLTHROUGH}))
         {
             Token keyword = previous();

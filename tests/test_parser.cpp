@@ -127,6 +127,11 @@ public:
         result += "break;";
     }
 
+    void visit(const Chtholly::ContinueStmt& stmt) override
+    {
+        result += "continue;";
+    }
+
     void visit(const Chtholly::FallthroughStmt& stmt) override
     {
         result += "fallthrough;";

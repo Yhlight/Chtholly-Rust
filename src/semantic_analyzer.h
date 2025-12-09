@@ -35,6 +35,7 @@ namespace Chtholly
         void visit(const SwitchStmt& stmt) override;
         void visit(const CaseStmt& stmt) override;
         void visit(const BreakStmt& stmt) override;
+        void visit(const ContinueStmt& stmt) override;
         void visit(const FallthroughStmt& stmt) override;
 
     private:

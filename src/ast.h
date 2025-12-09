@@ -116,6 +116,7 @@ namespace Chtholly
     struct SwitchStmt;
     struct CaseStmt;
     struct BreakStmt;
+    struct ContinueStmt;
     struct FallthroughStmt;
 
     // Visitor for Statements
@@ -134,6 +135,7 @@ namespace Chtholly
         virtual void visit(const SwitchStmt& stmt) = 0;
         virtual void visit(const CaseStmt& stmt) = 0;
         virtual void visit(const BreakStmt& stmt) = 0;
+        virtual void visit(const ContinueStmt& stmt) = 0;
         virtual void visit(const FallthroughStmt& stmt) = 0;
     };
 
@@ -266,6 +268,15 @@ namespace Chtholly
         Token keyword;
 
         BreakStmt(Token keyword) : keyword(std::move(keyword)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct ContinueStmt : Stmt
+    {
+        Token keyword;
+
+        ContinueStmt(Token keyword) : keyword(std::move(keyword)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };
