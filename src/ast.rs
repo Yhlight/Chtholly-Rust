@@ -6,6 +6,12 @@ pub enum Type {
     String,
 }
 
+impl Type {
+    pub fn is_copy(&self) -> bool {
+        matches!(self, Type::I32 | Type::F64 | Type::Bool)
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum BinaryOperator {
     Add,
@@ -63,4 +69,6 @@ pub enum ASTNode {
         increment: Option<Box<ASTNode>>,
         body: Vec<ASTNode>,
     },
+    Reference(Box<ASTNode>),
+    Dereference(Box<ASTNode>),
 }

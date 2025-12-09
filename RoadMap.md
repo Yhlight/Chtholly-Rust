@@ -1,60 +1,75 @@
-# Chtholly Language Development Roadmap
+# Chtholly 语言开发路线图
 
-This document outlines the development plan for the Chtholly programming language.
+本文档旨在规划 Chtholly 编程语言的开发路径，确保其成为一门可用于工业化生产的现代化系统编程语言。
 
-## Phase 1: Core Language Features
+## 阶段一：奠定核心，确保安全
 
-- [x] **Lexer:** Tokenize the source code.
-- [x] **Parser:** Build the Abstract Syntax Tree (AST).
-- [x] **Compiler:**
-    - [x] Basic LLVM integration.
-    - [x] Main function compilation.
-    - [x] Variable declarations (let, let mut).
-    - [x] Basic types (i32, f64, bool, string).
-- [x] **Basic Syntax:**
-    - [x] Comments (single-line and multi-line).
-    - [x] Main function definition.
+此阶段的目标是实现 Chtholly 的核心价值：**内存安全**与**高性能**。我们将首先构建一个最小可用（MVP）的语言核心，并确保其稳定性。
 
-## Phase 2: Advanced Language Features
+- [x] **词法分析器 (Lexer):** 将源代码分解为 Token 流。
+- [x] **语法分析器 (Parser):** 构建抽象语法树 (AST)。
+- [x] **编译器后端:**
+    - [x] 集成 LLVM，为后续代码生成做准备。
+    - [x] 完成 `main` 函数的编译流程。
+    - [x] 实现变量声明 (`let`, `let mut`)。
+    - [x] 支持基础数据类型 (`i32`, `f64`, `bool`, `string`)。
+- [ ] **所有权系统 (Ownership System):**
+    - [ ] **所有权与移动语义 (Move Semantics):**
+        - [ ] 在 AST 和符号表中跟踪资源所有权。
+        - [ ] 实现函数调用和赋值时的所有权转移。
+        - [ ] 编译期检查：确保所有权转移后，原变量失效。
+    - [ ] **借用检查器 (Borrow Checker):**
+        - [ ] 实现不可变引用 (`&`) 和可变引用 (`&mut`)。
+        - [ ] 编译期检查：在同一作用域内，遵循“N个共享引用或1个可变引用”的规则。
+    - [ ] **生命周期分析 (Lifetime Analysis):**
+        - [ ] 实现自动生命周期推导，避免悬垂引用。
+        - [ ] （未来）支持显式生命周期注解，以处理复杂场景。
+- [ ] **函数与控制流:**
+    - [x] `if-else` 表达式。
+    - [x] `while` 和 `for` 循环。
+    - [ ] 函数定义、调用及返回值。
 
-- [ ] **Control Flow:**
-    - [x] if-else statements.
-    - [x] while loops.
-    - [x] for loops.
-- [x] **Assignment:**
-    - [x] Variable assignment (e.g., `a = 10;`).
-- [ ] **Functions:**
-    - [ ] Function definitions and calls.
-    - [ ] Return values.
-    - [ ] Function arguments.
-- [ ] **Classes and Structs:**
-    - [ ] Class and struct definitions.
-    - [ ] Member variables.
-    - [ ] Member functions.
-    - [ ] Constructors and destructors.
-- [ ] **Ownership and Borrowing:**
-    - [ ] Implement ownership and move semantics.
-    - [ ] Implement borrowing and references.
-    - [ ] Lifetime analysis.
+## 阶段二：丰富特性，提升表达力
 
-## Phase 3: Standard Library
+在核心安全机制稳固后，此阶段将致力于提升 Chtholly 的编程体验和功能丰富度。
 
-- [ ] **IO:** Basic input/output operations.
-- [ ] **Collections:**
-    - [ ] Dynamic arrays (vectors).
-    - [ ] Hash maps.
-- [ ] **String Manipulation:**
-    - [ ] String concatenation.
-    - [ ] Substring operations.
+- [ ] **复合数据类型 (Composite Data Types):**
+    - [ ] 结构体 (`struct`): 纯粹的数据聚合。
+    - [ ] 类 (`class`): 包含数据和行为的封装。
+        - [ ] 成员变量与函数。
+        - [ ] 构造函数与析构函数。
+        - [ ] 访问控制 (`public`, `private`)。
+- [ ] **错误处理 (Error Handling):**
+    - [ ] 实现 `Result<T, E>` 枚举。
+    - [ ] 实现 `?` 操作符，简化错误传播。
+- [ ] **模块化系统 (Module System):**
+    - [ ] `import` 和 `package` 关键字，支持文件和目录级别的模块化。
+    - [ ] 命名空间管理，避免符号冲突。
 
-## Phase 4: Tooling and Ecosystem
+## 阶段三：迈向现代，支持泛型
 
-- [ ] **Build System:**
-    - [ ] Package manager.
-    - [ ] Dependency management.
-- [ ] **Testing Framework:**
-    - [ ] Unit testing support.
-    - [ ] Integration testing support.
-- [ ] **Documentation:**
-    - [ ] Language reference.
-    - [ ] Standard library documentation.
+此阶段将引入泛型编程，使 Chtholly 能够编写高度可复用和抽象的代码。
+
+- [ ] **泛型 (Generics):**
+    - [ ] 泛型函数、结构体和类。
+    - [ ] （未来）类型特化，为特定类型提供专门实现。
+- [ ] **约束与关联类型 (Contracts & Associated Types):**
+    - [ ] `contract` 关键字，定义类型的行为约束。
+    - [ ] 关联类型，使约束更加灵活。
+    - [ ] 实现内置约束，如 `iterator` 系列。
+
+## 阶段四：构建生态，备战生产
+
+此阶段的目标是完善 Chtholly 的周边工具链和标准库，使其成为一门真正可用于生产的语言。
+
+- [ ] **标准库 (Standard Library):**
+    - [ ] I/O 操作：文件、网络等。
+    - [ ] 核心数据结构：动态数组 (`Vec`)、哈希表 (`HashMap`) 等。
+    - [ ] 字符串处理工具。
+- [ ] **构建与包管理 (Build & Package Management):**
+    - [ ] 开发一个官方的构建工具和包管理器。
+    - [ ] 支持依赖管理和版本控制。
+- [ ] **测试框架 (Testing Framework):**
+    - [ ] 内置对单元测试和集成测试的支持。
+- [ ] **文档工具 (Documentation Tool):**
+    - [ ] 从源代码注释中自动生成文档。

@@ -1,11 +1,74 @@
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{FunctionValue, PointerValue, BasicValueEnum};
-use inkwell::{IntPredicate, FloatPredicate};
+use inkwell::values::{BasicValueEnum, FunctionValue, PointerValue};
+use inkwell::{FloatPredicate, IntPredicate};
 use std::collections::HashMap;
 use thiserror::Error;
-use crate::ast::{ASTNode, Type, BinaryOperator};
+
+use crate::ast::{ASTNode, BinaryOperator, Type};
+
+#[derive(Debug, Clone, PartialEq)]
+enum OwnershipState {
+    Owned,
+    Moved,
+    ImmutableBorrow { count: usize },
+    MutableBorrow,
+}
+
+struct OwnershipTracker {
+    states: HashMap<String, OwnershipState>,
+}
+
+impl OwnershipTracker {
+    fn new() -> Self {
+        OwnershipTracker {
+            states: HashMap::new(),
+        }
+    }
+
+    fn declare_variable(&mut self, name: &str) {
+        self.states
+            .insert(name.to_string(), OwnershipState::Owned);
+    }
+
+    fn move_variable(&mut self, name: &str) {
+        self.states
+            .insert(name.to_string(), OwnershipState::Moved);
+    }
+
+    fn get_state(&self, name: &str) -> Option<&OwnershipState> {
+        self.states.get(name)
+    }
+
+    fn borrow_variable(&mut self, name: &str, is_mutable: bool) -> CompileResult<()> {
+        let state = self
+            .states
+            .get_mut(name)
+            .ok_or_else(|| CompileError::UndefinedVariable(name.to_string()))?;
+
+        match state {
+            OwnershipState::Moved => return Err(CompileError::VariableMoved(name.to_string())),
+            OwnershipState::MutableBorrow => {
+                return Err(CompileError::CannotBorrowAsImmutable(name.to_string()))
+            }
+            OwnershipState::ImmutableBorrow { count } => {
+                if is_mutable {
+                    return Err(CompileError::CannotBorrowAsMutable(name.to_string()));
+                }
+                *count += 1;
+            }
+            OwnershipState::Owned => {
+                if is_mutable {
+                    *state = OwnershipState::MutableBorrow;
+                } else {
+                    *state = OwnershipState::ImmutableBorrow { count: 1 };
+                }
+            }
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum CompileError {
@@ -17,6 +80,12 @@ pub enum CompileError {
     UndefinedVariable(String),
     #[error("Cannot assign to immutable variable: {0}")]
     CannotAssignToImmutableVariable(String),
+    #[error("Variable '{0}' has been moved and cannot be used")]
+    VariableMoved(String),
+    #[error("Cannot borrow '{0}' as mutable because it is already borrowed as immutable")]
+    CannotBorrowAsMutable(String),
+    #[error("Cannot borrow '{0}' as immutable because it is already borrowed as mutable")]
+    CannotBorrowAsImmutable(String),
 }
 
 type CompileResult<T> = Result<T, CompileError>;
@@ -54,6 +123,7 @@ pub struct Compiler<'ctx> {
     builder: Builder<'ctx>,
     module: Module<'ctx>,
     variables: HashMap<String, (PointerValue<'ctx>, Type, bool)>,
+    ownership_tracker: OwnershipTracker,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -65,6 +135,7 @@ impl<'ctx> Compiler<'ctx> {
             builder,
             module,
             variables: HashMap::new(),
+            ownership_tracker: OwnershipTracker::new(),
         }
     }
 
@@ -211,6 +282,19 @@ impl<'ctx> Compiler<'ctx> {
                     .map(|v| self.compile_expression(v))
                     .transpose()?;
 
+                if let Some(value_node) = value {
+                    if let ASTNode::Identifier(source_name) = &**value_node {
+                        let (_, ty, _) = self
+                            .variables
+                            .get(source_name)
+                            .ok_or_else(|| CompileError::UndefinedVariable(source_name.clone()))?;
+
+                        if !ty.is_copy() {
+                            self.ownership_tracker.move_variable(source_name);
+                        }
+                    }
+                }
+
                 let ty = match (type_annotation, &initial_value) {
                     (Some(ty), _) => ty.clone(),
                     (None, Some(val)) => val.get_type(),
@@ -225,32 +309,53 @@ impl<'ctx> Compiler<'ctx> {
                 };
 
                 if let Some(initial_value) = initial_value {
-                    self.builder.build_store(alloca, initial_value.to_basic_value())?;
+                    self.builder
+                        .build_store(alloca, initial_value.to_basic_value())?;
                 }
 
-                self.variables.insert(name.clone(), (alloca, ty, *is_mutable));
+                self.variables
+                    .insert(name.clone(), (alloca, ty, *is_mutable));
+                self.ownership_tracker.declare_variable(name);
             }
             _ => {}
         }
         Ok(())
     }
 
-    fn compile_expression(&self, node: &ASTNode) -> CompileResult<Value<'ctx>> {
+    fn compile_expression(&mut self, node: &ASTNode) -> CompileResult<Value<'ctx>> {
         match node {
-            ASTNode::IntegerLiteral(value) => Ok(Value::Integer(self.context.i32_type().const_int(*value as u64, false))),
-            ASTNode::FloatLiteral(value) => Ok(Value::Float(self.context.f64_type().const_float(*value))),
-            ASTNode::BoolLiteral(value) => Ok(Value::Bool(self.context.bool_type().const_int(*value as u64, false))),
+            ASTNode::IntegerLiteral(value) => Ok(Value::Integer(
+                self.context.i32_type().const_int(*value as u64, false),
+            )),
+            ASTNode::FloatLiteral(value) => {
+                Ok(Value::Float(self.context.f64_type().const_float(*value)))
+            }
+            ASTNode::BoolLiteral(value) => Ok(Value::Bool(
+                self.context.bool_type().const_int(*value as u64, false),
+            )),
             ASTNode::StringLiteral(value) => {
                 let str_ptr = self.builder.build_global_string_ptr(value, ".str")?;
                 Ok(Value::String(str_ptr.as_pointer_value()))
             }
             ASTNode::Identifier(name) => {
-                let (ptr, ty, _) = self.variables.get(name).ok_or(CompileError::UndefinedVariable(name.clone()))?;
+                if let Some(OwnershipState::Moved) = self.ownership_tracker.get_state(name) {
+                    return Err(CompileError::VariableMoved(name.clone()));
+                }
+
+                let (ptr, ty, _) = self
+                    .variables
+                    .get(name)
+                    .ok_or(CompileError::UndefinedVariable(name.clone()))?;
                 let loaded_value = match ty {
                     Type::I32 => self.builder.build_load(self.context.i32_type(), *ptr, name)?,
                     Type::F64 => self.builder.build_load(self.context.f64_type(), *ptr, name)?,
                     Type::Bool => self.builder.build_load(self.context.bool_type(), *ptr, name)?,
-                    Type::String => self.builder.build_load(self.context.ptr_type(inkwell::AddressSpace::default()), *ptr, name)?,
+                    Type::String => self.builder.build_load(
+                        self.context
+                            .ptr_type(inkwell::AddressSpace::default()),
+                        *ptr,
+                        name,
+                    )?,
                 };
 
                 match ty {
@@ -357,6 +462,19 @@ impl<'ctx> Compiler<'ctx> {
                 }
             }
             ASTNode::AssignmentExpression { name, value } => self.compile_assignment(name, value),
+            ASTNode::Reference(expr) => {
+                if let ASTNode::Identifier(name) = &**expr {
+                    self.ownership_tracker.borrow_variable(name, false)?; // Assuming immutable borrow for now
+                    let (ptr, _, _) = self
+                        .variables
+                        .get(name)
+                        .ok_or_else(|| CompileError::UndefinedVariable(name.clone()))?;
+                    Ok(Value::String(*ptr)) // Returning as a pointer-like value
+                } else {
+                    todo!() // Handle references to complex expressions
+                }
+            }
+            ASTNode::Dereference(_) => todo!(),
             _ => todo!(),
         }
     }
@@ -368,18 +486,126 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    fn compile_assignment(&self, name: &str, value_node: &ASTNode) -> CompileResult<Value<'ctx>> {
-        let (ptr, _, is_mutable) = self.variables.get(name).ok_or_else(|| CompileError::UndefinedVariable(name.to_string()))?;
-        if !*is_mutable {
-            return Err(CompileError::CannotAssignToImmutableVariable(name.to_string()));
+    fn compile_assignment(
+        &mut self,
+        name: &str,
+        value_node: &ASTNode,
+    ) -> CompileResult<Value<'ctx>> {
+        let (ptr, is_mutable) = {
+            let (ptr_val, _, is_mut) = self
+                .variables
+                .get(name)
+                .ok_or_else(|| CompileError::UndefinedVariable(name.to_string()))?;
+            (*ptr_val, *is_mut)
+        };
+
+        if !is_mutable {
+            return Err(CompileError::CannotAssignToImmutableVariable(
+                name.to_string(),
+            ));
         }
 
         let value = self.compile_expression(value_node)?;
-        self.builder.build_store(*ptr, value.clone().to_basic_value())?;
+
+        if let ASTNode::Identifier(source_name) = value_node {
+            let (_, ty, _) = self
+                .variables
+                .get(source_name)
+                .ok_or_else(|| CompileError::UndefinedVariable(source_name.clone()))?;
+
+            if !ty.is_copy() {
+                self.ownership_tracker.move_variable(source_name);
+            }
+        }
+
+        self.builder
+            .build_store(ptr, value.clone().to_basic_value())?;
         Ok(value)
     }
 
     pub fn to_string(&self) -> String {
         self.module.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::Parser;
+
+    fn compile_code(code: &str) -> Result<OwnershipTracker, CompileError> {
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        compiler.compile(&ast)?;
+        Ok(compiler.ownership_tracker)
+    }
+
+    #[test]
+    fn test_move_semantics() {
+        let code = r#"
+            fn main() {
+                let s1: string = "hello";
+                let s2: string = s1;
+            }
+        "#;
+        let ownership_tracker = compile_code(code).unwrap();
+        assert_eq!(
+            ownership_tracker.get_state("s1"),
+            Some(&OwnershipState::Moved)
+        );
+        assert_eq!(
+            ownership_tracker.get_state("s2"),
+            Some(&OwnershipState::Owned)
+        );
+    }
+
+    #[test]
+    fn test_use_after_move() {
+        let code = r#"
+            fn main() {
+                let s1: string = "hello";
+                let s2: string = s1;
+                let s3: string = s1;
+            }
+        "#;
+        let result = compile_code(code);
+        assert!(matches!(result, Err(CompileError::VariableMoved(_))));
+    }
+
+    #[test]
+    fn test_copy_semantics() {
+        let code = r#"
+            fn main() {
+                let x: i32 = 5;
+                let y: i32 = x;
+            }
+        "#;
+        let ownership_tracker = compile_code(code).unwrap();
+        assert_eq!(
+            ownership_tracker.get_state("x"),
+            Some(&OwnershipState::Owned)
+        );
+        assert_eq!(
+            ownership_tracker.get_state("y"),
+            Some(&OwnershipState::Owned)
+        );
+    }
+
+    #[test]
+    fn test_immutable_borrow() {
+        let code = r#"
+            fn main() {
+                let s: string = "hello";
+                let r1 = &s;
+                let r2 = &s;
+            }
+        "#;
+        let ownership_tracker = compile_code(code).unwrap();
+        assert_eq!(
+            ownership_tracker.get_state("s"),
+            Some(&OwnershipState::ImmutableBorrow { count: 2 })
+        );
     }
 }

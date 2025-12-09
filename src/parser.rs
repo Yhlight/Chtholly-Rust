@@ -178,13 +178,53 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary_expression(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
-        match tokens.next().ok_or(ParserError::UnexpectedEOF)? {
-            Token::IntegerLiteral(value) => Ok(ASTNode::IntegerLiteral(*value)),
-            Token::FloatLiteral(value) => Ok(ASTNode::FloatLiteral(*value)),
-            Token::StringLiteral(value) => Ok(ASTNode::StringLiteral(value.clone())),
-            Token::True => Ok(ASTNode::BoolLiteral(true)),
-            Token::False => Ok(ASTNode::BoolLiteral(false)),
-            Token::Identifier(name) => Ok(ASTNode::Identifier(name.clone())),
+        match tokens.peek().ok_or(ParserError::UnexpectedEOF)? {
+            Token::IntegerLiteral(_) => {
+                if let Some(Token::IntegerLiteral(value)) = tokens.next() {
+                    Ok(ASTNode::IntegerLiteral(*value))
+                } else {
+                    Err(ParserError::UnexpectedToken)
+                }
+            }
+            Token::FloatLiteral(_) => {
+                if let Some(Token::FloatLiteral(value)) = tokens.next() {
+                    Ok(ASTNode::FloatLiteral(*value))
+                } else {
+                    Err(ParserError::UnexpectedToken)
+                }
+            }
+            Token::StringLiteral(_) => {
+                if let Some(Token::StringLiteral(value)) = tokens.next() {
+                    Ok(ASTNode::StringLiteral(value.clone()))
+                } else {
+                    Err(ParserError::UnexpectedToken)
+                }
+            }
+            Token::True => {
+                tokens.next();
+                Ok(ASTNode::BoolLiteral(true))
+            }
+            Token::False => {
+                tokens.next();
+                Ok(ASTNode::BoolLiteral(false))
+            }
+            Token::Identifier(_) => {
+                if let Some(Token::Identifier(name)) = tokens.next() {
+                    Ok(ASTNode::Identifier(name.clone()))
+                } else {
+                    Err(ParserError::UnexpectedToken)
+                }
+            }
+            Token::Ampersand => {
+                tokens.next(); // Consume '&'
+                let expr = self.parse_primary_expression(tokens)?;
+                Ok(ASTNode::Reference(Box::new(expr)))
+            }
+            Token::Asterisk => {
+                tokens.next(); // Consume '*'
+                let expr = self.parse_primary_expression(tokens)?;
+                Ok(ASTNode::Dereference(Box::new(expr)))
+            }
             _ => Err(ParserError::UnexpectedToken),
         }
     }
@@ -193,7 +233,10 @@ impl<'a> Parser<'a> {
         let op = match tokens.peek() {
             Some(Token::Plus) => Some(BinaryOperator::Add),
             Some(Token::Minus) => Some(BinaryOperator::Subtract),
-            Some(Token::Asterisk) => Some(BinaryOperator::Multiply),
+            Some(Token::Asterisk) => {
+                // This is now only for binary multiplication
+                Some(BinaryOperator::Multiply)
+            }
             Some(Token::Slash) => Some(BinaryOperator::Divide),
             Some(Token::Equal) => Some(BinaryOperator::Equal),
             Some(Token::NotEqual) => Some(BinaryOperator::NotEqual),

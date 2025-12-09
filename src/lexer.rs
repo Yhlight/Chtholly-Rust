@@ -31,6 +31,7 @@ pub enum Token {
     Minus,
     Asterisk,
     Slash,
+    Ampersand,
     Equal,
     NotEqual,
     LessThan,
@@ -72,6 +73,7 @@ impl<'a> Iterator for Lexer<'a> {
         let c = self.input.next()?;
 
         let result = match c {
+            '&' => Ok(Token::Ampersand),
             '(' => Ok(Token::LParen),
             ')' => Ok(Token::RParen),
             '{' => Ok(Token::LBrace),
