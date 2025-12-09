@@ -31,6 +31,9 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::LET) {
         return parse_variable_declaration();
     }
+    if (peek().type == TokenType::FN) {
+        return parse_function_definition();
+    }
     // Handle other statement types in the future
     // For now, just advance past unknown tokens to avoid infinite loops
     advance();
@@ -64,6 +67,78 @@ std::unique_ptr<StmtAST> Parser::parse_variable_declaration() {
     return std::make_unique<VarDeclStmtAST>(var_name, is_mutable, std::move(initializer));
 }
 
+std::unique_ptr<StmtAST> Parser::parse_function_definition() {
+    advance(); // consume 'fn'
+    if (peek().type != TokenType::IDENTIFIER) {
+        throw std::runtime_error("Expected function name after 'fn'");
+    }
+    std::string func_name = advance().value;
+
+    if (peek().type != TokenType::LEFT_PAREN) {
+        throw std::runtime_error("Expected '(' after function name");
+    }
+    advance(); // consume '('
+
+    std::vector<FunctionArg> args;
+    while (peek().type != TokenType::RIGHT_PAREN) {
+        if (peek().type != TokenType::IDENTIFIER) {
+            throw std::runtime_error("Expected argument name");
+        }
+        std::string arg_name = advance().value;
+
+        if (peek().type != TokenType::COLON) {
+            throw std::runtime_error("Expected ':' after argument name");
+        }
+        advance(); // consume ':'
+
+        args.push_back({arg_name, parse_type()});
+
+        if (peek().type == TokenType::COMMA) {
+            advance(); // consume ','
+        } else if (peek().type != TokenType::RIGHT_PAREN) {
+            throw std::runtime_error("Expected ',' or ')' after argument");
+        }
+    }
+    advance(); // consume ')'
+
+    if (peek().type != TokenType::COLON) {
+        throw std::runtime_error("Expected ':' for return type");
+    }
+    advance(); // consume ':'
+    auto return_type = parse_type();
+
+    auto body = parse_block();
+
+    return std::make_unique<FunctionDeclAST>(func_name, std::move(args), std::move(return_type), std::move(body));
+}
+
+std::unique_ptr<BlockStmtAST> Parser::parse_block() {
+    if (peek().type != TokenType::LEFT_BRACE) {
+        throw std::runtime_error("Expected '{' to start a block");
+    }
+    advance(); // consume '{'
+
+    auto block = std::make_unique<BlockStmtAST>();
+    while (peek().type != TokenType::RIGHT_BRACE && !is_at_end()) {
+        block->statements.push_back(parse_statement());
+    }
+
+    if (peek().type != TokenType::RIGHT_BRACE) {
+        throw std::runtime_error("Expected '}' to end a block");
+    }
+    advance(); // consume '}'
+    return block;
+}
+
+std::unique_ptr<TypeNameAST> Parser::parse_type() {
+    if (peek().type != TokenType::IDENTIFIER) {
+        throw std::runtime_error("Expected a type name");
+    }
+    // This will need to be extended to handle complex types like arrays, etc.
+    return std::make_unique<TypeNameAST>(advance().value);
+}
+
+
 std::unique_ptr<ExprAST> Parser::parse_expression() {
     auto lhs = parse_primary();
     if (!lhs) {
@@ -79,7 +154,15 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
     if (peek().type == TokenType::IDENTIFIER) {
         return std::make_unique<VariableExprAST>(advance().value);
     }
-    // Handle other primary expressions like parentheses in the future
+    if (peek().type == TokenType::LEFT_PAREN) {
+        advance(); // consume '('
+        auto expr = parse_expression();
+        if (peek().type != TokenType::RIGHT_PAREN) {
+            throw std::runtime_error("Expected ')' after expression");
+        }
+        advance(); // consume ')'
+        return expr;
+    }
     return nullptr;
 }
 

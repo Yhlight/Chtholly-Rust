@@ -15,7 +15,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] Implement the Parser to construct an AST from the token stream.
 - [x] Support for variable declarations (`let` and `let mut`).
 - [x] Support for basic arithmetic and logical expressions.
-- [ ] Initial implementation of function definitions (`fn`).
+- [x] Initial implementation of function definitions (`fn`).
 
 ### Milestone 1.3: Semantic Analysis & Type System
 - [ ] Implement a semantic analyzer to traverse the AST and perform type checking.

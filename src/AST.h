@@ -17,6 +17,16 @@ public:
     virtual void print(int level = 0) const = 0;
 };
 
+// Represents a type name
+class TypeNameAST : public ASTNode {
+public:
+    std::string name;
+    TypeNameAST(std::string name) : name(std::move(name)) {}
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "TypeName: " << name << std::endl;
+    }
+};
+
 // Base class for all expression nodes
 class ExprAST : public ASTNode {};
 
@@ -75,6 +85,28 @@ public:
     }
 };
 
+class BlockStmtAST; // Forward declare for FunctionDeclAST
+
+// Represents a function argument
+struct FunctionArg {
+    std::string name;
+    std::unique_ptr<TypeNameAST> type;
+};
+
+// Statement class for function declarations
+class FunctionDeclAST : public StmtAST {
+    std::string name;
+    std::vector<FunctionArg> args;
+    std::unique_ptr<TypeNameAST> returnType;
+    std::unique_ptr<BlockStmtAST> body;
+public:
+    FunctionDeclAST(std::string name, std::vector<FunctionArg> args, std::unique_ptr<TypeNameAST> returnType, std::unique_ptr<BlockStmtAST> body)
+        : name(std::move(name)), args(std::move(args)), returnType(std::move(returnType)), body(std::move(body)) {}
+
+    void print(int level = 0) const override;
+};
+
+
 // Represents a block of statements
 class BlockStmtAST : public StmtAST {
 public:
@@ -82,10 +114,23 @@ public:
     void print(int level = 0) const override {
         std::cout << indent(level) << "BlockStmtAST:" << std::endl;
         for(const auto& stmt : statements) {
-            stmt->print(level + 1);
+            if (stmt) stmt->print(level + 1);
         }
     }
 };
+
+inline void FunctionDeclAST::print(int level) const {
+    std::cout << indent(level) << "FunctionDecl: " << name << std::endl;
+    std::cout << indent(level + 1) << "Args:" << std::endl;
+    for (const auto& arg : args) {
+        std::cout << indent(level + 2) << arg.name << ":" << std::endl;
+        arg.type->print(level + 3);
+    }
+    std::cout << indent(level + 1) << "Return Type:" << std::endl;
+    returnType->print(level + 2);
+    std::cout << indent(level + 1) << "Body:" << std::endl;
+    body->print(level + 2);
+}
 
 
 // Helper to produce indentation for pretty printing

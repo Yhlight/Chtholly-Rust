@@ -22,6 +22,9 @@ private:
     // Parsing methods
     std::unique_ptr<StmtAST> parse_statement();
     std::unique_ptr<StmtAST> parse_variable_declaration();
+    std::unique_ptr<StmtAST> parse_function_definition();
+    std::unique_ptr<BlockStmtAST> parse_block();
+    std::unique_ptr<TypeNameAST> parse_type();
     std::unique_ptr<ExprAST> parse_expression();
     std::unique_ptr<ExprAST> parse_primary();
     std::unique_ptr<ExprAST> parse_binary_expression(int min_precedence, std::unique_ptr<ExprAST> lhs);
