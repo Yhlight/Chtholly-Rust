@@ -149,7 +149,7 @@ std::unique_ptr<StmtAST> Parser::parse_function_definition() {
         }
         advance(); // consume ':'
 
-        args.push_back({arg_name, parse_type()});
+        args.push_back({arg_name, parse_type(), nullptr});
 
         if (peek().type == TokenType::COMMA) {
             advance(); // consume ','
@@ -189,6 +189,16 @@ std::unique_ptr<BlockStmtAST> Parser::parse_block() {
 }
 
 std::unique_ptr<TypeNameAST> Parser::parse_type() {
+    if (peek().type == TokenType::AMPERSAND) {
+        advance(); // consume '&'
+        bool is_mutable = false;
+        if (peek().type == TokenType::MUT) {
+            is_mutable = true;
+            advance(); // consume 'mut'
+        }
+        return std::make_unique<ReferenceTypeAST>(parse_type(), is_mutable);
+    }
+
     if (peek().type != TokenType::IDENTIFIER) {
         throw std::runtime_error("Expected a type name");
     }
@@ -207,6 +217,16 @@ std::unique_ptr<ExprAST> Parser::parse_expression() {
 
 std::unique_ptr<ExprAST> Parser::parse_primary() {
     auto expr = [this]() -> std::unique_ptr<ExprAST> {
+        if (peek().type == TokenType::AMPERSAND) {
+            advance(); // consume '&'
+            bool is_mutable = false;
+            if (peek().type == TokenType::MUT) {
+                is_mutable = true;
+                advance(); // consume 'mut'
+            }
+            return std::make_unique<BorrowExprAST>(parse_primary(), is_mutable);
+        }
+
         if (peek().type == TokenType::INTEGER_LITERAL || peek().type == TokenType::FLOAT_LITERAL) {
             return std::make_unique<NumberExprAST>(std::stod(advance().value));
         }

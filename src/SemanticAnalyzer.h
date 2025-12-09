@@ -30,6 +30,8 @@ private:
     std::shared_ptr<Type> visit(IfStmtAST& node);
     std::shared_ptr<Type> visit(BoolExprAST& node);
     std::shared_ptr<Type> visit(TypeNameAST& node);
+    std::shared_ptr<Type> visit(BorrowExprAST& node);
+    std::shared_ptr<Type> visit(ReferenceTypeAST& node);
 };
 
 #endif // CHTHOLLY_SEMANTICANALYZER_H

@@ -115,6 +115,21 @@ public:
     }
 };
 
+class ReferenceType : public Type {
+public:
+    std::shared_ptr<Type> referencedType;
+    bool isMutable;
+
+    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable)
+        : Type(TK_Class), referencedType(std::move(referencedType)), isMutable(isMutable) {}
+
+    std::string toString() const override {
+        return std::string("&") + (isMutable ? "mut " : "") + referencedType->toString();
+    }
+
+    bool isCopy() const override { return true; }
+};
+
 
 // ... other type classes can be added here ...
 

@@ -65,6 +65,10 @@ void CodeGenerator::declareFree() {
 
 
 llvm::Type* CodeGenerator::resolveType(const TypeNameAST& typeName) {
+    if (auto* refType = dynamic_cast<const ReferenceTypeAST*>(&typeName)) {
+        return resolveType(*refType->referencedType)->getPointerTo();
+    }
+
     if (typeName.name == "i32") {
         return builder->getInt32Ty();
     }
@@ -82,6 +86,28 @@ llvm::Type* CodeGenerator::resolveType(const TypeNameAST& typeName) {
     }
     // Add other types here
     throw std::runtime_error("Unknown type '" + typeName.name + "' in code generator");
+}
+
+llvm::Type* CodeGenerator::resolveType(const Type& type) {
+    if (auto* intType = dynamic_cast<const IntegerType*>(&type)) {
+        return builder->getInt32Ty();
+    }
+    if (auto* floatType = dynamic_cast<const FloatType*>(&type)) {
+        return builder->getDoubleTy();
+    }
+    if (auto* stringType = dynamic_cast<const StringType*>(&type)) {
+        return builder->getInt8Ty()->getPointerTo();
+    }
+    if (auto* boolType = dynamic_cast<const BoolType*>(&type)) {
+        return builder->getInt1Ty();
+    }
+    if (auto* voidType = dynamic_cast<const VoidType*>(&type)) {
+        return builder->getVoidTy();
+    }
+    if (auto* refType = dynamic_cast<const ReferenceType*>(&type)) {
+        return resolveType(*refType->referencedType)->getPointerTo();
+    }
+    throw std::runtime_error("Unknown type in code generator");
 }
 
 
@@ -109,6 +135,8 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<ReturnStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<BorrowExprAST*>(&node)) {
         return visit(*p);
     }
     return nullptr;
@@ -201,6 +229,13 @@ llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
         }
 
         llvm::Value* rhs = visit(*node.rhs);
+
+        if (node.rhs->type->isString()) {
+            llvm::Function* freeFunc = module->getFunction("free");
+            llvm::Value* oldVal = builder->CreateLoad(lhs->getAllocatedType(), lhs);
+            builder->CreateCall(freeFunc, {oldVal});
+        }
+
         builder->CreateStore(rhs, lhs);
 
         if (node.rhs->type->isString()) {
@@ -271,6 +306,12 @@ llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
     if (!v) {
         throw std::runtime_error("Unknown variable name: " + node.name);
     }
+
+    if (auto* refType = dynamic_cast<ReferenceType*>(node.type.get())) {
+        llvm::Value* ptr = builder->CreateLoad(v->getAllocatedType(), v);
+        return builder->CreateLoad(resolveType(*refType->referencedType), ptr);
+    }
+
     // Load the value from the memory location
     return builder->CreateLoad(v->getAllocatedType(), v, node.name.c_str());
 }
@@ -360,4 +401,11 @@ llvm::Value* CodeGenerator::visit(IfStmtAST& node) {
     builder->SetInsertPoint(mergeBB);
 
     return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(BorrowExprAST& node) {
+    if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.expression.get())) {
+        return namedValues[varExpr->name];
+    }
+    throw std::runtime_error("Can only borrow variables for now.");
 }

@@ -30,6 +30,20 @@ public:
     }
 };
 
+class ReferenceTypeAST : public TypeNameAST {
+public:
+    std::unique_ptr<TypeNameAST> referencedType;
+    bool isMutable;
+
+    ReferenceTypeAST(std::unique_ptr<TypeNameAST> referencedType, bool isMutable)
+        : TypeNameAST(""), referencedType(std::move(referencedType)), isMutable(isMutable) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << (isMutable ? "Mutable" : "Immutable") << " Reference to:" << std::endl;
+        referencedType->print(level + 1);
+    }
+};
+
 // Base class for all expression nodes
 class ExprAST : public ASTNode {
 public:
@@ -104,6 +118,21 @@ public:
         }
     }
 };
+
+class BorrowExprAST : public ExprAST {
+public:
+    std::unique_ptr<ExprAST> expression;
+    bool isMutable;
+
+    BorrowExprAST(std::unique_ptr<ExprAST> expression, bool isMutable)
+        : expression(std::move(expression)), isMutable(isMutable) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << (isMutable ? "Mutable" : "Immutable") << " Borrow of:" << std::endl;
+        expression->print(level + 1);
+    }
+};
+
 
 // Base class for all statement nodes
 class StmtAST : public ASTNode {};

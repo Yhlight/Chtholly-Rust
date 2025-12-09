@@ -27,6 +27,7 @@ private:
     void declareStrcpy();
     void declareFree();
     llvm::Type* resolveType(const TypeNameAST& typeName);
+    llvm::Type* resolveType(const Type& type);
 
     llvm::Value* visit(ASTNode& node);
     llvm::Value* visit(VarDeclStmtAST& node);
@@ -41,6 +42,7 @@ private:
     llvm::Value* visit(ExprStmtAST& node);
     llvm::Value* visit(ReturnStmtAST& node);
     llvm::Value* visit(IfStmtAST& node);
+    llvm::Value* visit(BorrowExprAST& node);
 };
 
 #endif // CHTHOLLY_CODEGENERATOR_H

@@ -59,6 +59,10 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<TypeNameAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<BorrowExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ReferenceTypeAST*>(&node)) {
+        return visit(*p);
     }
     return nullptr;
 }
@@ -130,6 +134,16 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
     for (auto& stmt : node.statements) {
         if(stmt) visit(*stmt);
     }
+
+    for (auto& pair : symbolTable.getCurrentScope()) {
+        Symbol& symbol = pair.second;
+        if (symbol.borrowedInScope) {
+            symbol.immutableBorrows = 0;
+            symbol.mutableBorrow = false;
+            symbol.borrowedInScope = false;
+        }
+    }
+
     symbolTable.leaveScope();
     return nullptr; // Statements don't have a type
 }
@@ -306,4 +320,34 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(IfStmtAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(TypeNameAST& node) {
     return nullptr;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
+    auto exprType = visit(*node.expression);
+    if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.expression.get())) {
+        Symbol* symbol = symbolTable.findSymbol(varExpr->name);
+        if (node.isMutable) {
+            if (!symbol->isMutable) {
+                throw std::runtime_error("Cannot mutably borrow immutable variable '" + varExpr->name + "'.");
+            }
+            if (symbol->mutableBorrow || symbol->immutableBorrows > 0) {
+                throw std::runtime_error("Cannot mutably borrow '" + varExpr->name + "' as it is already borrowed.");
+            }
+            symbol->mutableBorrow = true;
+            symbol->borrowedInScope = true;
+        } else {
+            if (symbol->mutableBorrow) {
+                throw std::runtime_error("Cannot immutably borrow '" + varExpr->name + "' as it is already mutably borrowed.");
+            }
+            symbol->immutableBorrows++;
+            symbol->borrowedInScope = true;
+        }
+    }
+    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable);
+    return node.type;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(ReferenceTypeAST& node) {
+    auto referencedType = typeResolver.resolve(*node.referencedType);
+    return std::make_shared<ReferenceType>(referencedType, node.isMutable);
 }

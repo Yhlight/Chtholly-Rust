@@ -1,7 +1,12 @@
 #include "TypeResolver.h"
 #include <stdexcept>
+#include "AST.h"
 
 std::shared_ptr<Type> TypeResolver::resolve(const TypeNameAST& typeName) {
+    if (auto* refType = dynamic_cast<const ReferenceTypeAST*>(&typeName)) {
+        return std::make_shared<ReferenceType>(resolve(*refType->referencedType), refType->isMutable);
+    }
+
     if (typeName.name == "i32") {
         return std::make_shared<IntegerType>(32, true);
     }

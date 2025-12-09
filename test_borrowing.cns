@@ -1,0 +1,18 @@
+fn main(): i32 {
+    // Valid borrowing
+    let x: i32 = 10;
+    let y: &i32 = &x;
+    let z: &i32 = &x;
+
+    let mut a: i32 = 20;
+    let b: &i32 = &a;
+    // let c: &mut i32 = &mut a;
+
+    // Invalid borrowing: mutable borrow while immutable borrows exist
+    // let d: &mut i32 = &mut a;
+
+    // Invalid borrowing: immutable borrow while mutable borrow exists
+    let e: &i32 = &a;
+
+    return 0;
+}

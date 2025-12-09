@@ -39,9 +39,9 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 - [x] Implement a `Copy` trait for primitive types to enable copy semantics where appropriate.
 
 ### Milestone 2.2: Borrowing & References
-- [ ] Implement immutable references (`&T`) to allow shared, read-only access to resources.
-- [ ] Implement mutable references (`&mut T`) to allow exclusive, read-write access.
-- [ ] At compile time, enforce the core borrowing rules:
+- [x] Implement immutable references (`&T`) to allow shared, read-only access to resources.
+- [x] Implement mutable references (`&mut T`) to allow exclusive, read-write access.
+- [x] At compile time, enforce the core borrowing rules:
     - Any number of immutable references (`&T`) can exist simultaneously.
     - Only one mutable reference (`&mut T`) can exist at any given time.
     - A mutable reference cannot coexist with any other references (mutable or immutable).

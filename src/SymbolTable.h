@@ -12,7 +12,10 @@ struct Symbol {
     std::string name;
     std::shared_ptr<Type> type;
     bool isMutable;
-    bool isMoved = false; // Add isMoved flag
+    bool isMoved = false;
+    int immutableBorrows = 0;
+    bool mutableBorrow = false;
+    bool borrowedInScope = false;
 };
 
 // A single scope, mapping names to symbols
@@ -33,6 +36,9 @@ public:
     // Finds a symbol by searching from the innermost scope outwards.
     // Returns a pointer to the Symbol if found, otherwise nullptr.
     Symbol* findSymbol(const std::string& name);
+
+    // Returns all symbols in the current scope.
+    Scope& getCurrentScope();
 
 private:
     std::vector<Scope> scopeStack;
