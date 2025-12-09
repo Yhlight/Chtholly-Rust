@@ -10,7 +10,26 @@ SemanticAnalyzer::SemanticAnalyzer() {
 }
 
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
-    visit(ast);
+    // First pass: register all function declarations
+    for (auto& stmt : ast.statements) {
+        if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
+            auto funcType = std::make_shared<FunctionType>();
+            funcType->returnType = typeResolver.resolve(*funcDecl->returnType);
+            for (auto& arg : funcDecl->args) {
+                arg.resolvedType = typeResolver.resolve(*arg.type);
+                funcType->argTypes.push_back(arg.resolvedType);
+            }
+
+            if (!symbolTable.addSymbol(funcDecl->name, funcType, false)) {
+                throw std::runtime_error("Function '" + funcDecl->name + "' already declared in this scope.");
+            }
+        }
+    }
+
+    // Second pass: analyze all statements
+    for (auto& stmt : ast.statements) {
+        visit(*stmt);
+    }
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
@@ -48,6 +67,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     std::shared_ptr<Type> initType = nullptr;
     if (node.initExpr) {
         initType = visit(*node.initExpr);
+        if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
+            Symbol* symbol = symbolTable.findSymbol(varExpr->name);
+            if (symbol && !symbol->type->isCopy()) {
+                symbol->isMoved = true;
+            }
+        }
     }
 
     std::shared_ptr<Type> declaredType = nullptr;
@@ -72,15 +97,10 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
     auto returnType = typeResolver.resolve(*node.returnType);
-    if (!symbolTable.addSymbol(node.name, returnType, false)) {
-        throw std::runtime_error("Function '" + node.name + "' already declared in this scope.");
-    }
-
     currentFunction = &node;
     symbolTable.enterScope();
     for (auto& arg : node.args) {
-        auto argType = typeResolver.resolve(*arg.type);
-        if(!symbolTable.addSymbol(arg.name, argType, false)) {
+        if(!symbolTable.addSymbol(arg.name, arg.resolvedType, false)) {
              throw std::runtime_error("Argument '" + arg.name + "' already declared in this scope.");
         }
     }
@@ -115,6 +135,36 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
+    if (node.op == TokenType::EQUAL) {
+        auto* lhsVar = dynamic_cast<VariableExprAST*>(node.lhs.get());
+        if (!lhsVar) {
+            throw std::runtime_error("The left-hand side of an assignment must be a variable.");
+        }
+
+        Symbol* lhsSymbol = symbolTable.findSymbol(lhsVar->name);
+        if (!lhsSymbol) {
+            throw std::runtime_error("Variable '" + lhsVar->name + "' not declared.");
+        }
+        if (!lhsSymbol->isMutable) {
+            throw std::runtime_error("Variable '" + lhsVar->name + "' is not mutable.");
+        }
+
+        auto rhsType = visit(*node.rhs);
+        if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
+            Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
+            if (rhsSymbol && !rhsSymbol->type->isCopy()) {
+                rhsSymbol->isMoved = true;
+            }
+        }
+
+        if (lhsSymbol->type->toString() != rhsType->toString()) {
+            throw std::runtime_error("Type mismatch in assignment to variable '" + lhsVar->name + "'.");
+        }
+        node.type = lhsSymbol->type;
+        return node.type;
+    }
+
+
     auto lhsType = visit(*node.lhs);
     auto rhsType = visit(*node.rhs);
 
@@ -169,20 +219,50 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VariableExprAST& node) {
     if (!symbol) {
         throw std::runtime_error("Variable '" + node.name + "' not declared.");
     }
+    if (symbol->isMoved) {
+        throw std::runtime_error("Variable '" + node.name + "' has been moved and is no longer valid.");
+    }
     node.type = symbol->type;
     return node.type;
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
+    if (node.callee == "println") {
+        for (auto& arg : node.args) {
+            visit(*arg);
+            if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
+                Symbol* argSymbol = symbolTable.findSymbol(varExpr->name);
+                if (argSymbol && argSymbol->isMoved) {
+                    throw std::runtime_error("Variable '" + varExpr->name + "' has been moved and is no longer valid.");
+                }
+                // Do not move the argument for println
+            }
+        }
+        return std::make_shared<VoidType>();
+    }
+
     Symbol* symbol = symbolTable.findSymbol(node.callee);
     if (!symbol) {
         throw std::runtime_error("Function '" + node.callee + "' not declared.");
     }
 
     // In a real implementation, we would check argument types and arity.
-    // For now, we'll just assume the call is valid and return the function's type.
-    node.type = symbol->type;
-    return node.type;
+    for (auto& arg : node.args) {
+        visit(*arg);
+        if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
+            Symbol* argSymbol = symbolTable.findSymbol(varExpr->name);
+            if (argSymbol && !argSymbol->type->isCopy()) {
+                argSymbol->isMoved = true;
+            }
+        }
+    }
+
+    // For now, we'll just assume the call is valid and return the function's return type.
+    if (auto* funcType = dynamic_cast<FunctionType*>(symbol->type.get())) {
+        node.type = funcType->returnType;
+        return node.type;
+    }
+    throw std::runtime_error("Symbol '" + node.callee + "' is not a function, cannot be called");
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ExprStmtAST& node) {

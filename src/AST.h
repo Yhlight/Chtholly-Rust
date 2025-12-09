@@ -172,6 +172,7 @@ class BlockStmtAST; // Forward declare for FunctionDeclAST
 struct FunctionArg {
     std::string name;
     std::unique_ptr<TypeNameAST> type;
+    std::shared_ptr<Type> resolvedType;
 };
 
 // Statement class for function declarations

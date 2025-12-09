@@ -10,10 +10,29 @@ CodeGenerator::CodeGenerator() {
     module = std::make_unique<llvm::Module>("ChthollyModule", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
     declarePrintf();
+    declareMalloc();
+    declareStrcpy();
+    declareFree();
 }
 
 void CodeGenerator::generate(BlockStmtAST& ast) {
-    visit(ast);
+    // First pass: declare all functions
+    for (auto& stmt : ast.statements) {
+        if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
+            llvm::Type* returnType = resolveType(*funcDecl->returnType);
+            std::vector<llvm::Type*> argTypes;
+            for (const auto& arg : funcDecl->args) {
+                argTypes.push_back(resolveType(*arg.type));
+            }
+            llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argTypes, false);
+            llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, funcDecl->name, module.get());
+        }
+    }
+
+    // Second pass: generate code for all statements
+    for (auto& stmt : ast.statements) {
+        visit(*stmt);
+    }
 }
 
 void CodeGenerator::dump() const {
@@ -24,6 +43,24 @@ void CodeGenerator::declarePrintf() {
     llvm::Type* i8_ptr_type = builder->getInt8Ty()->getPointerTo();
     llvm::FunctionType* printf_type = llvm::FunctionType::get(builder->getInt32Ty(), {i8_ptr_type}, true);
     module->getOrInsertFunction("printf", printf_type);
+}
+
+void CodeGenerator::declareMalloc() {
+    llvm::Type* i8_ptr_type = builder->getInt8Ty()->getPointerTo();
+    llvm::FunctionType* malloc_type = llvm::FunctionType::get(i8_ptr_type, {builder->getInt64Ty()}, false);
+    module->getOrInsertFunction("malloc", malloc_type);
+}
+
+void CodeGenerator::declareStrcpy() {
+    llvm::Type* i8_ptr_type = builder->getInt8Ty()->getPointerTo();
+    llvm::FunctionType* strcpy_type = llvm::FunctionType::get(i8_ptr_type, {i8_ptr_type, i8_ptr_type}, false);
+    module->getOrInsertFunction("strcpy", strcpy_type);
+}
+
+void CodeGenerator::declareFree() {
+    llvm::Type* i8_ptr_type = builder->getInt8Ty()->getPointerTo();
+    llvm::FunctionType* free_type = llvm::FunctionType::get(builder->getVoidTy(), {i8_ptr_type}, false);
+    module->getOrInsertFunction("free", free_type);
 }
 
 
@@ -90,18 +127,29 @@ llvm::Value* CodeGenerator::visit(VarDeclStmtAST& node) {
     llvm::AllocaInst* alloca = builder->CreateAlloca(initVal->getType(), nullptr, node.varName);
     builder->CreateStore(initVal, alloca);
     namedValues[node.varName] = alloca;
+
+    if (node.initExpr->type->isString()) {
+        if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
+            // Find the moved variable in ownedValues and remove it
+            llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
+            for (auto it = ownedValues.begin(); it != ownedValues.end(); ++it) {
+                if (*it == movedAlloca) {
+                    ownedValues.erase(it);
+                    break;
+                }
+            }
+        }
+        ownedValues.push_back(alloca);
+    }
+
     return alloca;
 }
 
 llvm::Value* CodeGenerator::visit(FunctionDeclAST& node) {
-    llvm::Type* returnType = resolveType(*node.returnType);
-    std::vector<llvm::Type*> argTypes;
-    for (const auto& arg : node.args) {
-        argTypes.push_back(resolveType(*arg.type));
+    llvm::Function* function = module->getFunction(node.name);
+    if (!function) {
+        throw std::runtime_error("Function '" + node.name + "' not declared in code generator.");
     }
-
-    llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argTypes, false);
-    llvm::Function* function = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node.name, module.get());
 
     llvm::BasicBlock* basicBlock = llvm::BasicBlock::Create(*context, "entry", function);
     builder->SetInsertPoint(basicBlock);
@@ -112,6 +160,9 @@ llvm::Value* CodeGenerator::visit(FunctionDeclAST& node) {
         llvm::AllocaInst* alloca = builder->CreateAlloca(arg.getType(), nullptr, node.args[i].name);
         builder->CreateStore(&arg, alloca);
         namedValues[node.args[i].name] = alloca;
+        if (node.args[i].resolvedType->isString()) {
+            ownedValues.push_back(alloca);
+        }
         i++;
     }
 
@@ -121,15 +172,54 @@ llvm::Value* CodeGenerator::visit(FunctionDeclAST& node) {
 }
 
 llvm::Value* CodeGenerator::visit(BlockStmtAST& node) {
+    size_t ownedValuesInScope = ownedValues.size();
     for (auto& stmt : node.statements) {
         if (stmt) {
             visit(*stmt);
         }
     }
+
+    llvm::Function* freeFunc = module->getFunction("free");
+    for (size_t i = ownedValuesInScope; i < ownedValues.size(); ++i) {
+        llvm::Value* val = builder->CreateLoad(ownedValues[i]->getAllocatedType(), ownedValues[i]);
+        builder->CreateCall(freeFunc, {val});
+    }
+    ownedValues.resize(ownedValuesInScope);
+
     return nullptr;
 }
 
 llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
+    if (node.op == TokenType::EQUAL) {
+        auto* lhsVar = dynamic_cast<VariableExprAST*>(node.lhs.get());
+        if (!lhsVar) {
+            throw std::runtime_error("The left-hand side of an assignment must be a variable.");
+        }
+        llvm::AllocaInst* lhs = namedValues[lhsVar->name];
+        if (!lhs) {
+            throw std::runtime_error("Unknown variable name: " + lhsVar->name);
+        }
+
+        llvm::Value* rhs = visit(*node.rhs);
+        builder->CreateStore(rhs, lhs);
+
+        if (node.rhs->type->isString()) {
+             if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
+                // Find the moved variable in ownedValues and remove it
+                llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
+                for (auto it = ownedValues.begin(); it != ownedValues.end(); ++it) {
+                    if (*it == movedAlloca) {
+                        ownedValues.erase(it);
+                        break;
+                    }
+                }
+            }
+            ownedValues.push_back(lhs);
+        }
+
+        return rhs;
+    }
+
     llvm::Value* L = visit(*node.lhs);
     llvm::Value* R = visit(*node.rhs);
 
@@ -162,7 +252,14 @@ llvm::Value* CodeGenerator::visit(NumberExprAST& node) {
 }
 
 llvm::Value* CodeGenerator::visit(StringExprAST& node) {
-    return builder->CreateGlobalStringPtr(node.value);
+    llvm::Function* mallocFunc = module->getFunction("malloc");
+    llvm::Function* strcpyFunc = module->getFunction("strcpy");
+
+    llvm::Value* strSize = builder->getInt64(node.value.size() + 1);
+    llvm::Value* mem = builder->CreateCall(mallocFunc, {strSize}, "malloccall");
+    llvm::Value* globalStr = builder->CreateGlobalStringPtr(node.value);
+    builder->CreateCall(strcpyFunc, {mem, globalStr});
+    return mem;
 }
 
 llvm::Value* CodeGenerator::visit(BoolExprAST& node) {
@@ -170,15 +267,12 @@ llvm::Value* CodeGenerator::visit(BoolExprAST& node) {
 }
 
 llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
-    llvm::Value* v = namedValues[node.name];
+    llvm::AllocaInst* v = namedValues[node.name];
     if (!v) {
         throw std::runtime_error("Unknown variable name: " + node.name);
     }
     // Load the value from the memory location
-    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(v)) {
-        return builder->CreateLoad(alloca->getAllocatedType(), v, node.name.c_str());
-    }
-    return v;
+    return builder->CreateLoad(v->getAllocatedType(), v, node.name.c_str());
 }
 
 llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
@@ -200,6 +294,18 @@ llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
     std::vector<llvm::Value*> argValues;
     for (auto& arg : node.args) {
         argValues.push_back(visit(*arg));
+        if (arg->type->isString()) {
+            if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
+                // Find the moved variable in ownedValues and remove it
+                llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
+                for (auto it = ownedValues.begin(); it != ownedValues.end(); ++it) {
+                    if (*it == movedAlloca) {
+                        ownedValues.erase(it);
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     return builder->CreateCall(callee, argValues, "calltmp");

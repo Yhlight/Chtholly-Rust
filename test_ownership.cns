@@ -1,0 +1,13 @@
+fn main(): i32 {
+    let s1: string = "hello";
+    let s2: string = take_ownership(s1);
+
+    // The following line should cause a compile-time error
+    println(s1);
+
+    return 0;
+}
+
+fn take_ownership(s: string): string {
+    return s;
+}

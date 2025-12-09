@@ -26,8 +26,11 @@ public:
 
     bool isInteger() const { return kind == TK_Integer; }
     bool isFloat() const { return kind == TK_Float; }
+    bool isString() const { return kind == TK_String; }
     bool isBool() const { return kind == TK_Bool; }
     // Add more checks as needed
+
+    virtual bool isCopy() const { return false; }
 
     virtual std::string toString() const = 0;
 };
@@ -43,6 +46,8 @@ public:
     std::string toString() const override {
         return (isSigned ? "i" : "u") + std::to_string(bitwidth);
     }
+
+    bool isCopy() const override { return true; }
 };
 
 class FloatType : public Type {
@@ -54,6 +59,8 @@ public:
     std::string toString() const override {
         return "f" + std::to_string(bitwidth);
     }
+
+    bool isCopy() const override { return true; }
 };
 
 class StringType : public Type {
@@ -72,6 +79,19 @@ public:
     std::string toString() const override {
         return "bool";
     }
+
+    bool isCopy() const override { return true; }
+};
+
+class CharType : public Type {
+public:
+    CharType() : Type(TK_Char) {}
+
+    std::string toString() const override {
+        return "char";
+    }
+
+    bool isCopy() const override { return true; }
 };
 
 class FunctionType : public Type {
@@ -83,6 +103,15 @@ public:
 
     std::string toString() const override {
         return "function";
+    }
+};
+
+class VoidType : public Type {
+public:
+    VoidType() : Type(TK_Void) {}
+
+    std::string toString() const override {
+        return "void";
     }
 };
 

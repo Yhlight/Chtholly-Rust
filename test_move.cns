@@ -1,0 +1,19 @@
+fn main(): i32 {
+    let s1: string = "hello";
+    let s2: string = s1;
+
+    // The following line should cause a compile-time error
+    // println(s1);
+
+    let s3: string = "world";
+    test_move(s3);
+
+    // The following line should cause a compile-time error
+    println(s3);
+
+    return 0;
+}
+
+fn test_move(s: string): void {
+    println(s);
+}

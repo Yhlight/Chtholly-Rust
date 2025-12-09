@@ -11,6 +11,9 @@ std::shared_ptr<Type> TypeResolver::resolve(const TypeNameAST& typeName) {
     if (typeName.name == "string") {
         return std::make_shared<StringType>();
     }
+    if (typeName.name == "void") {
+        return std::make_shared<VoidType>();
+    }
     // Add other built-in types here
     throw std::runtime_error("Unknown type '" + typeName.name + "'");
 }
