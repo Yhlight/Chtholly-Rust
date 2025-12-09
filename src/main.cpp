@@ -2,6 +2,7 @@
 #include "Parser.h"
 #include "AST.h"
 #include "SemanticAnalyzer.h"
+#include "CodeGenerator.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -42,10 +43,17 @@ int main(int argc, char** argv) {
         try {
             SemanticAnalyzer analyzer;
             analyzer.analyze(*ast);
-            std::cout << "Semantic analysis passed." << std::endl;
-            // ast->print(); // Optionally print AST on success
         } catch (const std::exception& e) {
             std::cerr << "Semantic error: " << e.what() << std::endl;
+            return 1;
+        }
+
+        CodeGenerator generator;
+        try {
+            generator.generate(*ast);
+            generator.dump();
+        } catch (const std::exception& e) {
+            std::cerr << "Code generation error: " << e.what() << std::endl;
             return 1;
         }
     }

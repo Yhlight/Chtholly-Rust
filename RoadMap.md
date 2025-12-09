@@ -23,8 +23,8 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] Enforce type compatibility rules for assignments and expressions.
 
 ### Milestone 1.4: Code Generation (LLVM IR)
-- [ ] Integrate the LLVM libraries into the build process.
-- [ ] Traverse the AST to generate LLVM Intermediate Representation (IR).
+- [x] Integrate the LLVM libraries into the build process.
+- [x] Traverse the AST to generate LLVM Intermediate Representation (IR).
 - [ ] Compile a basic "Hello, World!" program into an executable binary.
 
 ## Phase 2: Ownership, Borrowing, and Lifetimes

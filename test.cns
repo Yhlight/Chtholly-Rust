@@ -1,1 +1,1 @@
-fn main(args: string): i32 { let x = 10 + "hello"; }
+fn main(): i32 { let x = 10 + 20; }

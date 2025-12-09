@@ -34,10 +34,7 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::FN) {
         return parse_function_definition();
     }
-    // Handle other statement types in the future
-    // For now, just advance past unknown tokens to avoid infinite loops
-    advance();
-    return nullptr;
+    throw std::runtime_error("Unexpected token '" + peek().value + "' at line " + std::to_string(peek().line) + ", column " + std::to_string(peek().column));
 }
 
 std::unique_ptr<StmtAST> Parser::parse_variable_declaration() {
