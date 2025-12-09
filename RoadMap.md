@@ -20,7 +20,7 @@ This document outlines the development plan for the Chtholly programming languag
 ### Milestone 1.3: Semantic Analysis & Type System
 - [x] Implement a semantic analyzer to traverse the AST and perform type checking.
 - [x] Create a symbol table to store information about variables and functions.
-- [ ] Enforce type compatibility rules for assignments and expressions.
+- [x] Enforce type compatibility rules for assignments and expressions.
 
 ### Milestone 1.4: Code Generation (LLVM IR)
 - [ ] Integrate the LLVM libraries into the build process.

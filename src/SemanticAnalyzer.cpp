@@ -4,83 +4,127 @@
 
 SemanticAnalyzer::SemanticAnalyzer() {}
 
-void SemanticAnalyzer::analyze(const BlockStmtAST& ast) {
+void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
     visit(ast);
 }
 
-void SemanticAnalyzer::visit(const ASTNode& node) {
-    // This is a bit of a hack to dispatch to the correct visit method.
-    // A more robust implementation would use a more sophisticated visitor pattern.
-    if (auto* p = dynamic_cast<const VarDeclStmtAST*>(&node)) {
-        visit(*p);
-    } else if (auto* p = dynamic_cast<const FunctionDeclAST*>(&node)) {
-        visit(*p);
-    } else if (auto* p = dynamic_cast<const BlockStmtAST*>(&node)) {
-        visit(*p);
-    } else if (auto* p = dynamic_cast<const BinaryExprAST*>(&node)) {
-        visit(*p);
-    } else if (auto* p = dynamic_cast<const NumberExprAST*>(&node)) {
-        visit(*p);
-    } else if (auto* p = dynamic_cast<const VariableExprAST*>(&node)) {
-        visit(*p);
-    } else if (auto* p = dynamic_cast<const TypeNameAST*>(&node)) {
-        visit(*p);
+std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
+    if (auto* p = dynamic_cast<VarDeclStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<FunctionDeclAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<BlockStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<BinaryExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<NumberExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<StringExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<VariableExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<TypeNameAST*>(&node)) {
+        return visit(*p);
     }
+    return nullptr;
 }
 
-void SemanticAnalyzer::visit(const VarDeclStmtAST& node) {
+std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
+    std::shared_ptr<Type> initType = nullptr;
     if (node.initExpr) {
-        visit(*node.initExpr);
+        initType = visit(*node.initExpr);
     }
-    // A real implementation would have a way to resolve the type name string
-    // into an actual type object, but for now we'll just create a dummy one.
-    auto type = std::make_unique<TypeNameAST>("unknown"); // Placeholder
-    if (!symbolTable.addSymbol(node.varName, std::move(type), node.isMutable)) {
+
+    // For now, if there is an initializer, we'll infer the type from it.
+    // This is a simplification. A real implementation would handle explicit type annotations.
+    if (!initType) {
+        // This would be an error if explicit types are not provided.
+        // For now, we'll default to i32.
+        initType = std::make_shared<IntegerType>(32, true);
+    }
+
+    if (!symbolTable.addSymbol(node.varName, initType, node.isMutable)) {
         throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
     }
+    return nullptr; // Statements don't have a type
 }
 
-void SemanticAnalyzer::visit(const FunctionDeclAST& node) {
-    // A real implementation would handle function overloading and types properly.
-    auto returnType = std::make_unique<TypeNameAST>(node.returnType->name);
-    if (!symbolTable.addSymbol(node.name, std::move(returnType), false)) {
+std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
+    auto returnType = typeResolver.resolve(*node.returnType);
+    if (!symbolTable.addSymbol(node.name, returnType, false)) {
         throw std::runtime_error("Function '" + node.name + "' already declared in this scope.");
     }
 
     symbolTable.enterScope();
-    for (const auto& arg : node.args) {
-        auto argType = std::make_unique<TypeNameAST>(arg.type->name);
-        if(!symbolTable.addSymbol(arg.name, std::move(argType), false)) {
+    for (auto& arg : node.args) {
+        auto argType = typeResolver.resolve(*arg.type);
+        if(!symbolTable.addSymbol(arg.name, argType, false)) {
              throw std::runtime_error("Argument '" + arg.name + "' already declared in this scope.");
         }
     }
     visit(*node.body);
     symbolTable.leaveScope();
+    return nullptr; // Statements don't have a type
 }
 
-void SemanticAnalyzer::visit(const BlockStmtAST& node) {
+std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
     symbolTable.enterScope();
-    for (const auto& stmt : node.statements) {
+    for (auto& stmt : node.statements) {
         if(stmt) visit(*stmt);
     }
     symbolTable.leaveScope();
+    return nullptr; // Statements don't have a type
 }
 
-void SemanticAnalyzer::visit(const BinaryExprAST& node) {
-    visit(*node.lhs);
-    visit(*node.rhs);
+std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
+    auto lhsType = visit(*node.lhs);
+    auto rhsType = visit(*node.rhs);
+
+    if (!lhsType || !rhsType) {
+        throw std::runtime_error("Could not resolve type for one or both operands in binary expression.");
+    }
+
+    // For now, we only support numeric types in binary expressions
+    if ((!lhsType->isInteger() && !lhsType->isFloat()) || (!rhsType->isInteger() && !rhsType->isFloat())) {
+        throw std::runtime_error("Binary operator applied to non-numeric type.");
+    }
+
+    // For now, we require the types to be identical.
+    // A real implementation would handle type promotion (e.g., int + float).
+    if (lhsType->toString() != rhsType->toString()) {
+        throw std::runtime_error("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
+    }
+
+    node.type = lhsType; // The type of the expression is the type of its operands
+    return lhsType;
 }
 
-void SemanticAnalyzer::visit(const NumberExprAST& node) {
-    // Nothing to do for numbers
+std::shared_ptr<Type> SemanticAnalyzer::visit(NumberExprAST& node) {
+    // A simplistic way to distinguish between int and float literals.
+    if (std::to_string(node.value).find('.') != std::string::npos) {
+        node.type = std::make_shared<FloatType>(64);
+    } else {
+        node.type = std::make_shared<IntegerType>(32, true);
+    }
+    return node.type;
 }
 
-void SemanticAnalyzer::visit(const VariableExprAST& node) {
-    if (!symbolTable.findSymbol(node.name)) {
+std::shared_ptr<Type> SemanticAnalyzer::visit(StringExprAST& node) {
+    node.type = std::make_shared<StringType>();
+    return node.type;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(VariableExprAST& node) {
+    Symbol* symbol = symbolTable.findSymbol(node.name);
+    if (!symbol) {
         throw std::runtime_error("Variable '" + node.name + "' not declared.");
     }
+    node.type = symbol->type;
+    return node.type;
 }
 
-void SemanticAnalyzer::visit(const TypeNameAST& node) {
-    // In a real compiler, we would check if this is a valid type name.
+std::shared_ptr<Type> SemanticAnalyzer::visit(TypeNameAST& node) {
+    // This node is used for parsing, but during semantic analysis we resolve it to a Type object.
+    // The actual resolution happens in the calling context (e.g., VarDecl, FunctionDecl).
+    return nullptr;
 }

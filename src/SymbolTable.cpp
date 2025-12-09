@@ -15,7 +15,7 @@ void SymbolTable::leaveScope() {
     }
 }
 
-bool SymbolTable::addSymbol(const std::string& name, std::unique_ptr<TypeNameAST> type, bool isMutable) {
+bool SymbolTable::addSymbol(const std::string& name, std::shared_ptr<Type> type, bool isMutable) {
     if (scopeStack.empty()) {
         return false; // Should always have at least the global scope
     }

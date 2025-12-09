@@ -6,6 +6,7 @@
 #include <memory>
 #include <iostream>
 #include "Token.h"
+#include "Type.h"
 
 // Forward declaration for the pretty print helper
 std::string indent(int level);
@@ -29,7 +30,10 @@ public:
 };
 
 // Base class for all expression nodes
-class ExprAST : public ASTNode {};
+class ExprAST : public ASTNode {
+public:
+    std::shared_ptr<Type> type; // The type of the expression, resolved by the semantic analyzer
+};
 
 // Expression class for numeric literals
 class NumberExprAST : public ExprAST {
@@ -37,7 +41,17 @@ public:
     double value;
     NumberExprAST(double val) : value(val) {}
     void print(int level = 0) const override {
-        std::cout << indent(level) << "NumberExprAST: " << value << std::endl;
+        std::cout << indent(level) << "NumberExprAST: " << value << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+    }
+};
+
+// Expression class for string literals
+class StringExprAST : public ExprAST {
+public:
+    std::string value;
+    StringExprAST(std::string val) : value(std::move(val)) {}
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "StringExprAST: " << value << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
     }
 };
 
@@ -47,7 +61,7 @@ public:
     std::string name;
     VariableExprAST(std::string name) : name(std::move(name)) {}
     void print(int level = 0) const override {
-        std::cout << indent(level) << "VariableExprAST: " << name << std::endl;
+        std::cout << indent(level) << "VariableExprAST: " << name << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
     }
 };
 
@@ -60,7 +74,7 @@ public:
         : op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
     void print(int level = 0) const override {
-        std::cout << indent(level) << "BinaryExprAST: " << tokenTypeToString(op) << std::endl;
+        std::cout << indent(level) << "BinaryExprAST: " << tokenTypeToString(op) << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
         lhs->print(level + 1);
         rhs->print(level + 1);
     }

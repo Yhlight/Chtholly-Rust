@@ -151,6 +151,9 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
     if (peek().type == TokenType::INTEGER_LITERAL || peek().type == TokenType::FLOAT_LITERAL) {
         return std::make_unique<NumberExprAST>(std::stod(advance().value));
     }
+    if (peek().type == TokenType::STRING_LITERAL) {
+        return std::make_unique<StringExprAST>(advance().value);
+    }
     if (peek().type == TokenType::IDENTIFIER) {
         return std::make_unique<VariableExprAST>(advance().value);
     }
