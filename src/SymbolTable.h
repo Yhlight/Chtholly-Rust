@@ -13,6 +13,8 @@ struct Symbol {
     std::shared_ptr<Type> type;
     bool isMutable;
     bool isMoved = false;
+    bool is_mut_borrowed = false;
+    int shared_borrows = 0;
 };
 
 // A single scope, mapping names to symbols

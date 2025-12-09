@@ -209,11 +209,16 @@ std::unique_ptr<BlockStmtAST> Parser::parse_block() {
 }
 
 std::unique_ptr<TypeNameAST> Parser::parse_type() {
+    bool is_reference = false;
+    if (peek().type == TokenType::AMPERSAND) {
+        is_reference = true;
+        advance(); // consume '&'
+    }
     if (peek().type != TokenType::IDENTIFIER) {
         throw std::runtime_error("Expected a type name");
     }
     // This will need to be extended to handle complex types like arrays, etc.
-    return std::make_unique<TypeNameAST>(advance().value);
+    return std::make_unique<TypeNameAST>(advance().value, is_reference);
 }
 
 
@@ -225,8 +230,24 @@ std::unique_ptr<ExprAST> Parser::parse_expression() {
     return parse_binary_expression(0, std::move(lhs));
 }
 
+std::unique_ptr<ExprAST> Parser::parse_borrow_expression() {
+    advance(); // consume '&'
+    return std::make_unique<BorrowExprAST>(parse_primary());
+}
+
+std::unique_ptr<ExprAST> Parser::parse_dereference_expression() {
+    advance(); // consume '*'
+    return std::make_unique<DereferenceExprAST>(parse_primary());
+}
+
 std::unique_ptr<ExprAST> Parser::parse_primary() {
     auto expr = [this]() -> std::unique_ptr<ExprAST> {
+        if (peek().type == TokenType::AMPERSAND) {
+            return parse_borrow_expression();
+        }
+        if (peek().type == TokenType::STAR) {
+            return parse_dereference_expression();
+        }
         if (peek().type == TokenType::INTEGER_LITERAL || peek().type == TokenType::FLOAT_LITERAL) {
             return std::make_unique<NumberExprAST>(std::stod(advance().value));
         }

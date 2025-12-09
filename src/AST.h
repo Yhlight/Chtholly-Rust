@@ -24,9 +24,10 @@ public:
 class TypeNameAST : public ASTNode {
 public:
     std::string name;
-    TypeNameAST(std::string name) : name(std::move(name)) {}
+    bool is_reference;
+    TypeNameAST(std::string name, bool is_reference = false) : name(std::move(name)), is_reference(is_reference) {}
     void print(int level = 0) const override {
-        std::cout << indent(level) << "TypeName: " << name << std::endl;
+        std::cout << indent(level) << "TypeName: " << (is_reference ? "&" : "") << name << std::endl;
     }
 };
 
@@ -102,6 +103,29 @@ public:
         for (const auto& arg : args) {
             arg->print(level + 1);
         }
+    }
+};
+
+// Expression class for a borrow expression
+class BorrowExprAST : public ExprAST {
+public:
+    std::unique_ptr<ExprAST> expr;
+    BorrowExprAST(std::unique_ptr<ExprAST> expr) : expr(std::move(expr)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "BorrowExprAST:" << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+        expr->print(level + 1);
+    }
+};
+
+class DereferenceExprAST : public ExprAST {
+public:
+    std::unique_ptr<ExprAST> expr;
+    DereferenceExprAST(std::unique_ptr<ExprAST> expr) : expr(std::move(expr)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "DereferenceExprAST:" << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+        expr->print(level + 1);
     }
 };
 

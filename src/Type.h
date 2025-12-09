@@ -16,7 +16,8 @@ public:
         TK_Void,
         TK_Function,
         TK_Class,
-        TK_Struct
+        TK_Struct,
+        TK_Reference
     };
 
     TypeKind kind;
@@ -92,6 +93,20 @@ public:
     std::string toString() const override {
         return "function";
     }
+};
+
+class ReferenceType : public Type {
+public:
+    std::shared_ptr<Type> referencedType;
+
+    ReferenceType(std::shared_ptr<Type> referencedType)
+        : Type(TK_Reference), referencedType(std::move(referencedType)) {}
+
+    std::string toString() const override {
+        return "&" + referencedType->toString();
+    }
+
+    bool isCopy() const override { return true; }
 };
 
 

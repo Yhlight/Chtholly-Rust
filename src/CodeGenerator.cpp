@@ -28,6 +28,12 @@ void CodeGenerator::declarePrintf() {
 
 
 llvm::Type* CodeGenerator::resolveType(const TypeNameAST& typeName) {
+    if (typeName.is_reference) {
+        // For references, we create a pointer to the resolved type.
+        // We create a temporary TypeNameAST to resolve the base type.
+        TypeNameAST baseTypeName(typeName.name, false);
+        return resolveType(baseTypeName)->getPointerTo();
+    }
     if (typeName.name == "i32") {
         return builder->getInt32Ty();
     }
@@ -74,6 +80,10 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<WhileStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<BorrowExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<DereferenceExprAST*>(&node)) {
         return visit(*p);
     }
     return nullptr;
@@ -199,7 +209,7 @@ llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
     if (!v) {
         throw std::runtime_error("Unknown variable name: " + node.name);
     }
-    // Load the value from the memory location
+
     if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(v)) {
         return builder->CreateLoad(alloca->getAllocatedType(), v, node.name.c_str());
     }
@@ -284,6 +294,22 @@ llvm::Value* CodeGenerator::visit(IfStmtAST& node) {
     builder->SetInsertPoint(mergeBB);
 
     return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(BorrowExprAST& node) {
+    if (auto* var = dynamic_cast<VariableExprAST*>(node.expr.get())) {
+        llvm::Value* v = namedValues[var->name];
+        if (!v) {
+            throw std::runtime_error("Unknown variable name: " + var->name);
+        }
+        return v;
+    }
+    throw std::runtime_error("Cannot take the address of a non-variable expression.");
+}
+
+llvm::Value* CodeGenerator::visit(DereferenceExprAST& node) {
+    llvm::Value* expr = visit(*node.expr);
+    return builder->CreateLoad(expr->getType()->getPointerElementType(), expr, "deref");
 }
 
 llvm::Value* CodeGenerator::visit(WhileStmtAST& node) {

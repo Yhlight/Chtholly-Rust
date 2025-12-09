@@ -45,6 +45,10 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<WhileStmtAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<BorrowExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<DereferenceExprAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<TypeNameAST*>(&node)) {
         return visit(*p);
     }
@@ -58,6 +62,9 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
         if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
             Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
             if (rhsSymbol && !rhsSymbol->type->isCopy()) {
+                if (rhsSymbol->shared_borrows > 0) {
+                    throw std::runtime_error("Cannot move '" + rhsVar->name + "' because it is borrowed.");
+                }
                 rhsSymbol->isMoved = true;
             }
         }
@@ -155,6 +162,9 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
             if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
                 Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
                 if (rhsSymbol && !rhsSymbol->type->isCopy()) {
+                    if (rhsSymbol->shared_borrows > 0) {
+                        throw std::runtime_error("Cannot move '" + rhsVar->name + "' because it is borrowed.");
+                    }
                     rhsSymbol->isMoved = true;
                 }
             }
@@ -286,4 +296,25 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(WhileStmtAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(TypeNameAST& node) {
     return nullptr;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
+    auto exprType = visit(*node.expr);
+    if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.expr.get())) {
+        Symbol* symbol = symbolTable.findSymbol(varExpr->name);
+        if (symbol) {
+            symbol->shared_borrows++;
+        }
+    }
+    node.type = std::make_shared<ReferenceType>(exprType);
+    return node.type;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(DereferenceExprAST& node) {
+    auto exprType = visit(*node.expr);
+    if (auto refType = std::dynamic_pointer_cast<ReferenceType>(exprType)) {
+        node.type = refType->referencedType;
+        return node.type;
+    }
+    throw std::runtime_error("Cannot dereference a non-reference type.");
 }

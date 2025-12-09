@@ -31,6 +31,8 @@ private:
     std::unique_ptr<TypeNameAST> parse_type();
     std::unique_ptr<ExprAST> parse_expression();
     std::unique_ptr<ExprAST> parse_primary();
+    std::unique_ptr<ExprAST> parse_borrow_expression();
+    std::unique_ptr<ExprAST> parse_dereference_expression();
     std::unique_ptr<ExprAST> parse_binary_expression(int min_precedence, std::unique_ptr<ExprAST> lhs);
     std::unique_ptr<ExprAST> parse_call_expression(std::unique_ptr<ExprAST> callee);
     int get_token_precedence();

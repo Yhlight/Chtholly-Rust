@@ -38,6 +38,8 @@ private:
     llvm::Value* visit(ExprStmtAST& node);
     llvm::Value* visit(ReturnStmtAST& node);
     llvm::Value* visit(IfStmtAST& node);
+    llvm::Value* visit(BorrowExprAST& node);
+    llvm::Value* visit(DereferenceExprAST& node);
 };
 
 #endif // CHTHOLLY_CODEGENERATOR_H

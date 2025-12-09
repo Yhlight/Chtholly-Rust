@@ -40,10 +40,15 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 
 ### Milestone 2.2: Borrowing & References
 - [ ] Implement immutable references (`&T`) to allow shared, read-only access to resources.
+    - [x] Implement syntax for creating references (`&x`).
+    - [x] Implement syntax for declaring reference types (`let y: &T`).
+    - [x] Implement dereferencing (`*y`).
 - [ ] Implement mutable references (`&mut T`) to allow exclusive, read-write access.
 - [ ] At compile time, enforce the core borrowing rules:
-    - Any number of immutable references (`&T`) can exist simultaneously.
-    - Only one mutable reference (`&mut T`) can exist at any given time.
+    - [x] Track shared (immutable) borrows of a variable.
+    - [x] Prevent moves of borrowed variables.
+    - [ ] Any number of immutable references (`&T`) can exist simultaneously.
+    - [ ] Only one mutable reference (`&mut T`) can exist at any given time.
     - A mutable reference cannot coexist with any other references (mutable or immutable).
 
 ### Milestone 2.3: Lifetime Management
