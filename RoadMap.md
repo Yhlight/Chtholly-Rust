@@ -18,7 +18,7 @@ The project will be developed in the following phases, with each phase building 
 
 This phase focuses on implementing the basic building blocks of the language.
 
-- **[ ] Lexer:** Implement a lexical analyzer to tokenize the Chtholly source code.
+- **[x] Lexer:** Implement a lexical analyzer to tokenize the Chtholly source code.
 - **[ ] Parser:** Implement a parser to build an Abstract Syntax Tree (AST) from the token stream.
 - **[ ] AST:** Define the structure of the AST to represent the language constructs.
 - **[ ] Basic Type System:**
