@@ -208,6 +208,74 @@ namespace Chtholly
         symbolTable.exitScope();
     }
 
+    void SemanticAnalyzer::visit(const FunctionStmt& stmt)
+    {
+        functionTable.define(stmt.name.lexeme, {static_cast<int>(stmt.params.size())});
+        inFunction = true;
+        symbolTable.enterScope();
+        borrowedSymbols.emplace_back();
+        for (const auto& param : stmt.params)
+        {
+            symbolTable.define(param.lexeme, {"", false, SymbolState::Valid});
+        }
+        for (const auto& statement : stmt.body)
+        {
+            check(statement);
+        }
+        for (const auto& name : borrowedSymbols.back())
+        {
+            SymbolInfo* info = symbolTable.lookup(name);
+            if (info)
+            {
+                info->sharedBorrowCount = 0;
+                info->mutableBorrow = false;
+            }
+        }
+        borrowedSymbols.pop_back();
+        symbolTable.exitScope();
+        inFunction = false;
+    }
+
+    void SemanticAnalyzer::visit(const ReturnStmt& stmt)
+    {
+        if (!inFunction)
+        {
+            throw std::runtime_error("Cannot return from top-level code.");
+        }
+        if (stmt.value)
+        {
+            check(stmt.value);
+        }
+    }
+
+    void SemanticAnalyzer::visit(const CallExpr& expr)
+    {
+        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.callee))
+        {
+            auto function = functionTable.lookup(varExpr->name.lexeme);
+            if (function)
+            {
+                if (expr.arguments.size() != function->arity)
+                {
+                    throw std::runtime_error("Expected " + std::to_string(function->arity) + " arguments but got " + std::to_string(expr.arguments.size()) + ".");
+                }
+            }
+            else
+            {
+                check(expr.callee);
+            }
+        }
+        else
+        {
+            check(expr.callee);
+        }
+
+        for (const auto& argument : expr.arguments)
+        {
+            check(argument);
+        }
+    }
+
     void SemanticAnalyzer::check(const std::shared_ptr<Expr>& expr)
     {
         expr->accept(*this);

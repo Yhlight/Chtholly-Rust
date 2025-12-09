@@ -23,6 +23,7 @@ namespace Chtholly
         std::shared_ptr<Stmt> ifStatement();
         std::shared_ptr<Stmt> whileStatement();
         std::shared_ptr<Stmt> forStatement();
+        std::shared_ptr<Stmt> functionDeclaration();
         std::vector<std::shared_ptr<Stmt>> block();
         std::shared_ptr<Stmt> expressionStatement();
         std::shared_ptr<Expr> expression();
@@ -33,8 +34,10 @@ namespace Chtholly
         std::shared_ptr<Expr> factor();
         std::shared_ptr<Expr> unary();
         std::shared_ptr<Expr> reference();
+        std::shared_ptr<Expr> call();
         std::shared_ptr<Expr> primary();
 
+        std::shared_ptr<Expr> finishCall(std::shared_ptr<Expr> callee);
         bool match(const std::vector<TokenType>& types);
         Token consume(TokenType type, const std::string& message);
         bool check(TokenType type) const;

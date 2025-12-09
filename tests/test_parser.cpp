@@ -34,6 +34,7 @@ public:
     void visit(const Chtholly::VariableExpr& expr) override {}
     void visit(const Chtholly::AssignExpr& expr) override {}
     void visit(const Chtholly::ReferenceExpr& expr) override {}
+    void visit(const Chtholly::CallExpr& expr) override {}
 
     void visit(const Chtholly::ExpressionStmt& stmt) override
     {
@@ -88,6 +89,9 @@ public:
         result += "for (...; ...; ...) ";
         stmt.body->accept(*this);
     }
+
+    void visit(const Chtholly::FunctionStmt& stmt) override {}
+    void visit(const Chtholly::ReturnStmt& stmt) override {}
 
 private:
     std::string result;

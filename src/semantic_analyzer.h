@@ -23,6 +23,11 @@ namespace Chtholly
         bool mutableBorrow = false;
     };
 
+    struct FunctionInfo
+    {
+        int arity;
+    };
+
     class SemanticAnalyzer : public ExprVisitor, public StmtVisitor
     {
     public:
@@ -36,6 +41,7 @@ namespace Chtholly
         void visit(const VariableExpr& expr) override;
         void visit(const AssignExpr& expr) override;
         void visit(const ReferenceExpr& expr) override;
+        void visit(const CallExpr& expr) override;
 
         void visit(const ExpressionStmt& stmt) override;
         void visit(const LetStmt& stmt) override;
@@ -43,14 +49,18 @@ namespace Chtholly
         void visit(const IfStmt& stmt) override;
         void visit(const WhileStmt& stmt) override;
         void visit(const ForStmt& stmt) override;
+        void visit(const FunctionStmt& stmt) override;
+        void visit(const ReturnStmt& stmt) override;
 
     private:
         void check(const std::shared_ptr<Expr>& expr);
         void check(const std::shared_ptr<Stmt>& stmt);
 
         SymbolTable<SymbolInfo> symbolTable;
+        SymbolTable<FunctionInfo> functionTable;
         std::unordered_set<std::string> copyTypes;
         std::vector<std::vector<std::string>> borrowedSymbols;
+        bool inFunction = false;
 
     };
 

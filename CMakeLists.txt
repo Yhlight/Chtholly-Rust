@@ -24,3 +24,8 @@ add_executable(test_lifetime tests/test_lifetime.cpp src/lexer.cpp src/parser.cp
 target_include_directories(test_lifetime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(test_lifetime GTest::GTest GTest::Main)
 add_test(NAME test_lifetime COMMAND test_lifetime)
+
+add_executable(test_functions tests/test_functions.cpp src/lexer.cpp src/parser.cpp src/semantic_analyzer.cpp)
+target_include_directories(test_functions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(test_functions GTest::GTest GTest::Main)
+add_test(NAME test_functions COMMAND test_functions)
