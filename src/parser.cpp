@@ -1,6 +1,7 @@
 #include "parser.h"
 #include <stdexcept>
 #include <variant>
+#include <iostream>
 
 namespace Chtholly
 {
@@ -16,11 +17,25 @@ namespace Chtholly
         return statements;
     }
 
+    void Parser::parseError(const Token& token, const std::string& message) {
+        hadError_ = true;
+        if (token.type == TokenType::END_OF_FILE) {
+            std::cerr << "[line " << token.line << "] Error at end: " << message << std::endl;
+        } else {
+            std::cerr << "[line " << token.line << "] Error at '" << token.lexeme << "': " << message << std::endl;
+        }
+    }
+
     std::shared_ptr<Stmt> Parser::declaration()
     {
         try
         {
-            if (match({TokenType::LET})) return letDeclaration();
+            if (match({TokenType::LET})) {
+                bool isMutable = match({TokenType::MUT});
+                auto letStmt = letDeclaration(isMutable);
+                consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+                return letStmt;
+            }
             return statement();
         }
         catch (const std::runtime_error& error)
@@ -30,15 +45,21 @@ namespace Chtholly
         }
     }
 
-    std::shared_ptr<Stmt> Parser::letDeclaration()
+    std::shared_ptr<Stmt> Parser::letDeclaration(bool isMutable)
     {
-        bool isMutable = match({TokenType::MUT});
         Token name = consume(TokenType::IDENTIFIER, "Expect variable name.");
 
         Token type;
         if (match({TokenType::COLON}))
         {
-            type = consume(TokenType::IDENTIFIER, "Expect type annotation.");
+            if (match({TokenType::IDENTIFIER, TokenType::I32, TokenType::F64, TokenType::BOOL, TokenType::CHAR}))
+            {
+                type = previous();
+            }
+            else
+            {
+                parseError(peek(), "Expect type annotation.");
+            }
         }
 
         std::shared_ptr<Expr> initializer = nullptr;
@@ -47,7 +68,6 @@ namespace Chtholly
             initializer = expression();
         }
 
-        consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
         return std::make_shared<LetStmt>(name, type, initializer, isMutable);
     }
 
@@ -97,7 +117,9 @@ namespace Chtholly
         }
         else if (match({TokenType::LET}))
         {
-            initializer = letDeclaration();
+            bool isMutable = match({TokenType::MUT});
+            initializer = letDeclaration(isMutable);
+            consume(TokenType::SEMICOLON, "Expect ';' after for loop initializer.");
         }
         else
         {
@@ -162,7 +184,7 @@ namespace Chtholly
                 Token name = varExpr->name;
                 return std::make_shared<AssignExpr>(name, value);
             }
-            throw std::runtime_error("Invalid assignment target.");
+            parseError(equals, "Invalid assignment target.");
         }
 
         return expr;
@@ -261,6 +283,7 @@ namespace Chtholly
             return expr;
         }
 
+        parseError(peek(), "Expect expression.");
         throw std::runtime_error("Expect expression.");
     }
 
@@ -280,6 +303,7 @@ namespace Chtholly
     Token Parser::consume(TokenType type, const std::string& message)
     {
         if (check(type)) return advance();
+        parseError(peek(), message);
         throw std::runtime_error(message);
     }
 

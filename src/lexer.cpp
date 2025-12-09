@@ -84,6 +84,7 @@ namespace Chtholly
             else { addToken(TokenType::PLUS); }
             break;
         case ';': addToken(TokenType::SEMICOLON); break;
+        case ':': addToken(TokenType::COLON); break;
         case '*':
             if (match('=')) { addToken(TokenType::STAR_EQUAL); }
             else { addToken(TokenType::STAR); }

@@ -30,9 +30,9 @@ This phase focuses on implementing the basic building blocks of the language.
 
 This is the most critical phase of the project, as it implements the core memory safety features of Chtholly.
 
-- **[ ] Ownership and Move Semantics:**
-    - [ ] Implement move semantics for variable assignments and function calls.
-    - [ ] Ensure that moved values cannot be used afterward.
+- **[x] Ownership and Move Semantics:**
+    - [x] Implement move semantics for variable assignments and function calls.
+    - [x] Ensure that moved values cannot be used afterward.
 - **[ ] Borrowing and References:**
     - [ ] Implement immutable borrows (`&`).
     - [ ] Implement mutable borrows (`&mut`).

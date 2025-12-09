@@ -17,7 +17,7 @@ namespace Chtholly
 
     private:
         std::shared_ptr<Stmt> declaration();
-        std::shared_ptr<Stmt> letDeclaration();
+        std::shared_ptr<Stmt> letDeclaration(bool isMutable);
         std::shared_ptr<Stmt> statement();
         std::shared_ptr<Stmt> ifStatement();
         std::shared_ptr<Stmt> whileStatement();
@@ -42,8 +42,14 @@ namespace Chtholly
         Token previous() const;
         void synchronize();
 
+        bool hadError_ = false;
+
+        void parseError(const Token& token, const std::string& message);
+
         std::vector<Token> tokens;
         int current = 0;
+    public:
+        bool hadError() const { return hadError_; }
     };
 
 } // namespace Chtholly
