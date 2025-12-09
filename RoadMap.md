@@ -7,8 +7,8 @@ This document outlines the development plan for the Chtholly programming languag
 This phase focuses on implementing the fundamental features of the language, including the lexer, parser, and basic semantic analysis.
 
 *   **Lexer:** Implemented.
-*   **Parser:** In-progress. Initial implementation for variable declarations is complete.
-*   **AST:** In-progress. Basic AST nodes for expressions and statements have been defined.
+*   **Parser:** In-progress. Implemented variable declarations and expression parsing (unary, binary, grouping).
+*   **AST:** In-progress. Expanded to include nodes for various expression types.
 *   **Basic Semantic Analysis:**
     *   **Type System:** Implement the basic type system, including primitive types, arrays, and strings.
     *   **Variable Declarations:** Support for `let` and `let mut` variable declarations.

@@ -6,6 +6,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
+add_executable(expression_tests main.cpp expression_test.cpp)
+target_link_libraries(expression_tests GTest::gtest_main chtholly_lib)
+gtest_discover_tests(expression_tests)
+
 add_executable(parser_tests main.cpp parser_test.cpp)
 target_link_libraries(parser_tests GTest::gtest_main chtholly_lib)
 gtest_discover_tests(parser_tests)
