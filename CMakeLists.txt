@@ -12,7 +12,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 # Add the executable
-add_executable(chtholly src/main.cpp)
+add_executable(chtholly src/main.cpp src/Lexer.cpp src/TokenTypeToString.cpp)
 
 # Link against LLVM libraries
 target_link_libraries(chtholly PRIVATE

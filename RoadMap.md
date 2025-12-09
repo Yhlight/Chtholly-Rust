@@ -5,11 +5,11 @@ This document outlines the development plan for the Chtholly programming languag
 ## Phase 1: Core Language Features & Compiler Infrastructure
 
 ### Milestone 1.1: Project Bootstrap & Lexical Analysis
-- [ ] Setup CMake build system.
-- [ ] Implement the Lexer to tokenize Chtholly source code (`.cns` files).
-- [ ] Support for basic data types: `i32`, `f64`, `bool`, `char`, `string`.
-- [ ] Support for comments (`//` and `/* */`).
-- [ ] Recognize the main function signature: `fn main(...)`.
+- [x] Setup CMake build system.
+- [x] Implement the Lexer to tokenize Chtholly source code (`.cns` files).
+- [x] Support for basic data types: `i32`, `f64`, `bool`, `char`, `string`.
+- [x] Support for comments (`//` and `/* */`).
+- [x] Recognize the main function signature: `fn main(...)`.
 
 ### Milestone 1.2: Parser & Abstract Syntax Tree (AST)
 - [ ] Implement the Parser to construct an AST from the token stream.
