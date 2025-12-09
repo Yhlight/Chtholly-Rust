@@ -46,11 +46,21 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
         initType = visit(*node.initExpr);
     }
 
-    if (!initType) {
-        throw std::runtime_error("Variable '" + node.varName + "' must have an initializer.");
+    std::shared_ptr<Type> declaredType = nullptr;
+    if (node.type) {
+        declaredType = typeResolver.resolve(*node.type);
     }
 
-    if (!symbolTable.addSymbol(node.varName, initType, node.isMutable)) {
+    if (declaredType && initType && declaredType->toString() != initType->toString()) {
+        throw std::runtime_error("Type mismatch for variable '" + node.varName + "'. Expected " + declaredType->toString() + " but got " + initType->toString());
+    }
+
+    auto varType = declaredType ? declaredType : initType;
+    if (!varType) {
+        throw std::runtime_error("Variable '" + node.varName + "' must have a type annotation or an initializer.");
+    }
+
+    if (!symbolTable.addSymbol(node.varName, varType, node.isMutable)) {
         throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
     }
     return nullptr; // Statements don't have a type
@@ -120,11 +130,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
     return lhsType;
 }
 
+#include <cmath>
+
 std::shared_ptr<Type> SemanticAnalyzer::visit(NumberExprAST& node) {
-    if (std::to_string(node.value).find('.') != std::string::npos) {
-        node.type = std::make_shared<FloatType>(64);
-    } else {
+    double intpart;
+    if (modf(node.value, &intpart) == 0.0) {
         node.type = std::make_shared<IntegerType>(32, true);
+    } else {
+        node.type = std::make_shared<FloatType>(64);
     }
     return node.type;
 }

@@ -25,13 +25,14 @@ This document outlines the development plan for the Chtholly programming languag
 ### Milestone 1.4: Code Generation (LLVM IR)
 - [x] Integrate the LLVM libraries into the build process.
 - [x] Traverse the AST to generate LLVM Intermediate Representation (IR).
-- [ ] Compile a basic "Hello, World!" program into an executable binary.
+- [x] Compile a basic "Hello, World!" program into an executable binary.
 
 ## Phase 2: Ownership, Borrowing, and Lifetimes
 
 This phase is the cornerstone of Chtholly's memory safety guarantees.
 
 ### Milestone 2.1: Ownership System
+- [x] Implement basic variable declarations (`let`).
 - [ ] Implement move semantics as the default for variable assignments and function arguments.
 - [ ] Track the ownership of resources within the semantic analyzer.
 - [ ] Automatically insert code to deallocate (drop) resources when their owner goes out of scope.

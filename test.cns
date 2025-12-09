@@ -1,1 +1,5 @@
-fn main(): i32 { }
+fn main(): i32 {
+    let message: string = "Hello from a variable!";
+    println(message);
+    return 0;
+}

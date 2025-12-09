@@ -75,6 +75,12 @@ std::unique_ptr<StmtAST> Parser::parse_variable_declaration() {
     }
     std::string var_name = advance().value;
 
+    std::unique_ptr<TypeNameAST> type = nullptr;
+    if (peek().type == TokenType::COLON) {
+        advance(); // consume ':'
+        type = parse_type();
+    }
+
     std::unique_ptr<ExprAST> initializer = nullptr;
     if (peek().type == TokenType::EQUAL) {
         advance(); // consume '='
@@ -86,7 +92,7 @@ std::unique_ptr<StmtAST> Parser::parse_variable_declaration() {
     }
     advance(); // consume ';'
 
-    return std::make_unique<VarDeclStmtAST>(var_name, is_mutable, std::move(initializer));
+    return std::make_unique<VarDeclStmtAST>(var_name, is_mutable, std::move(type), std::move(initializer));
 }
 
 std::unique_ptr<StmtAST> Parser::parse_function_definition() {

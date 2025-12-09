@@ -129,12 +129,16 @@ class VarDeclStmtAST : public StmtAST {
 public:
     std::string varName;
     bool isMutable;
+    std::unique_ptr<TypeNameAST> type; // Optional type annotation
     std::unique_ptr<ExprAST> initExpr; // Optional initializer
-    VarDeclStmtAST(std::string varName, bool isMutable, std::unique_ptr<ExprAST> initExpr)
-        : varName(std::move(varName)), isMutable(isMutable), initExpr(std::move(initExpr)) {}
+    VarDeclStmtAST(std::string varName, bool isMutable, std::unique_ptr<TypeNameAST> type, std::unique_ptr<ExprAST> initExpr)
+        : varName(std::move(varName)), isMutable(isMutable), type(std::move(type)), initExpr(std::move(initExpr)) {}
 
     void print(int level = 0) const override {
         std::cout << indent(level) << (isMutable ? "VarDecl(mut) " : "VarDecl ") << varName << std::endl;
+        if (type) {
+            type->print(level + 1);
+        }
         if (initExpr) {
             initExpr->print(level + 1);
         }
