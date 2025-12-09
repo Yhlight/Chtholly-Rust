@@ -1,0 +1,21 @@
+# CMake
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Rider
+.idea/
+
+# CLion
+.idea/
+cmake-build-*/
