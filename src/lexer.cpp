@@ -12,6 +12,7 @@ namespace Chtholly
         {"else", TokenType::ELSE},
         {"switch", TokenType::SWITCH},
         {"case", TokenType::CASE},
+        {"default", TokenType::DEFAULT},
         {"for", TokenType::FOR},
         {"while", TokenType::WHILE},
         {"do", TokenType::DO},

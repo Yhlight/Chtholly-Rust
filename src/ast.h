@@ -113,6 +113,10 @@ namespace Chtholly
     struct ForStmt;
     struct FunctionStmt;
     struct ReturnStmt;
+    struct SwitchStmt;
+    struct CaseStmt;
+    struct BreakStmt;
+    struct FallthroughStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -127,6 +131,10 @@ namespace Chtholly
         virtual void visit(const ForStmt& stmt) = 0;
         virtual void visit(const FunctionStmt& stmt) = 0;
         virtual void visit(const ReturnStmt& stmt) = 0;
+        virtual void visit(const SwitchStmt& stmt) = 0;
+        virtual void visit(const CaseStmt& stmt) = 0;
+        virtual void visit(const BreakStmt& stmt) = 0;
+        virtual void visit(const FallthroughStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -227,6 +235,46 @@ namespace Chtholly
 
         ForStmt(std::shared_ptr<Stmt> initializer, std::shared_ptr<Expr> condition, std::shared_ptr<Expr> increment, std::shared_ptr<Stmt> body)
             : initializer(std::move(initializer)), condition(std::move(condition)), increment(std::move(increment)), body(std::move(body)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct CaseStmt : Stmt
+    {
+        std::shared_ptr<Expr> condition;
+        std::shared_ptr<Stmt> body;
+
+        CaseStmt(std::shared_ptr<Expr> condition, std::shared_ptr<Stmt> body)
+            : condition(std::move(condition)), body(std::move(body)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct SwitchStmt : Stmt
+    {
+        std::shared_ptr<Expr> condition;
+        std::vector<std::shared_ptr<CaseStmt>> cases;
+
+        SwitchStmt(std::shared_ptr<Expr> condition, std::vector<std::shared_ptr<CaseStmt>> cases)
+            : condition(std::move(condition)), cases(std::move(cases)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct BreakStmt : Stmt
+    {
+        Token keyword;
+
+        BreakStmt(Token keyword) : keyword(std::move(keyword)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct FallthroughStmt : Stmt
+    {
+        Token keyword;
+
+        FallthroughStmt(Token keyword) : keyword(std::move(keyword)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };

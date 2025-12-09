@@ -22,6 +22,7 @@ namespace Chtholly
         std::shared_ptr<Stmt> letDeclaration(bool isMutable);
         std::shared_ptr<Stmt> statement();
         std::shared_ptr<Stmt> ifStatement();
+        std::shared_ptr<Stmt> switchStatement();
         std::shared_ptr<Stmt> whileStatement();
         std::shared_ptr<Stmt> forStatement();
         std::shared_ptr<Stmt> returnStatement();

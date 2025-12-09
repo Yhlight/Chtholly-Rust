@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "symbol_table.h"
 #include <iostream>
+#include <set>
 #include <unordered_set>
 
 namespace Chtholly
@@ -31,11 +32,21 @@ namespace Chtholly
         void visit(const ForStmt& stmt) override;
         void visit(const FunctionStmt& stmt) override;
         void visit(const ReturnStmt& stmt) override;
+        void visit(const SwitchStmt& stmt) override;
+        void visit(const CaseStmt& stmt) override;
+        void visit(const BreakStmt& stmt) override;
+        void visit(const FallthroughStmt& stmt) override;
 
     private:
         enum class FunctionType {
             NONE,
             FUNCTION
+        };
+
+        enum class LoopType {
+            NONE,
+            LOOP,
+            SWITCH
         };
 
         void check(const std::shared_ptr<Expr>& expr);
@@ -44,8 +55,9 @@ namespace Chtholly
         std::string typeOf(const std::shared_ptr<Expr>& expr);
 
         SymbolTable symbolTable;
-        std::unordered_set<std::string> copyTypes;
+        std::set<std::string> copyTypes;
         FunctionType currentFunction = FunctionType::NONE;
+        LoopType currentLoop = LoopType::NONE;
         std::string currentReturnType;
 
     };

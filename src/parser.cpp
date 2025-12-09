@@ -107,9 +107,22 @@ namespace Chtholly
     std::shared_ptr<Stmt> Parser::statement()
     {
         if (match({TokenType::IF})) return ifStatement();
+        if (match({TokenType::SWITCH})) return switchStatement();
         if (match({TokenType::WHILE})) return whileStatement();
         if (match({TokenType::FOR})) return forStatement();
         if (match({TokenType::RETURN})) return returnStatement();
+        if (match({TokenType::BREAK}))
+        {
+            Token keyword = previous();
+            consume(TokenType::SEMICOLON, "Expect ';' after 'break'.");
+            return std::make_shared<BreakStmt>(keyword);
+        }
+        if (match({TokenType::FALLTHROUGH}))
+        {
+            Token keyword = previous();
+            consume(TokenType::SEMICOLON, "Expect ';' after 'fallthrough'.");
+            return std::make_shared<FallthroughStmt>(keyword);
+        }
         if (match({TokenType::LEFT_BRACE})) return std::make_shared<BlockStmt>(block());
         return expressionStatement();
     }
@@ -128,6 +141,42 @@ namespace Chtholly
         }
 
         return std::make_shared<IfStmt>(condition, thenBranch, elseBranch);
+    }
+
+    std::shared_ptr<Stmt> Parser::switchStatement()
+    {
+        consume(TokenType::LEFT_PAREN, "Expect '(' after 'switch'.");
+        std::shared_ptr<Expr> condition = expression();
+        consume(TokenType::RIGHT_PAREN, "Expect ')' after switch condition.");
+
+        consume(TokenType::LEFT_BRACE, "Expect '{' before switch cases.");
+
+        std::vector<std::shared_ptr<CaseStmt>> cases;
+        while (!check(TokenType::RIGHT_BRACE) && !isAtEnd())
+        {
+            if (match({TokenType::CASE}))
+            {
+                std::shared_ptr<Expr> caseCondition = expression();
+                consume(TokenType::COLON, "Expect ':' after case condition.");
+                std::shared_ptr<Stmt> body = statement();
+                cases.push_back(std::make_shared<CaseStmt>(caseCondition, body));
+            }
+            else if (match({TokenType::DEFAULT}))
+            {
+                consume(TokenType::COLON, "Expect ':' after 'default'.");
+                std::shared_ptr<Stmt> body = statement();
+                cases.push_back(std::make_shared<CaseStmt>(nullptr, body));
+            }
+            else
+            {
+                parseError(peek(), "Expect 'case' or 'default'.");
+                break;
+            }
+        }
+
+        consume(TokenType::RIGHT_BRACE, "Expect '}' after switch cases.");
+
+        return std::make_shared<SwitchStmt>(condition, cases);
     }
 
     std::shared_ptr<Stmt> Parser::whileStatement()

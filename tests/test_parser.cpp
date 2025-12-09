@@ -112,6 +112,26 @@ public:
         stmt.body->accept(*this);
     }
 
+    void visit(const Chtholly::SwitchStmt& stmt) override
+    {
+        result += "switch (...) { ... }";
+    }
+
+    void visit(const Chtholly::CaseStmt& stmt) override
+    {
+        result += "case ...: ...";
+    }
+
+    void visit(const Chtholly::BreakStmt& stmt) override
+    {
+        result += "break;";
+    }
+
+    void visit(const Chtholly::FallthroughStmt& stmt) override
+    {
+        result += "fallthrough;";
+    }
+
 private:
     std::string result;
 };

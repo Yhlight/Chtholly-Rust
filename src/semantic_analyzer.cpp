@@ -183,7 +183,10 @@ namespace Chtholly
     void SemanticAnalyzer::visit(const WhileStmt& stmt)
     {
         check(stmt.condition);
+        LoopType enclosingLoop = currentLoop;
+        currentLoop = LoopType::LOOP;
         check(stmt.body);
+        currentLoop = enclosingLoop;
     }
 
     void SemanticAnalyzer::visit(const ForStmt& stmt)
@@ -201,8 +204,112 @@ namespace Chtholly
         {
             check(stmt.increment);
         }
+        LoopType enclosingLoop = currentLoop;
+        currentLoop = LoopType::LOOP;
         check(stmt.body);
+        currentLoop = enclosingLoop;
         symbolTable.exitScope();
+    }
+
+    void SemanticAnalyzer::visit(const SwitchStmt& stmt)
+    {
+        check(stmt.condition);
+        std::string switchType = typeOf(stmt.condition);
+
+        bool hasDefault = false;
+        std::set<int> intCaseValues;
+        std::set<std::string> stringCaseValues;
+
+        LoopType enclosingLoop = currentLoop;
+        currentLoop = LoopType::SWITCH;
+        for (const auto& caseStmt : stmt.cases)
+        {
+            if (caseStmt->condition)
+            {
+                check(caseStmt->condition);
+                std::string caseType = typeOf(caseStmt->condition);
+                if (caseType != switchType)
+                {
+                    throw std::runtime_error("Case type does not match switch type.");
+                }
+
+                if (auto literalExpr = std::dynamic_pointer_cast<LiteralExpr>(caseStmt->condition))
+                {
+                    if (std::holds_alternative<int>(literalExpr->value))
+                    {
+                        int value = std::get<int>(literalExpr->value);
+                        if (intCaseValues.count(value))
+                        {
+                            throw std::runtime_error("Duplicate case value.");
+                        }
+                        intCaseValues.insert(value);
+                    }
+                    else if (std::holds_alternative<std::string>(literalExpr->value))
+                    {
+                        std::string value = std::get<std::string>(literalExpr->value);
+                        if (stringCaseValues.count(value))
+                        {
+                            throw std::runtime_error("Duplicate case value.");
+                        }
+                        stringCaseValues.insert(value);
+                    }
+                }
+            }
+            else
+            {
+                if (hasDefault)
+                {
+                    throw std::runtime_error("Multiple default cases in switch statement.");
+                }
+                hasDefault = true;
+            }
+
+            check(caseStmt);
+        }
+        currentLoop = enclosingLoop;
+    }
+
+    void SemanticAnalyzer::visit(const CaseStmt& stmt)
+    {
+        if (stmt.condition)
+        {
+            check(stmt.condition);
+        }
+
+        if (auto block = std::dynamic_pointer_cast<BlockStmt>(stmt.body))
+        {
+            for (size_t i = 0; i < block->statements.size(); ++i)
+            {
+                if (std::dynamic_pointer_cast<FallthroughStmt>(block->statements[i]))
+                {
+                    if (i != block->statements.size() - 1)
+                    {
+                        throw std::runtime_error("Fallthrough must be the last statement in a case block.");
+                    }
+                }
+                check(block->statements[i]);
+            }
+        }
+        else
+        {
+            check(stmt.body);
+        }
+    }
+
+    void SemanticAnalyzer::visit(const BreakStmt& stmt)
+    {
+        if (currentLoop == LoopType::NONE)
+        {
+            throw std::runtime_error("Cannot break from outside a loop or switch.");
+        }
+    }
+
+    void SemanticAnalyzer::visit(const FallthroughStmt& stmt)
+    {
+        if (currentLoop != LoopType::SWITCH)
+        {
+            throw std::runtime_error("Cannot fallthrough from outside a switch.");
+        }
     }
 
     void SemanticAnalyzer::check(const std::shared_ptr<Expr>& expr)

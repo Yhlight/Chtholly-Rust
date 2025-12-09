@@ -52,8 +52,8 @@ This phase adds more complex control flow structures and function handling.
     - [x] `if-else` expressions.
     - [ ] `while` loops.
     - [ ] `for` loops (C-style).
-- **[ ] `switch-case` statements:**
-    - [ ] Implement `switch-case` with fallthrough control.
+- **[x] `switch-case` statements:**
+    - [x] Implement `switch-case` with fallthrough control.
 
 ### Phase 4: Composite Data Types
 

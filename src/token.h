@@ -9,7 +9,7 @@ namespace Chtholly
     enum class TokenType
     {
         // Keywords
-        FN, LET, MUT, IF, ELSE, SWITCH, CASE, FOR, WHILE, DO, BREAK, CONTINUE, RETURN,
+        FN, LET, MUT, IF, ELSE, SWITCH, CASE, DEFAULT, FOR, WHILE, DO, BREAK, CONTINUE, RETURN,
         CLASS, STRUCT, ENUM, CONTRACT, REQUIRE, PUBLIC, PRIVATE,
         TRUE, FALSE, SELF,
         FALLTHROUGH,
