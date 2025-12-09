@@ -4,7 +4,7 @@ project(Chtholly)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(chtholly src/main.cpp src/lexer.cpp src/parser.cpp)
+add_executable(chtholly src/main.cpp src/lexer.cpp src/parser.cpp src/sema.cpp)
 target_include_directories(chtholly PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 enable_testing()
@@ -16,3 +16,9 @@ add_test(NAME test_lexer COMMAND test_lexer)
 add_executable(test_parser tests/test_parser.cpp src/lexer.cpp src/parser.cpp)
 target_include_directories(test_parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_test(NAME test_parser COMMAND test_parser)
+
+add_executable(test_move_semantics tests/test_move_semantics.cpp src/lexer.cpp src/parser.cpp src/sema.cpp)
+target_include_directories(test_move_semantics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+find_package(GTest REQUIRED)
+target_link_libraries(test_move_semantics GTest::gtest GTest::gtest_main)
+add_test(NAME test_move_semantics COMMAND test_move_semantics)
