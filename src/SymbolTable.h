@@ -12,6 +12,7 @@ struct Symbol {
     std::string name;
     std::shared_ptr<Type> type;
     bool isMutable;
+    bool isMoved = false;
 };
 
 // A single scope, mapping names to symbols

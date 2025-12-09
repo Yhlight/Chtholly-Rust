@@ -1,5 +1,6 @@
 fn main(): i32 {
     let x: i32 = 42;
-    print_int(x);
+    let y: i32 = x;
+    print_int(y);
     return 0;
 }

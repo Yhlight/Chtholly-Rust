@@ -55,6 +55,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     std::shared_ptr<Type> initType = nullptr;
     if (node.initExpr) {
         initType = visit(*node.initExpr);
+        if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
+            Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
+            if (rhsSymbol) {
+                rhsSymbol->isMoved = true;
+            }
+        }
     }
 
     std::shared_ptr<Type> declaredType = nullptr;
@@ -137,7 +143,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
         return node.type;
     }
 
-    if (node.op == TokenType::PLUS_EQUAL) {
+    if (node.op == TokenType::EQUAL) {
         if (auto* var = dynamic_cast<VariableExprAST*>(node.lhs.get())) {
             Symbol* symbol = symbolTable.findSymbol(var->name);
             if (!symbol->isMutable) {
@@ -145,6 +151,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
             }
             if (lhsType->toString() != rhsType->toString()) {
                 throw std::runtime_error("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
+            }
+            if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
+                Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
+                if (rhsSymbol) {
+                    rhsSymbol->isMoved = true;
+                }
             }
             node.type = lhsType;
             return lhsType;
@@ -192,6 +204,9 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VariableExprAST& node) {
     if (!symbol) {
         throw std::runtime_error("Variable '" + node.name + "' not declared.");
     }
+    if (symbol->isMoved) {
+        throw std::runtime_error("Variable '" + node.name + "' used after move.");
+    }
     node.type = symbol->type;
     return node.type;
 }
@@ -200,6 +215,17 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
     Symbol* symbol = symbolTable.findSymbol(node.callee);
     if (!symbol) {
         throw std::runtime_error("Function '" + node.callee + "' not declared.");
+    }
+
+    // Mark variables passed as arguments as moved.
+    for (auto& arg : node.args) {
+        visit(*arg);
+        if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
+            Symbol* argSymbol = symbolTable.findSymbol(varExpr->name);
+            if (argSymbol) {
+                argSymbol->isMoved = true;
+            }
+        }
     }
 
     // In a real implementation, we would check argument types and arity.

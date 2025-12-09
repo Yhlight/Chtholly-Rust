@@ -33,7 +33,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 
 ### Milestone 2.1: Ownership System
 - [x] Implement basic variable declarations (`let`).
-- [ ] Implement move semantics as the default for variable assignments and function arguments.
+- [x] Implement move semantics as the default for variable assignments and function arguments.
 - [ ] Track the ownership of resources within the semantic analyzer.
 - [ ] Automatically insert code to deallocate (drop) resources when their owner goes out of scope.
 - [ ] Implement a `Copy` trait for primitive types to enable copy semantics where appropriate.
