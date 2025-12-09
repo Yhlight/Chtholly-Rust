@@ -130,11 +130,12 @@ namespace Chtholly
     struct LetStmt : Stmt
     {
         Token name;
+        Token type;
         std::shared_ptr<Expr> initializer;
         bool isMutable;
 
-        LetStmt(Token name, std::shared_ptr<Expr> initializer, bool isMutable)
-            : name(std::move(name)), initializer(std::move(initializer)), isMutable(isMutable) {}
+        LetStmt(Token name, Token type, std::shared_ptr<Expr> initializer, bool isMutable)
+            : name(std::move(name)), type(std::move(type)), initializer(std::move(initializer)), isMutable(isMutable) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };

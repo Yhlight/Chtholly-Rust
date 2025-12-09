@@ -35,6 +35,12 @@ namespace Chtholly
         bool isMutable = match({TokenType::MUT});
         Token name = consume(TokenType::IDENTIFIER, "Expect variable name.");
 
+        Token type;
+        if (match({TokenType::COLON}))
+        {
+            type = consume(TokenType::IDENTIFIER, "Expect type annotation.");
+        }
+
         std::shared_ptr<Expr> initializer = nullptr;
         if (match({TokenType::EQUAL}))
         {
@@ -42,7 +48,7 @@ namespace Chtholly
         }
 
         consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
-        return std::make_shared<LetStmt>(name, initializer, isMutable);
+        return std::make_shared<LetStmt>(name, type, initializer, isMutable);
     }
 
     std::shared_ptr<Stmt> Parser::statement()

@@ -19,12 +19,12 @@ The project will be developed in the following phases, with each phase building 
 This phase focuses on implementing the basic building blocks of the language.
 
 - **[x] Lexer:** Implement a lexical analyzer to tokenize the Chtholly source code.
-- **[ ] Parser:** Implement a parser to build an Abstract Syntax Tree (AST) from the token stream. (In Progress: `let`, `if-else`, `while`, `for`)
+- **[x] Parser:** Implement a parser to build an Abstract Syntax Tree (AST) from the token stream.
 - **[x] AST:** Define the structure of the AST to represent the language constructs.
-- **[ ] Basic Type System:**
-    - [ ] Implement primitive types (`i32`, `f64`, `bool`, `char`, `string`).
-    - [ ] Implement `let` bindings for immutable variables.
-    - [ ] Implement `let mut` bindings for mutable variables.
+- **[x] Basic Type System:**
+    - [x] Implement primitive types (`i32`, `f64`, `bool`, `char`, `string`).
+    - [x] Implement `let` bindings for immutable variables.
+    - [x] Implement `let mut` bindings for mutable variables.
 
 ### Phase 2: Ownership, Borrowing, and Lifetimes
 
