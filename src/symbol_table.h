@@ -20,6 +20,8 @@ namespace Chtholly
         std::string type;
         bool isMutable;
         SymbolState state;
+        int sharedBorrowCount = 0;
+        bool mutableBorrow = false;
     };
 
     class SymbolTable
@@ -33,10 +35,15 @@ namespace Chtholly
         bool define(const std::string& name, const SymbolInfo& info);
         SymbolInfo* lookup(const std::string& name);
         bool isDefinedInCurrentScope(const std::string& name) const;
+        void borrow(const std::string& name);
 
 
     private:
-        std::vector<std::unordered_map<std::string, SymbolInfo>> scopes;
+        struct Scope {
+            std::unordered_map<std::string, SymbolInfo> symbols;
+            std::vector<std::string> borrowedSymbols;
+        };
+        std::vector<Scope> scopes;
     };
 
 } // namespace Chtholly

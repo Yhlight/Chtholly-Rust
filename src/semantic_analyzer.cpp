@@ -30,7 +30,43 @@ namespace Chtholly
 
     void SemanticAnalyzer::visit(const UnaryExpr& expr)
     {
-        check(expr.right);
+        if (expr.op.type == TokenType::AMPERSAND)
+        {
+            if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.right))
+            {
+                SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
+                if (!info)
+                {
+                    throw std::runtime_error("Undeclared variable: " + varExpr->name.lexeme);
+                }
+
+                if (expr.isMutable)
+                {
+                    if (info->sharedBorrowCount > 0 || info->mutableBorrow)
+                    {
+                        throw std::runtime_error("Cannot mutably borrow '" + varExpr->name.lexeme + "' as it is already borrowed.");
+                    }
+                    if (!info->isMutable)
+                    {
+                        throw std::runtime_error("Cannot mutably borrow immutable variable '" + varExpr->name.lexeme + "'.");
+                    }
+                    info->mutableBorrow = true;
+                }
+                else
+                {
+                    if (info->mutableBorrow)
+                    {
+                        throw std::runtime_error("Cannot immutably borrow '" + varExpr->name.lexeme + "' as it is already mutably borrowed.");
+                    }
+                    info->sharedBorrowCount++;
+                }
+                symbolTable.borrow(varExpr->name.lexeme);
+            }
+        }
+        else
+        {
+            check(expr.right);
+        }
     }
 
     void SemanticAnalyzer::visit(const LiteralExpr& expr)
@@ -48,6 +84,10 @@ namespace Chtholly
         if (info->state == SymbolState::Moved)
         {
             throw std::runtime_error("Variable '" + expr.name.lexeme + "' was moved.");
+        }
+        if (info->mutableBorrow || info->sharedBorrowCount > 0)
+        {
+            throw std::runtime_error("Cannot move '" + expr.name.lexeme + "' as it is borrowed.");
         }
 
         // If the type is not a copy type, move it
@@ -72,6 +112,14 @@ namespace Chtholly
         if (info->state == SymbolState::Moved)
         {
             throw std::runtime_error("Cannot assign to moved variable: " + expr.name.lexeme);
+        }
+        if (info->sharedBorrowCount > 0)
+        {
+            throw std::runtime_error("Cannot assign to '" + expr.name.lexeme + "' as it is immutably borrowed.");
+        }
+        if (info->mutableBorrow)
+        {
+            throw std::runtime_error("Cannot assign to '" + expr.name.lexeme + "' as it is mutably borrowed.");
         }
         check(expr.value);
 

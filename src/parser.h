@@ -16,6 +16,7 @@ namespace Chtholly
         std::vector<std::shared_ptr<Stmt>> parse();
 
     private:
+        Token parseType();
         std::shared_ptr<Stmt> declaration();
         std::shared_ptr<Stmt> letDeclaration(bool isMutable);
         std::shared_ptr<Stmt> statement();

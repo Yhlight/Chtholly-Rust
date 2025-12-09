@@ -93,6 +93,10 @@ namespace Chtholly
         case '=': addToken(match('=') ? TokenType::EQUAL_EQUAL : TokenType::EQUAL); break;
         case '<': addToken(match('=') ? TokenType::LESS_EQUAL : TokenType::LESS); break;
         case '>': addToken(match('=') ? TokenType::GREATER_EQUAL : TokenType::GREATER); break;
+        case '&': addToken(match('&') ? TokenType::AMPERSAND_AMPERSAND : TokenType::AMPERSAND); break;
+        case '|': addToken(match('|') ? TokenType::PIPE_PIPE : TokenType::PIPE); break;
+        case '^': addToken(TokenType::CARET); break;
+        case '~': addToken(TokenType::TILDE); break;
         case '/':
             if (match('/'))
             {

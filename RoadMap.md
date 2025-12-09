@@ -33,10 +33,10 @@ This is the most critical phase of the project, as it implements the core memory
 - **[x] Ownership and Move Semantics:**
     - [x] Implement move semantics for variable assignments and function calls.
     - [x] Ensure that moved values cannot be used afterward.
-- **[ ] Borrowing and References:**
-    - [ ] Implement immutable borrows (`&`).
-    - [ ] Implement mutable borrows (`&mut`).
-    - [ ] Enforce the borrowing rules (multiple readers or one writer).
+- **[x] Borrowing and References:**
+    - [x] Implement immutable borrows (`&`).
+    - [x] Implement mutable borrows (`&mut`).
+    - [x] Enforce the borrowing rules (multiple readers or one writer).
 - **[ ] Lifetime Management:**
     - [ ] Implement lifetime analysis to prevent dangling references.
     - [ ] Implement lifetime elision rules to simplify common patterns.

@@ -17,6 +17,15 @@ namespace Chtholly
     {
         if (!scopes.empty())
         {
+            for (const auto& name : scopes.back().borrowedSymbols)
+            {
+                SymbolInfo* info = lookup(name);
+                if (info)
+                {
+                    info->sharedBorrowCount = 0;
+                    info->mutableBorrow = false;
+                }
+            }
             scopes.pop_back();
         }
     }
@@ -30,7 +39,7 @@ namespace Chtholly
         if(isDefinedInCurrentScope(name)){
             return false;
         }
-        scopes.back()[name] = info;
+        scopes.back().symbols[name] = info;
         return true;
     }
 
@@ -38,8 +47,8 @@ namespace Chtholly
     {
         for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
         {
-            auto symbol = it->find(name);
-            if (symbol != it->end())
+            auto symbol = it->symbols.find(name);
+            if (symbol != it->symbols.end())
             {
                 return &symbol->second;
             }
@@ -54,9 +63,16 @@ namespace Chtholly
         {
             return false;
         }
-        const auto& currentScope = scopes.back();
+        const auto& currentScope = scopes.back().symbols;
         return currentScope.find(name) != currentScope.end();
     }
 
+    void SymbolTable::borrow(const std::string& name)
+    {
+        if (!scopes.empty())
+        {
+            scopes.back().borrowedSymbols.push_back(name);
+        }
+    }
 
 } // namespace Chtholly

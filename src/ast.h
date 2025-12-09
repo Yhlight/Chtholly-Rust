@@ -51,9 +51,10 @@ namespace Chtholly
     {
         Token op;
         std::shared_ptr<Expr> right;
+        bool isMutable;
 
-        UnaryExpr(Token op, std::shared_ptr<Expr> right)
-            : op(std::move(op)), right(std::move(right)) {}
+        UnaryExpr(Token op, std::shared_ptr<Expr> right, bool isMutable = false)
+            : op(std::move(op)), right(std::move(right)), isMutable(isMutable) {}
 
         void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
     };

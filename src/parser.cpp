@@ -45,6 +45,21 @@ namespace Chtholly
         }
     }
 
+    Token Parser::parseType()
+    {
+        if (match({TokenType::AMPERSAND}))
+        {
+            match({TokenType::MUT});
+        }
+        if (match({TokenType::IDENTIFIER, TokenType::I32, TokenType::F64, TokenType::BOOL, TokenType::CHAR}))
+        {
+            return previous();
+        }
+        parseError(peek(), "Expect type annotation.");
+        return previous();
+    }
+
+
     std::shared_ptr<Stmt> Parser::letDeclaration(bool isMutable)
     {
         Token name = consume(TokenType::IDENTIFIER, "Expect variable name.");
@@ -52,14 +67,7 @@ namespace Chtholly
         Token type;
         if (match({TokenType::COLON}))
         {
-            if (match({TokenType::IDENTIFIER, TokenType::I32, TokenType::F64, TokenType::BOOL, TokenType::CHAR}))
-            {
-                type = previous();
-            }
-            else
-            {
-                parseError(peek(), "Expect type annotation.");
-            }
+            type = parseType();
         }
 
         std::shared_ptr<Expr> initializer = nullptr;
@@ -253,6 +261,14 @@ namespace Chtholly
             Token op = previous();
             std::shared_ptr<Expr> right = unary();
             return std::make_shared<UnaryExpr>(op, right);
+        }
+
+        if (match({TokenType::AMPERSAND}))
+        {
+            Token op = previous();
+            bool isMutable = match({TokenType::MUT});
+            std::shared_ptr<Expr> right = unary();
+            return std::make_shared<UnaryExpr>(op, right, isMutable);
         }
 
         return primary();
