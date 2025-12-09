@@ -54,7 +54,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 ## Phase 3: Advanced Language Features
 
 ### Milestone 3.1: Control Flow
-- [ ] `if-else` expressions.
+- [x] `if-else` expressions.
 - [ ] `while` and `do-while` loops.
 - [ ] C-style `for` loops.
 - [ ] `foreach` loops based on the iterator pattern.

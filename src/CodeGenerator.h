@@ -31,10 +31,12 @@ private:
     llvm::Value* visit(BinaryExprAST& node);
     llvm::Value* visit(NumberExprAST& node);
     llvm::Value* visit(StringExprAST& node);
+    llvm::Value* visit(BoolExprAST& node);
     llvm::Value* visit(VariableExprAST& node);
     llvm::Value* visit(FunctionCallExprAST& node);
     llvm::Value* visit(ExprStmtAST& node);
     llvm::Value* visit(ReturnStmtAST& node);
+    llvm::Value* visit(IfStmtAST& node);
 };
 
 #endif // CHTHOLLY_CODEGENERATOR_H

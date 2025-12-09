@@ -11,6 +11,7 @@
 // Forward declaration for the pretty print helper
 std::string indent(int level);
 class SemanticAnalyzer;
+class BlockStmtAST;
 
 // Base class for all AST nodes
 class ASTNode {
@@ -55,6 +56,14 @@ public:
     }
 };
 
+// Expression class for boolean literals
+class BoolExprAST : public ExprAST {
+public:
+    bool value;
+    BoolExprAST(bool val) : value(val) {}
+    void print(int level = 0) const override {}
+};
+
 // Expression class for referencing a variable
 class VariableExprAST : public ExprAST {
 public:
@@ -96,9 +105,21 @@ public:
     }
 };
 
-
 // Base class for all statement nodes
 class StmtAST : public ASTNode {};
+
+// Statement class for if-else statements
+class IfStmtAST : public StmtAST {
+public:
+    std::unique_ptr<ExprAST> condition;
+    std::unique_ptr<BlockStmtAST> thenBranch;
+    std::unique_ptr<StmtAST> elseBranch; // Can be another IfStmtAST for else-if
+
+    IfStmtAST(std::unique_ptr<ExprAST> condition, std::unique_ptr<BlockStmtAST> thenBranch, std::unique_ptr<StmtAST> elseBranch)
+        : condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {}
+
+    void print(int level = 0) const override {}
+};
 
 // Statement class for wrapping an expression
 class ExprStmtAST : public StmtAST {

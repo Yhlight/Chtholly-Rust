@@ -26,6 +26,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<StringExprAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<BoolExprAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<VariableExprAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<FunctionCallExprAST*>(&node)) {
@@ -33,6 +35,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<ExprStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<ReturnStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<TypeNameAST*>(&node)) {
         return visit(*p);
@@ -118,6 +122,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
         throw std::runtime_error("Could not resolve type for one or both operands in binary expression.");
     }
 
+    if (node.op == TokenType::LESS || node.op == TokenType::LESS_EQUAL || node.op == TokenType::GREATER || node.op == TokenType::GREATER_EQUAL || node.op == TokenType::DOUBLE_EQUAL || node.op == TokenType::NOT_EQUAL) {
+        if (lhsType->toString() != rhsType->toString()) {
+            throw std::runtime_error("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
+        }
+        node.type = std::make_shared<BoolType>();
+        return node.type;
+    }
+
     if ((!lhsType->isInteger() && !lhsType->isFloat()) || (!rhsType->isInteger() && !rhsType->isFloat())) {
         throw std::runtime_error("Binary operator applied to non-numeric type.");
     }
@@ -144,6 +156,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(NumberExprAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(StringExprAST& node) {
     node.type = std::make_shared<StringType>();
+    return node.type;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(BoolExprAST& node) {
+    node.type = std::make_shared<BoolType>();
     return node.type;
 }
 
@@ -192,6 +209,20 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
     return nullptr;
 }
 
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(IfStmtAST& node) {
+    auto conditionType = visit(*node.condition);
+    if (!conditionType->isBool()) {
+        throw std::runtime_error("If condition must be a boolean expression.");
+    }
+
+    visit(*node.thenBranch);
+    if (node.elseBranch) {
+        visit(*node.elseBranch);
+    }
+
+    return nullptr; // Statements don't have a type
+}
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(TypeNameAST& node) {
     return nullptr;

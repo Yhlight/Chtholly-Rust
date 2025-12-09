@@ -61,6 +61,8 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<StringExprAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<BoolExprAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<VariableExprAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<FunctionCallExprAST*>(&node)) {
@@ -68,6 +70,8 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<ExprStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<ReturnStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
         return visit(*p);
     }
     return nullptr;
@@ -138,6 +142,12 @@ llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
         case TokenType::MINUS: return builder->CreateSub(L, R, "subtmp");
         case TokenType::STAR: return builder->CreateMul(L, R, "multmp");
         case TokenType::SLASH: return builder->CreateSDiv(L, R, "divtmp");
+        case TokenType::LESS: return builder->CreateICmpSLT(L, R, "lttmp");
+        case TokenType::LESS_EQUAL: return builder->CreateICmpSLE(L, R, "letmp");
+        case TokenType::GREATER: return builder->CreateICmpSGT(L, R, "gttmp");
+        case TokenType::GREATER_EQUAL: return builder->CreateICmpSGE(L, R, "getmp");
+        case TokenType::DOUBLE_EQUAL: return builder->CreateICmpEQ(L, R, "eqtmp");
+        case TokenType::NOT_EQUAL: return builder->CreateICmpNE(L, R, "netmp");
         // Handle other operators
         default:
             throw std::runtime_error("Invalid binary operator");
@@ -153,6 +163,10 @@ llvm::Value* CodeGenerator::visit(NumberExprAST& node) {
 
 llvm::Value* CodeGenerator::visit(StringExprAST& node) {
     return builder->CreateGlobalStringPtr(node.value);
+}
+
+llvm::Value* CodeGenerator::visit(BoolExprAST& node) {
+    return llvm::ConstantInt::get(builder->getInt1Ty(), node.value);
 }
 
 llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
@@ -201,4 +215,43 @@ llvm::Value* CodeGenerator::visit(ReturnStmtAST& node) {
     } else {
         return builder->CreateRetVoid();
     }
+}
+
+llvm::Value* CodeGenerator::visit(IfStmtAST& node) {
+    llvm::Value* condV = visit(*node.condition);
+    if (!condV) {
+        return nullptr;
+    }
+
+    condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(builder->getInt1Ty(), 0), "ifcond");
+
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(*context, "then", function);
+    llvm::BasicBlock* elseBB = llvm::BasicBlock::Create(*context, "else");
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(*context, "ifcont");
+
+    builder->CreateCondBr(condV, thenBB, elseBB);
+
+    builder->SetInsertPoint(thenBB);
+    visit(*node.thenBranch);
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
+    }
+    thenBB = builder->GetInsertBlock();
+
+    function->insert(function->end(), elseBB);
+    builder->SetInsertPoint(elseBB);
+    if (node.elseBranch) {
+        visit(*node.elseBranch);
+    }
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
+    }
+    elseBB = builder->GetInsertBlock();
+
+    function->insert(function->end(), mergeBB);
+    builder->SetInsertPoint(mergeBB);
+
+    return nullptr;
 }

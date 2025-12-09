@@ -26,6 +26,7 @@ public:
 
     bool isInteger() const { return kind == TK_Integer; }
     bool isFloat() const { return kind == TK_Float; }
+    bool isBool() const { return kind == TK_Bool; }
     // Add more checks as needed
 
     virtual std::string toString() const = 0;
@@ -61,6 +62,15 @@ public:
 
     std::string toString() const override {
         return "string";
+    }
+};
+
+class BoolType : public Type {
+public:
+    BoolType() : Type(TK_Bool) {}
+
+    std::string toString() const override {
+        return "bool";
     }
 };
 

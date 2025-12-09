@@ -34,6 +34,9 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::FN) {
         return parse_function_definition();
     }
+    if (peek().type == TokenType::IF) {
+        return parse_if_statement();
+    }
     if (peek().type == TokenType::RETURN) {
         return parse_return_statement();
     }
@@ -59,6 +62,33 @@ std::unique_ptr<StmtAST> Parser::parse_expression_statement() {
         advance(); // consume ';'
     }
     return std::make_unique<ExprStmtAST>(std::move(expr));
+}
+
+std::unique_ptr<StmtAST> Parser::parse_if_statement() {
+    advance(); // consume 'if'
+    if (peek().type != TokenType::LEFT_PAREN) {
+        throw std::runtime_error("Expected '(' after 'if'");
+    }
+    advance(); // consume '('
+    auto condition = parse_expression();
+    if (peek().type != TokenType::RIGHT_PAREN) {
+        throw std::runtime_error("Expected ')' after if condition");
+    }
+    advance(); // consume ')'
+
+    auto thenBranch = parse_block();
+    std::unique_ptr<StmtAST> elseBranch = nullptr;
+
+    if (peek().type == TokenType::ELSE) {
+        advance(); // consume 'else'
+        if (peek().type == TokenType::IF) {
+            elseBranch = parse_if_statement();
+        } else {
+            elseBranch = parse_block();
+        }
+    }
+
+    return std::make_unique<IfStmtAST>(std::move(condition), std::move(thenBranch), std::move(elseBranch));
 }
 
 
@@ -183,6 +213,14 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
         if (peek().type == TokenType::STRING_LITERAL) {
             return std::make_unique<StringExprAST>(advance().value);
         }
+        if (peek().type == TokenType::TRUE) {
+            advance();
+            return std::make_unique<BoolExprAST>(true);
+        }
+        if (peek().type == TokenType::FALSE) {
+            advance();
+            return std::make_unique<BoolExprAST>(false);
+        }
         if (peek().type == TokenType::IDENTIFIER) {
             return std::make_unique<VariableExprAST>(advance().value);
         }
@@ -231,6 +269,13 @@ int Parser::get_token_precedence() {
         case TokenType::STAR:
         case TokenType::SLASH:
             return 20;
+        case TokenType::LESS:
+        case TokenType::LESS_EQUAL:
+        case TokenType::GREATER:
+        case TokenType::GREATER_EQUAL:
+        case TokenType::DOUBLE_EQUAL:
+        case TokenType::NOT_EQUAL:
+            return 5;
         default:
             return -1;
     }
