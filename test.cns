@@ -1,11 +1,2 @@
-// A simple Chtholly program to test the lexer
-fn main() {
-    let mut x = 10;
-    let y = 20.5;
-    let name = "Chtholly";
-    let initial = 'C';
-
-    if (x > 0) {
-        x = x + 1;
-    }
-}
+let x = 10 + 20 * 3;
+let mut y = x / 2;

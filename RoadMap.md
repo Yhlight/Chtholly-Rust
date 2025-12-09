@@ -12,9 +12,9 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] Recognize the main function signature: `fn main(...)`.
 
 ### Milestone 1.2: Parser & Abstract Syntax Tree (AST)
-- [ ] Implement the Parser to construct an AST from the token stream.
-- [ ] Support for variable declarations (`let` and `let mut`).
-- [ ] Support for basic arithmetic and logical expressions.
+- [x] Implement the Parser to construct an AST from the token stream.
+- [x] Support for variable declarations (`let` and `let mut`).
+- [x] Support for basic arithmetic and logical expressions.
 - [ ] Initial implementation of function definitions (`fn`).
 
 ### Milestone 1.3: Semantic Analysis & Type System

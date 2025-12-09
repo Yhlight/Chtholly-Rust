@@ -1,4 +1,6 @@
 #include "Lexer.h"
+#include "Parser.h"
+#include "AST.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -26,11 +28,15 @@ int main(int argc, char** argv) {
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.tokenize();
 
-    for (const auto& token : tokens) {
-        std::cout << "Type: " << tokenTypeToString(token.type)
-                  << ", Value: '" << token.value << "'"
-                  << ", Line: " << token.line
-                  << ", Column: " << token.column << std::endl;
+    Parser parser(tokens);
+    try {
+        std::unique_ptr<BlockStmtAST> ast = parser.parse();
+        if (ast) {
+            ast->print();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Parsing error: " << e.what() << std::endl;
+        return 1;
     }
 
     return 0;
