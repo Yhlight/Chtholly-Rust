@@ -33,11 +33,16 @@ public:
 
     void visit(const Chtholly::VariableExpr& expr) override {}
     void visit(const Chtholly::AssignExpr& expr) override {}
-    void visit(const Chtholly::ExpressionStmt& stmt) override {}
+
+    void visit(const Chtholly::ExpressionStmt& stmt) override
+    {
+        stmt.expression->accept(*this);
+        result += ";";
+    }
 
     void visit(const Chtholly::LetStmt& stmt) override
     {
-        result = "let " + stmt.name.lexeme;
+        result += "let " + stmt.name.lexeme;
         if (stmt.isMutable)
         {
             result += " mut";
@@ -48,6 +53,27 @@ public:
             stmt.initializer->accept(*this);
         }
         result += ";";
+    }
+
+    void visit(const Chtholly::BlockStmt& stmt) override
+    {
+        result += "{ ";
+        for (const auto& statement : stmt.statements)
+        {
+            statement->accept(*this);
+        }
+        result += " }";
+    }
+
+    void visit(const Chtholly::IfStmt& stmt) override
+    {
+        result += "if (...) ";
+        stmt.thenBranch->accept(*this);
+        if (stmt.elseBranch)
+        {
+            result += " else ";
+            stmt.elseBranch->accept(*this);
+        }
     }
 
 private:
@@ -88,9 +114,45 @@ void test_invalid_assignment()
 }
 
 
+void test_if_statement()
+{
+    std::string source = "if (x > 0) { let a = 1; }";
+    Chtholly::Lexer lexer(source);
+    std::vector<Chtholly::Token> tokens = lexer.scanTokens();
+    Chtholly::Parser parser(tokens);
+    std::vector<std::shared_ptr<Chtholly::Stmt>> statements = parser.parse();
+
+    assert(statements.size() == 1);
+
+    AstPrinter printer;
+    std::string output = printer.print(statements[0]);
+
+    assert(output == "if (...) { let a = 1; }");
+    std::cout << "test_if_statement passed." << std::endl;
+}
+
+void test_if_else_statement()
+{
+    std::string source = "if (x > 0) { let a = 1; } else { let b = 2; }";
+    Chtholly::Lexer lexer(source);
+    std::vector<Chtholly::Token> tokens = lexer.scanTokens();
+    Chtholly::Parser parser(tokens);
+    std::vector<std::shared_ptr<Chtholly::Stmt>> statements = parser.parse();
+
+    assert(statements.size() == 1);
+
+    AstPrinter printer;
+    std::string output = printer.print(statements[0]);
+
+    assert(output == "if (...) { let a = 1; } else { let b = 2; }");
+    std::cout << "test_if_else_statement passed." << std::endl;
+}
+
 int main()
 {
     test_simple_let_statement();
     test_invalid_assignment();
+    test_if_statement();
+    test_if_else_statement();
     return 0;
 }

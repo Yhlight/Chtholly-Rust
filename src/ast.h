@@ -91,6 +91,8 @@ namespace Chtholly
     // Forward declarations for Statements
     struct ExpressionStmt;
     struct LetStmt;
+    struct BlockStmt;
+    struct IfStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -99,6 +101,8 @@ namespace Chtholly
         virtual ~StmtVisitor() = default;
         virtual void visit(const ExpressionStmt& stmt) = 0;
         virtual void visit(const LetStmt& stmt) = 0;
+        virtual void visit(const BlockStmt& stmt) = 0;
+        virtual void visit(const IfStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -127,6 +131,28 @@ namespace Chtholly
 
         LetStmt(Token name, std::shared_ptr<Expr> initializer, bool isMutable)
             : name(std::move(name)), initializer(std::move(initializer)), isMutable(isMutable) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct BlockStmt : Stmt
+    {
+        std::vector<std::shared_ptr<Stmt>> statements;
+
+        BlockStmt(std::vector<std::shared_ptr<Stmt>> statements)
+            : statements(std::move(statements)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct IfStmt : Stmt
+    {
+        std::shared_ptr<Expr> condition;
+        std::shared_ptr<Stmt> thenBranch;
+        std::shared_ptr<Stmt> elseBranch;
+
+        IfStmt(std::shared_ptr<Expr> condition, std::shared_ptr<Stmt> thenBranch, std::shared_ptr<Stmt> elseBranch)
+            : condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };
