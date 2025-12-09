@@ -18,6 +18,27 @@ public:
 
     void visit(const Chtholly::BinaryExpr& expr) override {}
     void visit(const Chtholly::UnaryExpr& expr) override {}
+    void visit(const Chtholly::CallExpr& expr) override {}
+    void visit(const Chtholly::ReturnStmt& stmt) override {}
+
+    void visit(const Chtholly::FunctionStmt& stmt) override
+    {
+        result += "fn " + stmt.name.lexeme + "(";
+        for (size_t i = 0; i < stmt.params.size(); ++i)
+        {
+            result += stmt.params[i].name.lexeme + ": " + stmt.params[i].type.lexeme;
+            if (i < stmt.params.size() - 1)
+            {
+                result += ", ";
+            }
+        }
+        result += ")";
+        if (!stmt.returnType.lexeme.empty())
+        {
+            result += ": " + stmt.returnType.lexeme;
+        }
+        result += " { ... }";
+    }
 
     void visit(const Chtholly::LiteralExpr& expr) override
     {
@@ -46,6 +67,10 @@ public:
         if (stmt.isMutable)
         {
             result += " mut";
+        }
+        if (!stmt.type.lexeme.empty())
+        {
+            result += ": " + stmt.type.lexeme;
         }
         if (stmt.initializer)
         {
@@ -92,6 +117,28 @@ private:
     std::string result;
 };
 
+void test_function_declaration()
+{
+    std::string source = "fn myFunction(a: i32, b: string): void {}";
+    Chtholly::Lexer lexer(source);
+    std::vector<Chtholly::Token> tokens = lexer.scanTokens();
+    Chtholly::Parser parser(tokens);
+    try
+    {
+        std::vector<std::shared_ptr<Chtholly::Stmt>> statements = parser.parse();
+        assert(statements.size() == 1);
+
+        AstPrinter printer;
+        std::string output = printer.print(statements[0]);
+
+        assert(output == "fn myFunction(a: i32, b: string): void { ... }");
+    }
+    catch (const std::runtime_error& e)
+    {
+        assert(false);
+    }
+    std::cout << "test_function_declaration passed." << std::endl;
+}
 
 void test_simple_let_statement()
 {
@@ -203,5 +250,6 @@ int main()
     test_if_else_statement();
     test_while_statement();
     test_for_statement();
+    test_function_declaration();
     return 0;
 }

@@ -22,8 +22,14 @@ namespace Chtholly
                 SymbolInfo* info = lookup(name);
                 if (info)
                 {
-                    info->sharedBorrowCount = 0;
-                    info->mutableBorrow = false;
+                    if (info->sharedBorrowCount > 0)
+                    {
+                        info->sharedBorrowCount--;
+                    }
+                    if (info->mutableBorrow)
+                    {
+                        info->mutableBorrow = false;
+                    }
                 }
             }
             scopes.pop_back();

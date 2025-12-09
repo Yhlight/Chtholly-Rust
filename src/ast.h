@@ -14,6 +14,7 @@ namespace Chtholly
     struct LiteralExpr;
     struct VariableExpr;
     struct AssignExpr;
+    struct CallExpr;
 
     // Visitor for Expressions
     class ExprVisitor
@@ -25,6 +26,7 @@ namespace Chtholly
         virtual void visit(const LiteralExpr& expr) = 0;
         virtual void visit(const VariableExpr& expr) = 0;
         virtual void visit(const AssignExpr& expr) = 0;
+        virtual void visit(const CallExpr& expr) = 0;
     };
 
     // Base class for all expressions
@@ -32,6 +34,7 @@ namespace Chtholly
     {
         virtual ~Expr() = default;
         virtual void accept(ExprVisitor& visitor) const = 0;
+        mutable std::string type;
     };
 
     // Concrete Expression nodes
@@ -43,6 +46,18 @@ namespace Chtholly
 
         BinaryExpr(std::shared_ptr<Expr> left, Token op, std::shared_ptr<Expr> right)
             : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
+
+        void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct CallExpr : Expr
+    {
+        std::shared_ptr<Expr> callee;
+        Token paren;
+        std::vector<std::shared_ptr<Expr>> arguments;
+
+        CallExpr(std::shared_ptr<Expr> callee, Token paren, std::vector<std::shared_ptr<Expr>> arguments)
+            : callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
 
         void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
     };
@@ -96,6 +111,8 @@ namespace Chtholly
     struct IfStmt;
     struct WhileStmt;
     struct ForStmt;
+    struct FunctionStmt;
+    struct ReturnStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -108,6 +125,8 @@ namespace Chtholly
         virtual void visit(const IfStmt& stmt) = 0;
         virtual void visit(const WhileStmt& stmt) = 0;
         virtual void visit(const ForStmt& stmt) = 0;
+        virtual void visit(const FunctionStmt& stmt) = 0;
+        virtual void visit(const ReturnStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -124,6 +143,36 @@ namespace Chtholly
 
         ExpressionStmt(std::shared_ptr<Expr> expression)
             : expression(std::move(expression)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct Parameter
+    {
+        Token name;
+        Token type;
+    };
+
+    struct FunctionStmt : Stmt
+    {
+        Token name;
+        std::vector<Parameter> params;
+        Token returnType;
+        std::shared_ptr<BlockStmt> body;
+
+        FunctionStmt(Token name, std::vector<Parameter> params, Token returnType, std::shared_ptr<BlockStmt> body)
+            : name(std::move(name)), params(std::move(params)), returnType(std::move(returnType)), body(std::move(body)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct ReturnStmt : Stmt
+    {
+        Token keyword;
+        std::shared_ptr<Expr> value;
+
+        ReturnStmt(Token keyword, std::shared_ptr<Expr> value)
+            : keyword(std::move(keyword)), value(std::move(value)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };

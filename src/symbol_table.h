@@ -22,6 +22,10 @@ namespace Chtholly
         SymbolState state;
         int sharedBorrowCount = 0;
         bool mutableBorrow = false;
+
+        // For functions
+        std::vector<std::string> paramTypes;
+        std::string returnType;
     };
 
     class SymbolTable
