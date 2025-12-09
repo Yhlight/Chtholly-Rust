@@ -93,6 +93,8 @@ namespace Chtholly
     struct LetStmt;
     struct BlockStmt;
     struct IfStmt;
+    struct WhileStmt;
+    struct ForStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -103,6 +105,8 @@ namespace Chtholly
         virtual void visit(const LetStmt& stmt) = 0;
         virtual void visit(const BlockStmt& stmt) = 0;
         virtual void visit(const IfStmt& stmt) = 0;
+        virtual void visit(const WhileStmt& stmt) = 0;
+        virtual void visit(const ForStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -153,6 +157,30 @@ namespace Chtholly
 
         IfStmt(std::shared_ptr<Expr> condition, std::shared_ptr<Stmt> thenBranch, std::shared_ptr<Stmt> elseBranch)
             : condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct WhileStmt : Stmt
+    {
+        std::shared_ptr<Expr> condition;
+        std::shared_ptr<Stmt> body;
+
+        WhileStmt(std::shared_ptr<Expr> condition, std::shared_ptr<Stmt> body)
+            : condition(std::move(condition)), body(std::move(body)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct ForStmt : Stmt
+    {
+        std::shared_ptr<Stmt> initializer;
+        std::shared_ptr<Expr> condition;
+        std::shared_ptr<Expr> increment;
+        std::shared_ptr<Stmt> body;
+
+        ForStmt(std::shared_ptr<Stmt> initializer, std::shared_ptr<Expr> condition, std::shared_ptr<Expr> increment, std::shared_ptr<Stmt> body)
+            : initializer(std::move(initializer)), condition(std::move(condition)), increment(std::move(increment)), body(std::move(body)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };
