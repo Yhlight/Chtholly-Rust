@@ -37,6 +37,9 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::IF) {
         return parse_if_statement();
     }
+    if (peek().type == TokenType::WHILE) {
+        return parse_while_statement();
+    }
     if (peek().type == TokenType::RETURN) {
         return parse_return_statement();
     }
@@ -89,6 +92,23 @@ std::unique_ptr<StmtAST> Parser::parse_if_statement() {
     }
 
     return std::make_unique<IfStmtAST>(std::move(condition), std::move(thenBranch), std::move(elseBranch));
+}
+
+std::unique_ptr<StmtAST> Parser::parse_while_statement() {
+    advance(); // consume 'while'
+    if (peek().type != TokenType::LEFT_PAREN) {
+        throw std::runtime_error("Expected '(' after 'while'");
+    }
+    advance(); // consume '('
+    auto condition = parse_expression();
+    if (peek().type != TokenType::RIGHT_PAREN) {
+        throw std::runtime_error("Expected ')' after while condition");
+    }
+    advance(); // consume ')'
+
+    auto body = parse_block();
+
+    return std::make_unique<WhileStmtAST>(std::move(condition), std::move(body));
 }
 
 
@@ -276,6 +296,8 @@ int Parser::get_token_precedence() {
         case TokenType::DOUBLE_EQUAL:
         case TokenType::NOT_EQUAL:
             return 5;
+        case TokenType::PLUS_EQUAL:
+            return 2;
         default:
             return -1;
     }

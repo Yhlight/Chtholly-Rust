@@ -28,6 +28,7 @@ private:
     std::shared_ptr<Type> visit(ExprStmtAST& node);
     std::shared_ptr<Type> visit(ReturnStmtAST& node);
     std::shared_ptr<Type> visit(IfStmtAST& node);
+    std::shared_ptr<Type> visit(WhileStmtAST& node);
     std::shared_ptr<Type> visit(BoolExprAST& node);
     std::shared_ptr<Type> visit(TypeNameAST& node);
 };

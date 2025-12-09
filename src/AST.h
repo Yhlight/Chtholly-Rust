@@ -121,6 +121,18 @@ public:
     void print(int level = 0) const override {}
 };
 
+// Statement class for while loops
+class WhileStmtAST : public StmtAST {
+public:
+    std::unique_ptr<ExprAST> condition;
+    std::unique_ptr<BlockStmtAST> body;
+
+    WhileStmtAST(std::unique_ptr<ExprAST> condition, std::unique_ptr<BlockStmtAST> body)
+        : condition(std::move(condition)), body(std::move(body)) {}
+
+    void print(int level = 0) const override {}
+};
+
 // Statement class for wrapping an expression
 class ExprStmtAST : public StmtAST {
 public:

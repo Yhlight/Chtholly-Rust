@@ -73,22 +73,38 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<WhileStmtAST*>(&node)) {
+        return visit(*p);
     }
     return nullptr;
 }
 
 llvm::Value* CodeGenerator::visit(VarDeclStmtAST& node) {
+    llvm::Type* varType = nullptr;
+    if (node.type) {
+        varType = resolveType(*node.type);
+    }
+
     llvm::Value* initVal = nullptr;
     if (node.initExpr) {
         initVal = visit(*node.initExpr);
-    } else {
-        // This should be caught by the semantic analyzer
-        throw std::runtime_error("Variable declaration without initializer in code generator");
+        if (!varType) {
+            varType = initVal->getType();
+        }
     }
 
-    // For now, all variables are stack allocated.
-    llvm::AllocaInst* alloca = builder->CreateAlloca(initVal->getType(), nullptr, node.varName);
-    builder->CreateStore(initVal, alloca);
+    if (!varType) {
+        throw std::runtime_error("Could not determine type for variable '" + node.varName + "' in code generator");
+    }
+
+    llvm::AllocaInst* alloca = builder->CreateAlloca(varType, nullptr, node.varName);
+
+    if (initVal) {
+        builder->CreateStore(initVal, alloca);
+    } else {
+        builder->CreateStore(llvm::Constant::getNullValue(varType), alloca);
+    }
+
     namedValues[node.varName] = alloca;
     return alloca;
 }
@@ -148,6 +164,15 @@ llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
         case TokenType::GREATER_EQUAL: return builder->CreateICmpSGE(L, R, "getmp");
         case TokenType::DOUBLE_EQUAL: return builder->CreateICmpEQ(L, R, "eqtmp");
         case TokenType::NOT_EQUAL: return builder->CreateICmpNE(L, R, "netmp");
+        case TokenType::PLUS_EQUAL: {
+            if (auto* var = dynamic_cast<VariableExprAST*>(node.lhs.get())) {
+                llvm::Value* varValue = namedValues[var->name];
+                llvm::Value* newValue = builder->CreateAdd(L, R, "addtmp");
+                builder->CreateStore(newValue, varValue);
+                return newValue;
+            }
+            throw std::runtime_error("Left-hand side of assignment must be a variable.");
+        }
         // Handle other operators
         default:
             throw std::runtime_error("Invalid binary operator");
@@ -185,7 +210,7 @@ llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
     llvm::Function* callee = module->getFunction(node.callee);
     if (!callee) {
         // A temporary hack to support printf
-        if (node.callee == "println") {
+        if (node.callee == "println" || node.callee == "print_int") {
             callee = module->getFunction("printf");
             if (!callee) throw std::runtime_error("Could not find printf function");
         } else {
@@ -198,8 +223,13 @@ llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
     }
 
     std::vector<llvm::Value*> argValues;
-    for (auto& arg : node.args) {
-        argValues.push_back(visit(*arg));
+    if (node.callee == "print_int") {
+        argValues.push_back(builder->CreateGlobalStringPtr("%d\n"));
+        argValues.push_back(visit(*node.args[0]));
+    } else {
+        for (auto& arg : node.args) {
+            argValues.push_back(visit(*arg));
+        }
     }
 
     return builder->CreateCall(callee, argValues, "calltmp");
@@ -252,6 +282,30 @@ llvm::Value* CodeGenerator::visit(IfStmtAST& node) {
 
     function->insert(function->end(), mergeBB);
     builder->SetInsertPoint(mergeBB);
+
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(WhileStmtAST& node) {
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock* loopCondBB = llvm::BasicBlock::Create(*context, "loopcond", function);
+    llvm::BasicBlock* loopBodyBB = llvm::BasicBlock::Create(*context, "loopbody");
+    llvm::BasicBlock* loopEndBB = llvm::BasicBlock::Create(*context, "loopend");
+
+    builder->CreateBr(loopCondBB);
+    builder->SetInsertPoint(loopCondBB);
+
+    llvm::Value* condV = visit(*node.condition);
+    condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(builder->getInt1Ty(), 0), "whilecond");
+    builder->CreateCondBr(condV, loopBodyBB, loopEndBB);
+
+    function->insert(function->end(), loopBodyBB);
+    builder->SetInsertPoint(loopBodyBB);
+    visit(*node.body);
+    builder->CreateBr(loopCondBB);
+
+    function->insert(function->end(), loopEndBB);
+    builder->SetInsertPoint(loopEndBB);
 
     return nullptr;
 }

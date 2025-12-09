@@ -55,7 +55,8 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 
 ### Milestone 3.1: Control Flow
 - [x] `if-else` expressions.
-- [ ] `while` and `do-while` loops.
+- [x] `while` loops.
+- [ ] `do-while` loops.
 - [ ] C-style `for` loops.
 - [ ] `foreach` loops based on the iterator pattern.
 - [ ] `switch-case` statements with improved semantics (e.g., no fall-through by default).

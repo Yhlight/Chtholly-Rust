@@ -31,6 +31,7 @@ private:
     llvm::Value* visit(BinaryExprAST& node);
     llvm::Value* visit(NumberExprAST& node);
     llvm::Value* visit(StringExprAST& node);
+    llvm::Value* visit(WhileStmtAST& node);
     llvm::Value* visit(BoolExprAST& node);
     llvm::Value* visit(VariableExprAST& node);
     llvm::Value* visit(FunctionCallExprAST& node);

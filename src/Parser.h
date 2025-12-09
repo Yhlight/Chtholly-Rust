@@ -24,6 +24,7 @@ private:
     std::unique_ptr<StmtAST> parse_variable_declaration();
     std::unique_ptr<StmtAST> parse_function_definition();
     std::unique_ptr<StmtAST> parse_if_statement();
+    std::unique_ptr<StmtAST> parse_while_statement();
     std::unique_ptr<StmtAST> parse_expression_statement();
     std::unique_ptr<StmtAST> parse_return_statement();
     std::unique_ptr<BlockStmtAST> parse_block();

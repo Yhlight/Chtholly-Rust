@@ -7,6 +7,11 @@ SemanticAnalyzer::SemanticAnalyzer() {
     // Pre-populate with built-in functions
     auto printlnType = std::make_shared<FunctionType>(); // This is a simplification
     symbolTable.addSymbol("println", printlnType, false);
+
+    auto printIntType = std::make_shared<FunctionType>();
+    printIntType->argTypes.push_back(std::make_shared<IntegerType>(32, true));
+    printIntType->returnType = std::make_shared<IntegerType>(32, true);
+    symbolTable.addSymbol("print_int", printIntType, false);
 }
 
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
@@ -37,6 +42,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<ReturnStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<WhileStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<TypeNameAST*>(&node)) {
         return visit(*p);
@@ -130,6 +137,22 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
         return node.type;
     }
 
+    if (node.op == TokenType::PLUS_EQUAL) {
+        if (auto* var = dynamic_cast<VariableExprAST*>(node.lhs.get())) {
+            Symbol* symbol = symbolTable.findSymbol(var->name);
+            if (!symbol->isMutable) {
+                throw std::runtime_error("Cannot assign to immutable variable '" + var->name + "'.");
+            }
+            if (lhsType->toString() != rhsType->toString()) {
+                throw std::runtime_error("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
+            }
+            node.type = lhsType;
+            return lhsType;
+        } else {
+            throw std::runtime_error("Left-hand side of assignment must be a variable.");
+        }
+    }
+
     if ((!lhsType->isInteger() && !lhsType->isFloat()) || (!rhsType->isInteger() && !rhsType->isFloat())) {
         throw std::runtime_error("Binary operator applied to non-numeric type.");
     }
@@ -220,6 +243,17 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(IfStmtAST& node) {
     if (node.elseBranch) {
         visit(*node.elseBranch);
     }
+
+    return nullptr; // Statements don't have a type
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(WhileStmtAST& node) {
+    auto conditionType = visit(*node.condition);
+    if (!conditionType->isBool()) {
+        throw std::runtime_error("While condition must be a boolean expression.");
+    }
+
+    visit(*node.body);
 
     return nullptr; // Statements don't have a type
 }
