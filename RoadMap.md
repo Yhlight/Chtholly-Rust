@@ -49,7 +49,7 @@ This phase adds more complex control flow structures and function handling.
     - [x] Implement function definitions with `fn`.
     - [x] Implement function calls.
 - **[ ] Control Flow:**
-    - [ ] `if-else` expressions.
+    - [x] `if-else` expressions.
     - [ ] `while` loops.
     - [ ] `for` loops (C-style).
 - **[ ] `switch-case` statements:**

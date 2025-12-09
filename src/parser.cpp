@@ -62,7 +62,7 @@ namespace Chtholly
             }
         }
 
-        if (match({TokenType::IDENTIFIER, TokenType::I32, TokenType::F64, TokenType::BOOL, TokenType::CHAR, TokenType::STRING}))
+        if (match({TokenType::IDENTIFIER, TokenType::I32, TokenType::F64, TokenType::BOOL, TokenType::CHAR, TokenType::STRING, TokenType::VOID}))
         {
             Token typeNameToken = previous();
             typeString += typeNameToken.lexeme;
