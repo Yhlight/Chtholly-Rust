@@ -8,6 +8,20 @@
 
 namespace Chtholly
 {
+    enum class SymbolState
+    {
+        Valid,
+        Moved
+    };
+
+    struct SymbolInfo
+    {
+        std::string type;
+        bool isMutable;
+        SymbolState state;
+        int sharedBorrowCount = 0;
+        bool mutableBorrow = false;
+    };
 
     class SemanticAnalyzer : public ExprVisitor, public StmtVisitor
     {
@@ -21,6 +35,7 @@ namespace Chtholly
         void visit(const LiteralExpr& expr) override;
         void visit(const VariableExpr& expr) override;
         void visit(const AssignExpr& expr) override;
+        void visit(const ReferenceExpr& expr) override;
 
         void visit(const ExpressionStmt& stmt) override;
         void visit(const LetStmt& stmt) override;
@@ -33,8 +48,9 @@ namespace Chtholly
         void check(const std::shared_ptr<Expr>& expr);
         void check(const std::shared_ptr<Stmt>& stmt);
 
-        SymbolTable symbolTable;
+        SymbolTable<SymbolInfo> symbolTable;
         std::unordered_set<std::string> copyTypes;
+        std::vector<std::vector<std::string>> borrowedSymbols;
 
     };
 

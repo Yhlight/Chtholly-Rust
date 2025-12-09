@@ -8,42 +8,46 @@
 
 namespace Chtholly
 {
-
-    enum class SymbolState
-    {
-        Valid,
-        Moved
-    };
-
-    struct SymbolInfo
-    {
-        std::string type;
-        bool isMutable;
-        SymbolState state;
-        int sharedBorrowCount = 0;
-        bool mutableBorrow = false;
-    };
-
+    template <typename T>
     class SymbolTable
     {
     public:
-        SymbolTable();
+        SymbolTable() { enterScope(); }
 
-        void enterScope();
-        void exitScope();
+        void enterScope() { scopes.emplace_back(); }
+        void exitScope() { scopes.pop_back(); }
 
-        bool define(const std::string& name, const SymbolInfo& info);
-        SymbolInfo* lookup(const std::string& name);
-        bool isDefinedInCurrentScope(const std::string& name) const;
-        void borrow(const std::string& name);
+        bool define(const std::string& name, const T& info)
+        {
+            if (scopes.back().find(name) != scopes.back().end())
+            {
+                return false;
+            }
+            scopes.back()[name] = info;
+            return true;
+        }
 
+        T* lookup(const std::string& name)
+        {
+            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+            {
+                auto& scope = *it;
+                auto symbolIt = scope.find(name);
+                if (symbolIt != scope.end())
+                {
+                    return &symbolIt->second;
+                }
+            }
+            return nullptr;
+        }
+
+        bool isDefinedInCurrentScope(const std::string& name) const
+        {
+            return scopes.back().count(name) > 0;
+        }
 
     private:
-        struct Scope {
-            std::unordered_map<std::string, SymbolInfo> symbols;
-            std::vector<std::string> borrowedSymbols;
-        };
-        std::vector<Scope> scopes;
+        std::vector<std::unordered_map<std::string, T>> scopes;
     };
 
 } // namespace Chtholly

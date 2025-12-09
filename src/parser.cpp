@@ -263,12 +263,17 @@ namespace Chtholly
             return std::make_shared<UnaryExpr>(op, right);
         }
 
+        return reference();
+    }
+
+    std::shared_ptr<Expr> Parser::reference()
+    {
         if (match({TokenType::AMPERSAND}))
         {
             Token op = previous();
             bool isMutable = match({TokenType::MUT});
-            std::shared_ptr<Expr> right = unary();
-            return std::make_shared<UnaryExpr>(op, right, isMutable);
+            std::shared_ptr<Expr> expr = primary();
+            return std::make_shared<ReferenceExpr>(op, expr, isMutable);
         }
 
         return primary();

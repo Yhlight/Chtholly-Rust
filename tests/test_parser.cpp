@@ -33,6 +33,7 @@ public:
 
     void visit(const Chtholly::VariableExpr& expr) override {}
     void visit(const Chtholly::AssignExpr& expr) override {}
+    void visit(const Chtholly::ReferenceExpr& expr) override {}
 
     void visit(const Chtholly::ExpressionStmt& stmt) override
     {

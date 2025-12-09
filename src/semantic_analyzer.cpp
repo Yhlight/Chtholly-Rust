@@ -16,9 +16,49 @@ namespace Chtholly
 
     void SemanticAnalyzer::analyze(const std::vector<std::shared_ptr<Stmt>>& statements)
     {
+        borrowedSymbols.emplace_back();
         for (const auto& stmt : statements)
         {
             check(stmt);
+        }
+        borrowedSymbols.pop_back();
+    }
+
+    void SemanticAnalyzer::visit(const ReferenceExpr& expr)
+    {
+        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.expression))
+        {
+            SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
+            if (!info)
+            {
+                throw std::runtime_error("Undeclared variable: " + varExpr->name.lexeme);
+            }
+
+            if (expr.isMutable)
+            {
+                if (info->sharedBorrowCount > 0 || info->mutableBorrow)
+                {
+                    throw std::runtime_error("Cannot mutably borrow '" + varExpr->name.lexeme + "' as it is already borrowed.");
+                }
+                if (!info->isMutable)
+                {
+                    throw std::runtime_error("Cannot mutably borrow immutable variable '" + varExpr->name.lexeme + "'.");
+                }
+                info->mutableBorrow = true;
+            }
+            else
+            {
+                if (info->mutableBorrow)
+                {
+                    throw std::runtime_error("Cannot immutably borrow '" + varExpr->name.lexeme + "' as it is already mutably borrowed.");
+                }
+                info->sharedBorrowCount++;
+            }
+            borrowedSymbols.back().push_back(varExpr->name.lexeme);
+        }
+        else
+        {
+            check(expr.expression);
         }
     }
 
@@ -30,43 +70,7 @@ namespace Chtholly
 
     void SemanticAnalyzer::visit(const UnaryExpr& expr)
     {
-        if (expr.op.type == TokenType::AMPERSAND)
-        {
-            if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.right))
-            {
-                SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
-                if (!info)
-                {
-                    throw std::runtime_error("Undeclared variable: " + varExpr->name.lexeme);
-                }
-
-                if (expr.isMutable)
-                {
-                    if (info->sharedBorrowCount > 0 || info->mutableBorrow)
-                    {
-                        throw std::runtime_error("Cannot mutably borrow '" + varExpr->name.lexeme + "' as it is already borrowed.");
-                    }
-                    if (!info->isMutable)
-                    {
-                        throw std::runtime_error("Cannot mutably borrow immutable variable '" + varExpr->name.lexeme + "'.");
-                    }
-                    info->mutableBorrow = true;
-                }
-                else
-                {
-                    if (info->mutableBorrow)
-                    {
-                        throw std::runtime_error("Cannot immutably borrow '" + varExpr->name.lexeme + "' as it is already mutably borrowed.");
-                    }
-                    info->sharedBorrowCount++;
-                }
-                symbolTable.borrow(varExpr->name.lexeme);
-            }
-        }
-        else
-        {
-            check(expr.right);
-        }
+        check(expr.right);
     }
 
     void SemanticAnalyzer::visit(const LiteralExpr& expr)
@@ -151,10 +155,21 @@ namespace Chtholly
     void SemanticAnalyzer::visit(const BlockStmt& stmt)
     {
         symbolTable.enterScope();
+        borrowedSymbols.emplace_back();
         for (const auto& statement : stmt.statements)
         {
             check(statement);
         }
+        for (const auto& name : borrowedSymbols.back())
+        {
+            SymbolInfo* info = symbolTable.lookup(name);
+            if (info)
+            {
+                info->sharedBorrowCount = 0;
+                info->mutableBorrow = false;
+            }
+        }
+        borrowedSymbols.pop_back();
         symbolTable.exitScope();
     }
 

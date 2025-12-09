@@ -14,6 +14,7 @@ namespace Chtholly
     struct LiteralExpr;
     struct VariableExpr;
     struct AssignExpr;
+    struct ReferenceExpr;
 
     // Visitor for Expressions
     class ExprVisitor
@@ -25,6 +26,7 @@ namespace Chtholly
         virtual void visit(const LiteralExpr& expr) = 0;
         virtual void visit(const VariableExpr& expr) = 0;
         virtual void visit(const AssignExpr& expr) = 0;
+        virtual void visit(const ReferenceExpr& expr) = 0;
     };
 
     // Base class for all expressions
@@ -85,6 +87,18 @@ namespace Chtholly
 
         AssignExpr(Token name, std::shared_ptr<Expr> value)
             : name(std::move(name)), value(std::move(value)) {}
+
+        void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct ReferenceExpr : Expr
+    {
+        Token op;
+        std::shared_ptr<Expr> expression;
+        bool isMutable;
+
+        ReferenceExpr(Token op, std::shared_ptr<Expr> expression, bool isMutable)
+            : op(std::move(op)), expression(std::move(expression)), isMutable(isMutable) {}
 
         void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
     };

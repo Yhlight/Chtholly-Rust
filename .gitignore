@@ -15,3 +15,7 @@ bin/
 
 # Executables
 chtholly
+test_*
+
+# Testing
+Testing/
