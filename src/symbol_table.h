@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 namespace Chtholly
 {
@@ -18,7 +19,8 @@ namespace Chtholly
     enum class SymbolType
     {
         Variable,
-        Function
+        Function,
+        Struct
     };
 
     struct SymbolInfo
@@ -32,6 +34,7 @@ namespace Chtholly
         int sharedBorrowCount = 0;
         bool mutableBorrow = false;
         int lifetime = 0;
+        std::unordered_map<std::string, SymbolInfo> fields;
     };
 
     class SymbolTable

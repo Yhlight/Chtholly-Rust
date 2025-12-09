@@ -59,9 +59,9 @@ This phase adds more complex control flow structures and function handling.
 
 This phase introduces user-defined data types.
 
-- **[ ] `struct`:**
-    - [ ] Implement `struct` definitions.
-    - [ ] Implement struct instantiation and field access.
+- **[x] `struct`:**
+    - [x] Implement `struct` definitions.
+    - [x] Implement struct instantiation and field access.
 - **[ ] `class`:**
     - [ ] Implement `class` definitions.
     - [ ] Implement constructors and destructors.

@@ -137,6 +137,29 @@ public:
         result += "fallthrough;";
     }
 
+    void visit(const Chtholly::StructStmt& stmt) override
+    {
+        result += "struct " + stmt.name.lexeme + " { ... }";
+    }
+
+    void visit(const Chtholly::GetExpr& expr) override
+    {
+        expr.object->accept(*this);
+        result += "." + expr.name.lexeme;
+    }
+
+    void visit(const Chtholly::SetExpr& expr) override
+    {
+        expr.object->accept(*this);
+        result += "." + expr.name.lexeme + " = ";
+        expr.value->accept(*this);
+    }
+
+    void visit(const Chtholly::StructInitializerExpr& expr) override
+    {
+        result += expr.name.lexeme + "{ ... }";
+    }
+
 private:
     std::string result;
 };

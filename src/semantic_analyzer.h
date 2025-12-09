@@ -23,6 +23,9 @@ namespace Chtholly
         void visit(const VariableExpr& expr) override;
         void visit(const AssignExpr& expr) override;
         void visit(const CallExpr& expr) override;
+        void visit(const GetExpr& expr) override;
+        void visit(const SetExpr& expr) override;
+        void visit(const StructInitializerExpr& expr) override;
 
         void visit(const ExpressionStmt& stmt) override;
         void visit(const LetStmt& stmt) override;
@@ -37,6 +40,7 @@ namespace Chtholly
         void visit(const BreakStmt& stmt) override;
         void visit(const ContinueStmt& stmt) override;
         void visit(const FallthroughStmt& stmt) override;
+        void visit(const StructStmt& stmt) override;
 
     private:
         enum class FunctionType {

@@ -31,6 +31,7 @@ namespace Chtholly
         try
         {
             if (match({TokenType::FN})) return functionDeclaration();
+            if (match({TokenType::STRUCT})) return structDeclaration();
             if (match({TokenType::LET})) {
                 bool isMutable = match({TokenType::MUT});
                 auto letStmt = letDeclaration(isMutable);
@@ -285,6 +286,10 @@ namespace Chtholly
                 Token name = varExpr->name;
                 return std::make_shared<AssignExpr>(name, value);
             }
+        else if (auto getExpr = std::dynamic_pointer_cast<GetExpr>(expr))
+        {
+            return std::make_shared<SetExpr>(getExpr->object, getExpr->name, value);
+        }
             parseError(equals, "Invalid assignment target.");
         }
 
@@ -382,7 +387,25 @@ namespace Chtholly
 
         if (match({TokenType::IDENTIFIER}))
         {
-            return std::make_shared<VariableExpr>(previous());
+            Token name = previous();
+            if (match({TokenType::LEFT_BRACE}))
+            {
+                std::vector<std::pair<Token, std::shared_ptr<Expr>>> initializers;
+                while (!check(TokenType::RIGHT_BRACE) && !isAtEnd())
+                {
+                    Token fieldName = consume(TokenType::IDENTIFIER, "Expect field name in initializer.");
+                    consume(TokenType::COLON, "Expect ':' after field name.");
+                    std::shared_ptr<Expr> value = expression();
+                    initializers.push_back({fieldName, value});
+                    if (!match({TokenType::COMMA}))
+                    {
+                        break;
+                    }
+                }
+                consume(TokenType::RIGHT_BRACE, "Expect '}' after struct initializer.");
+                return std::make_shared<StructInitializerExpr>(name, initializers);
+            }
+            return std::make_shared<VariableExpr>(name);
         }
 
         if (match({TokenType::LEFT_PAREN}))
@@ -405,6 +428,11 @@ namespace Chtholly
             if (match({TokenType::LEFT_PAREN}))
             {
                 expr = finishCall(expr);
+            }
+            else if (match({TokenType::DOT}))
+            {
+                Token name = consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
+                expr = std::make_shared<GetExpr>(expr, name);
             }
             else
             {
@@ -530,6 +558,31 @@ namespace Chtholly
         consume(TokenType::LEFT_BRACE, "Expect '{' before function body.");
         std::shared_ptr<BlockStmt> body = std::make_shared<BlockStmt>(block());
         return std::make_shared<FunctionStmt>(name, parameters, parameterTypes, returnType, body);
+    }
+
+    std::shared_ptr<Stmt> Parser::structDeclaration()
+    {
+        Token name = consume(TokenType::IDENTIFIER, "Expect struct name.");
+        consume(TokenType::LEFT_BRACE, "Expect '{' before struct body.");
+
+        std::vector<std::shared_ptr<LetStmt>> fields;
+        while (!check(TokenType::RIGHT_BRACE) && !isAtEnd())
+        {
+            if (match({TokenType::LET}))
+            {
+                bool isMutable = match({TokenType::MUT});
+                fields.push_back(std::dynamic_pointer_cast<LetStmt>(letDeclaration(isMutable)));
+                consume(TokenType::SEMICOLON, "Expect ';' after field declaration.");
+            }
+            else
+            {
+                parseError(peek(), "Expect 'let' in struct body.");
+                break;
+            }
+        }
+
+        consume(TokenType::RIGHT_BRACE, "Expect '}' after struct body.");
+        return std::make_shared<StructStmt>(name, fields);
     }
 
 } // namespace Chtholly

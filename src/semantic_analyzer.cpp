@@ -508,8 +508,79 @@ namespace Chtholly
                 }
             }
         }
+        if (auto getExpr = std::dynamic_pointer_cast<GetExpr>(expr))
+        {
+            std::string objectType = typeOf(getExpr->object);
+            SymbolInfo* structInfo = symbolTable.lookup(objectType);
+            if (structInfo && structInfo->symbolType == SymbolType::Struct)
+            {
+                auto fieldIt = structInfo->fields.find(getExpr->name.lexeme);
+                if (fieldIt != structInfo->fields.end())
+                {
+                    return fieldIt->second.type;
+                }
+            }
+        }
+        if (auto structInitializerExpr = std::dynamic_pointer_cast<StructInitializerExpr>(expr))
+        {
+            return structInitializerExpr->name.lexeme;
+        }
 
         return "unknown";
+    }
+
+    void SemanticAnalyzer::visit(const StructStmt& stmt)
+    {
+        SymbolInfo info{stmt.name.lexeme, false, SymbolState::Valid, SymbolType::Struct};
+        for (const auto& field : stmt.fields)
+        {
+            SymbolInfo fieldInfo{field->type.lexeme, field->isMutable, SymbolState::Valid};
+            info.fields[field->name.lexeme] = fieldInfo;
+        }
+        symbolTable.define(stmt.name.lexeme, info);
+    }
+
+    void SemanticAnalyzer::visit(const GetExpr& expr)
+    {
+        check(expr.object);
+    }
+
+    void SemanticAnalyzer::visit(const SetExpr& expr)
+    {
+        check(expr.value);
+        check(expr.object);
+
+        std::string objectType = typeOf(expr.object);
+        SymbolInfo* structInfo = symbolTable.lookup(objectType);
+        if (!structInfo || structInfo->symbolType != SymbolType::Struct)
+        {
+            throw std::runtime_error("Cannot access property on non-struct type.");
+        }
+
+        auto fieldIt = structInfo->fields.find(expr.name.lexeme);
+        if (fieldIt == structInfo->fields.end())
+        {
+            throw std::runtime_error("Struct " + objectType + " has no field named " + expr.name.lexeme + ".");
+        }
+
+        if (!fieldIt->second.isMutable)
+        {
+            throw std::runtime_error("Cannot assign to immutable field.");
+        }
+    }
+
+    void SemanticAnalyzer::visit(const StructInitializerExpr& expr)
+    {
+        SymbolInfo* info = symbolTable.lookup(expr.name.lexeme);
+        if (!info || info->symbolType != SymbolType::Struct)
+        {
+            throw std::runtime_error("Not a struct type: " + expr.name.lexeme);
+        }
+
+        for (const auto& initializer : expr.initializers)
+        {
+            check(initializer.second);
+        }
     }
 
 } // namespace Chtholly

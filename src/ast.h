@@ -15,6 +15,9 @@ namespace Chtholly
     struct VariableExpr;
     struct AssignExpr;
     struct CallExpr;
+    struct GetExpr;
+    struct SetExpr;
+    struct StructInitializerExpr;
 
     // Visitor for Expressions
     class ExprVisitor
@@ -27,6 +30,9 @@ namespace Chtholly
         virtual void visit(const VariableExpr& expr) = 0;
         virtual void visit(const AssignExpr& expr) = 0;
         virtual void visit(const CallExpr& expr) = 0;
+        virtual void visit(const GetExpr& expr) = 0;
+        virtual void visit(const SetExpr& expr) = 0;
+        virtual void visit(const StructInitializerExpr& expr) = 0;
     };
 
     // Base class for all expressions
@@ -103,6 +109,40 @@ namespace Chtholly
         void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
     };
 
+    struct GetExpr : Expr
+    {
+        std::shared_ptr<Expr> object;
+        Token name;
+
+        GetExpr(std::shared_ptr<Expr> object, Token name)
+            : object(std::move(object)), name(std::move(name)) {}
+
+        void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct SetExpr : Expr
+    {
+        std::shared_ptr<Expr> object;
+        Token name;
+        std::shared_ptr<Expr> value;
+
+        SetExpr(std::shared_ptr<Expr> object, Token name, std::shared_ptr<Expr> value)
+            : object(std::move(object)), name(std::move(name)), value(std::move(value)) {}
+
+        void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct StructInitializerExpr : Expr
+    {
+        Token name;
+        std::vector<std::pair<Token, std::shared_ptr<Expr>>> initializers;
+
+        StructInitializerExpr(Token name, std::vector<std::pair<Token, std::shared_ptr<Expr>>> initializers)
+            : name(std::move(name)), initializers(std::move(initializers)) {}
+
+        void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
 
     // Forward declarations for Statements
     struct ExpressionStmt;
@@ -118,6 +158,7 @@ namespace Chtholly
     struct BreakStmt;
     struct ContinueStmt;
     struct FallthroughStmt;
+    struct StructStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -137,6 +178,7 @@ namespace Chtholly
         virtual void visit(const BreakStmt& stmt) = 0;
         virtual void visit(const ContinueStmt& stmt) = 0;
         virtual void visit(const FallthroughStmt& stmt) = 0;
+        virtual void visit(const StructStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -286,6 +328,17 @@ namespace Chtholly
         Token keyword;
 
         FallthroughStmt(Token keyword) : keyword(std::move(keyword)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct StructStmt : Stmt
+    {
+        Token name;
+        std::vector<std::shared_ptr<LetStmt>> fields;
+
+        StructStmt(Token name, std::vector<std::shared_ptr<LetStmt>> fields)
+            : name(std::move(name)), fields(std::move(fields)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };
