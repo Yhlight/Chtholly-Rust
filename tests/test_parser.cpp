@@ -1,0 +1,96 @@
+#include "parser.h"
+#include "ast.h"
+#include "lexer.h"
+#include <iostream>
+#include <vector>
+#include <cassert>
+#include <variant>
+
+// A simple AST visitor to check the structure of the parsed tree
+class AstPrinter : public Chtholly::ExprVisitor, public Chtholly::StmtVisitor
+{
+public:
+    std::string print(const std::shared_ptr<Chtholly::Stmt>& stmt)
+    {
+        stmt->accept(*this);
+        return result;
+    }
+
+    void visit(const Chtholly::BinaryExpr& expr) override {}
+    void visit(const Chtholly::UnaryExpr& expr) override {}
+
+    void visit(const Chtholly::LiteralExpr& expr) override
+    {
+        std::visit([this](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, int>) result += std::to_string(arg);
+            else if constexpr (std::is_same_v<T, double>) result += std::to_string(arg);
+            else if constexpr (std::is_same_v<T, std::string>) result += arg;
+            else if constexpr (std::is_same_v<T, char>) result += arg;
+            else if constexpr (std::is_same_v<T, bool>) result += (arg ? "true" : "false");
+        }, expr.value);
+    }
+
+    void visit(const Chtholly::VariableExpr& expr) override {}
+    void visit(const Chtholly::AssignExpr& expr) override {}
+    void visit(const Chtholly::ExpressionStmt& stmt) override {}
+
+    void visit(const Chtholly::LetStmt& stmt) override
+    {
+        result = "let " + stmt.name.lexeme;
+        if (stmt.isMutable)
+        {
+            result += " mut";
+        }
+        if (stmt.initializer)
+        {
+            result += " = ";
+            stmt.initializer->accept(*this);
+        }
+        result += ";";
+    }
+
+private:
+    std::string result;
+};
+
+
+void test_simple_let_statement()
+{
+    std::string source = "let x = 10;";
+    Chtholly::Lexer lexer(source);
+    std::vector<Chtholly::Token> tokens = lexer.scanTokens();
+    Chtholly::Parser parser(tokens);
+    std::vector<std::shared_ptr<Chtholly::Stmt>> statements = parser.parse();
+
+    assert(statements.size() == 1);
+
+    AstPrinter printer;
+    std::string output = printer.print(statements[0]);
+
+    assert(output == "let x = 10;");
+
+    std::cout << "test_simple_let_statement passed." << std::endl;
+}
+
+void test_invalid_assignment()
+{
+    std::string source = "5 = 10;";
+    Chtholly::Lexer lexer(source);
+    std::vector<Chtholly::Token> tokens = lexer.scanTokens();
+    Chtholly::Parser parser(tokens);
+    std::vector<std::shared_ptr<Chtholly::Stmt>> statements = parser.parse();
+
+    assert(statements.size() == 1);
+    assert(statements[0] == nullptr);
+
+    std::cout << "test_invalid_assignment passed." << std::endl;
+}
+
+
+int main()
+{
+    test_simple_let_statement();
+    test_invalid_assignment();
+    return 0;
+}
