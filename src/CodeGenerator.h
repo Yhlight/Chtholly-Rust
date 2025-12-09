@@ -21,6 +21,7 @@ private:
     std::map<std::string, llvm::Value*> namedValues;
     TypeResolver typeResolver;
 
+    void declarePrintf();
     llvm::Type* resolveType(const TypeNameAST& typeName);
 
     llvm::Value* visit(ASTNode& node);
@@ -29,7 +30,11 @@ private:
     llvm::Value* visit(BlockStmtAST& node);
     llvm::Value* visit(BinaryExprAST& node);
     llvm::Value* visit(NumberExprAST& node);
+    llvm::Value* visit(StringExprAST& node);
     llvm::Value* visit(VariableExprAST& node);
+    llvm::Value* visit(FunctionCallExprAST& node);
+    llvm::Value* visit(ExprStmtAST& node);
+    llvm::Value* visit(ReturnStmtAST& node);
 };
 
 #endif // CHTHOLLY_CODEGENERATOR_H

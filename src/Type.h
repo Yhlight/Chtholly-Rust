@@ -64,6 +64,18 @@ public:
     }
 };
 
+class FunctionType : public Type {
+public:
+    std::shared_ptr<Type> returnType;
+    std::vector<std::shared_ptr<Type>> argTypes;
+
+    FunctionType() : Type(TK_Function) {}
+
+    std::string toString() const override {
+        return "function";
+    }
+};
+
 
 // ... other type classes can be added here ...
 

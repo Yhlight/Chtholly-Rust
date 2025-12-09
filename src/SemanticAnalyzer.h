@@ -14,6 +14,7 @@ public:
 private:
     SymbolTable symbolTable;
     TypeResolver typeResolver;
+    FunctionDeclAST* currentFunction = nullptr;
 
     std::shared_ptr<Type> visit(ASTNode& node);
     std::shared_ptr<Type> visit(VarDeclStmtAST& node);
@@ -23,6 +24,9 @@ private:
     std::shared_ptr<Type> visit(NumberExprAST& node);
     std::shared_ptr<Type> visit(StringExprAST& node);
     std::shared_ptr<Type> visit(VariableExprAST& node);
+    std::shared_ptr<Type> visit(FunctionCallExprAST& node);
+    std::shared_ptr<Type> visit(ExprStmtAST& node);
+    std::shared_ptr<Type> visit(ReturnStmtAST& node);
     std::shared_ptr<Type> visit(TypeNameAST& node);
 };
 

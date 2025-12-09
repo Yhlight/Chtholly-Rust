@@ -80,8 +80,49 @@ public:
     }
 };
 
+// Expression class for a function call
+class FunctionCallExprAST : public ExprAST {
+public:
+    std::string callee;
+    std::vector<std::unique_ptr<ExprAST>> args;
+    FunctionCallExprAST(const std::string& callee, std::vector<std::unique_ptr<ExprAST>> args)
+        : callee(callee), args(std::move(args)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "FunctionCallExprAST: " << callee << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+        for (const auto& arg : args) {
+            arg->print(level + 1);
+        }
+    }
+};
+
+
 // Base class for all statement nodes
 class StmtAST : public ASTNode {};
+
+// Statement class for wrapping an expression
+class ExprStmtAST : public StmtAST {
+public:
+    std::unique_ptr<ExprAST> expr;
+    ExprStmtAST(std::unique_ptr<ExprAST> expr) : expr(std::move(expr)) {}
+    void print(int level = 0) const override {
+        expr->print(level);
+    }
+};
+
+// Statement class for a return statement
+class ReturnStmtAST : public StmtAST {
+public:
+    std::unique_ptr<ExprAST> returnValue;
+    ReturnStmtAST(std::unique_ptr<ExprAST> returnValue) : returnValue(std::move(returnValue)) {}
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "ReturnStmtAST:" << std::endl;
+        if (returnValue) {
+            returnValue->print(level + 1);
+        }
+    }
+};
+
 
 // Statement class for variable declarations
 class VarDeclStmtAST : public StmtAST {

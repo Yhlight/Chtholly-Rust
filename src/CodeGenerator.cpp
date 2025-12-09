@@ -9,6 +9,7 @@ CodeGenerator::CodeGenerator() {
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>("ChthollyModule", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
+    declarePrintf();
 }
 
 void CodeGenerator::generate(BlockStmtAST& ast) {
@@ -19,9 +20,28 @@ void CodeGenerator::dump() const {
     module->print(llvm::errs(), nullptr);
 }
 
+void CodeGenerator::declarePrintf() {
+    llvm::Type* i8_ptr_type = builder->getInt8Ty()->getPointerTo();
+    llvm::FunctionType* printf_type = llvm::FunctionType::get(builder->getInt32Ty(), {i8_ptr_type}, true);
+    module->getOrInsertFunction("printf", printf_type);
+}
+
+
 llvm::Type* CodeGenerator::resolveType(const TypeNameAST& typeName) {
     if (typeName.name == "i32") {
         return builder->getInt32Ty();
+    }
+    if (typeName.name == "f64") {
+        return builder->getDoubleTy();
+    }
+    if (typeName.name == "string") {
+        return builder->getInt8Ty()->getPointerTo();
+    }
+    if (typeName.name == "bool") {
+        return builder->getInt1Ty();
+    }
+    if (typeName.name == "void") {
+        return builder->getVoidTy();
     }
     // Add other types here
     throw std::runtime_error("Unknown type '" + typeName.name + "' in code generator");
@@ -39,7 +59,15 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<NumberExprAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<StringExprAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<VariableExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<FunctionCallExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ExprStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ReturnStmtAST*>(&node)) {
         return visit(*p);
     }
     return nullptr;
@@ -50,8 +78,8 @@ llvm::Value* CodeGenerator::visit(VarDeclStmtAST& node) {
     if (node.initExpr) {
         initVal = visit(*node.initExpr);
     } else {
-        // Default initialize to 0
-        initVal = llvm::ConstantInt::get(*context, llvm::APInt(32, 0));
+        // This should be caught by the semantic analyzer
+        throw std::runtime_error("Variable declaration without initializer in code generator");
     }
 
     // For now, all variables are stack allocated.
@@ -75,12 +103,15 @@ llvm::Value* CodeGenerator::visit(FunctionDeclAST& node) {
     builder->SetInsertPoint(basicBlock);
 
     namedValues.clear(); // Clear old variables
-    visit(*node.body);
-
-    // For now, we'll add a default return if one is not present
-    if (basicBlock->getTerminator() == nullptr) {
-        builder->CreateRet(llvm::ConstantInt::get(*context, llvm::APInt(32, 0, true)));
+    unsigned i = 0;
+    for (auto& arg : function->args()) {
+        llvm::AllocaInst* alloca = builder->CreateAlloca(arg.getType(), nullptr, node.args[i].name);
+        builder->CreateStore(&arg, alloca);
+        namedValues[node.args[i].name] = alloca;
+        i++;
     }
+
+    visit(*node.body);
 
     return function;
 }
@@ -114,7 +145,14 @@ llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
 }
 
 llvm::Value* CodeGenerator::visit(NumberExprAST& node) {
+    if (node.type->isFloat()) {
+        return llvm::ConstantFP::get(*context, llvm::APFloat(node.value));
+    }
     return llvm::ConstantInt::get(*context, llvm::APInt(32, node.value, true));
+}
+
+llvm::Value* CodeGenerator::visit(StringExprAST& node) {
+    return builder->CreateGlobalStringPtr(node.value);
 }
 
 llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
@@ -127,4 +165,40 @@ llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
         return builder->CreateLoad(alloca->getAllocatedType(), v, node.name.c_str());
     }
     return v;
+}
+
+llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
+    llvm::Function* callee = module->getFunction(node.callee);
+    if (!callee) {
+        // A temporary hack to support printf
+        if (node.callee == "println") {
+            callee = module->getFunction("printf");
+            if (!callee) throw std::runtime_error("Could not find printf function");
+        } else {
+            throw std::runtime_error("Unknown function referenced: " + node.callee);
+        }
+    }
+
+    if (callee->arg_size() != node.args.size() && callee->isVarArg() == false) {
+        throw std::runtime_error("Incorrect number of arguments passed to function " + node.callee);
+    }
+
+    std::vector<llvm::Value*> argValues;
+    for (auto& arg : node.args) {
+        argValues.push_back(visit(*arg));
+    }
+
+    return builder->CreateCall(callee, argValues, "calltmp");
+}
+
+llvm::Value* CodeGenerator::visit(ExprStmtAST& node) {
+    return visit(*node.expr);
+}
+
+llvm::Value* CodeGenerator::visit(ReturnStmtAST& node) {
+    if (node.returnValue) {
+        return builder->CreateRet(visit(*node.returnValue));
+    } else {
+        return builder->CreateRetVoid();
+    }
 }

@@ -34,8 +34,33 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::FN) {
         return parse_function_definition();
     }
-    throw std::runtime_error("Unexpected token '" + peek().value + "' at line " + std::to_string(peek().line) + ", column " + std::to_string(peek().column));
+    if (peek().type == TokenType::RETURN) {
+        return parse_return_statement();
+    }
+    return parse_expression_statement();
 }
+
+std::unique_ptr<StmtAST> Parser::parse_return_statement() {
+    advance(); // consume 'return'
+    std::unique_ptr<ExprAST> value = nullptr;
+    if (peek().type != TokenType::SEMICOLON) {
+        value = parse_expression();
+    }
+    if (peek().type != TokenType::SEMICOLON) {
+        throw std::runtime_error("Expected ';' after return value");
+    }
+    advance(); // consume ';'
+    return std::make_unique<ReturnStmtAST>(std::move(value));
+}
+
+std::unique_ptr<StmtAST> Parser::parse_expression_statement() {
+    auto expr = parse_expression();
+    if (peek().type == TokenType::SEMICOLON) {
+        advance(); // consume ';'
+    }
+    return std::make_unique<ExprStmtAST>(std::move(expr));
+}
+
 
 std::unique_ptr<StmtAST> Parser::parse_variable_declaration() {
     advance(); // consume 'let'
@@ -145,26 +170,52 @@ std::unique_ptr<ExprAST> Parser::parse_expression() {
 }
 
 std::unique_ptr<ExprAST> Parser::parse_primary() {
-    if (peek().type == TokenType::INTEGER_LITERAL || peek().type == TokenType::FLOAT_LITERAL) {
-        return std::make_unique<NumberExprAST>(std::stod(advance().value));
+    auto expr = [this]() -> std::unique_ptr<ExprAST> {
+        if (peek().type == TokenType::INTEGER_LITERAL || peek().type == TokenType::FLOAT_LITERAL) {
+            return std::make_unique<NumberExprAST>(std::stod(advance().value));
+        }
+        if (peek().type == TokenType::STRING_LITERAL) {
+            return std::make_unique<StringExprAST>(advance().value);
+        }
+        if (peek().type == TokenType::IDENTIFIER) {
+            return std::make_unique<VariableExprAST>(advance().value);
+        }
+        if (peek().type == TokenType::LEFT_PAREN) {
+            advance(); // consume '('
+            auto expr = parse_expression();
+            if (peek().type != TokenType::RIGHT_PAREN) {
+                throw std::runtime_error("Expected ')' after expression");
+            }
+            advance(); // consume ')'
+            return expr;
+        }
+        return nullptr;
+    }();
+
+    if (expr && peek().type == TokenType::LEFT_PAREN) {
+        return parse_call_expression(std::move(expr));
     }
-    if (peek().type == TokenType::STRING_LITERAL) {
-        return std::make_unique<StringExprAST>(advance().value);
-    }
-    if (peek().type == TokenType::IDENTIFIER) {
-        return std::make_unique<VariableExprAST>(advance().value);
-    }
-    if (peek().type == TokenType::LEFT_PAREN) {
+    return expr;
+}
+
+std::unique_ptr<ExprAST> Parser::parse_call_expression(std::unique_ptr<ExprAST> callee) {
+    if (auto* var = dynamic_cast<VariableExprAST*>(callee.get())) {
+        std::vector<std::unique_ptr<ExprAST>> args;
         advance(); // consume '('
-        auto expr = parse_expression();
-        if (peek().type != TokenType::RIGHT_PAREN) {
-            throw std::runtime_error("Expected ')' after expression");
+        while (peek().type != TokenType::RIGHT_PAREN) {
+            args.push_back(parse_expression());
+            if (peek().type == TokenType::COMMA) {
+                advance(); // consume ','
+            } else if (peek().type != TokenType::RIGHT_PAREN) {
+                throw std::runtime_error("Expected ',' or ')' in argument list");
+            }
         }
         advance(); // consume ')'
-        return expr;
+        return std::make_unique<FunctionCallExprAST>(var->name, std::move(args));
     }
-    return nullptr;
+    throw std::runtime_error("Expected a variable name for a function call");
 }
+
 
 int Parser::get_token_precedence() {
     switch (peek().type) {
