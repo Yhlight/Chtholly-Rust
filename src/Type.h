@@ -29,6 +29,8 @@ public:
     bool isBool() const { return kind == TK_Bool; }
     // Add more checks as needed
 
+    virtual bool isCopy() const { return false; }
+
     virtual std::string toString() const = 0;
 };
 
@@ -43,6 +45,8 @@ public:
     std::string toString() const override {
         return (isSigned ? "i" : "u") + std::to_string(bitwidth);
     }
+
+    bool isCopy() const override { return true; }
 };
 
 class FloatType : public Type {
@@ -54,6 +58,8 @@ public:
     std::string toString() const override {
         return "f" + std::to_string(bitwidth);
     }
+
+    bool isCopy() const override { return true; }
 };
 
 class StringType : public Type {
@@ -72,6 +78,8 @@ public:
     std::string toString() const override {
         return "bool";
     }
+
+    bool isCopy() const override { return true; }
 };
 
 class FunctionType : public Type {

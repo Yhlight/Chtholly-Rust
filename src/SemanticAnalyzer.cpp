@@ -57,7 +57,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
         initType = visit(*node.initExpr);
         if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
             Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
-            if (rhsSymbol) {
+            if (rhsSymbol && !rhsSymbol->type->isCopy()) {
                 rhsSymbol->isMoved = true;
             }
         }
@@ -154,7 +154,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
             }
             if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
                 Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
-                if (rhsSymbol) {
+                if (rhsSymbol && !rhsSymbol->type->isCopy()) {
                     rhsSymbol->isMoved = true;
                 }
             }
@@ -222,7 +222,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
         visit(*arg);
         if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
             Symbol* argSymbol = symbolTable.findSymbol(varExpr->name);
-            if (argSymbol) {
+            if (argSymbol && !argSymbol->type->isCopy()) {
                 argSymbol->isMoved = true;
             }
         }
