@@ -21,6 +21,7 @@ pub enum CompileError {
 
 type CompileResult<T> = Result<T, CompileError>;
 
+#[derive(Clone)]
 pub enum Value<'ctx> {
     Integer(inkwell::values::IntValue<'ctx>),
     Float(inkwell::values::FloatValue<'ctx>),
@@ -158,14 +159,46 @@ impl<'ctx> Compiler<'ctx> {
 
                 self.builder.position_at_end(after_loop_bb);
             }
-            ASTNode::AssignmentExpression { name, value } => {
-                let (ptr, _, is_mutable) = self.variables.get(name).ok_or(CompileError::UndefinedVariable(name.clone()))?;
-                if !is_mutable {
-                    return Err(CompileError::CannotAssignToImmutableVariable(name.clone()));
+            ASTNode::ForStatement { init, condition, increment, body } => {
+                let function = self.builder.get_insert_block().unwrap().get_parent().unwrap();
+
+                if let Some(init) = init {
+                    self.compile_statement(init)?;
                 }
 
-                let value = self.compile_expression(value)?;
-                self.builder.build_store(*ptr, value.to_basic_value())?;
+                let loop_cond_bb = self.context.append_basic_block(function, "loop_cond");
+                let loop_body_bb = self.context.append_basic_block(function, "loop_body");
+                let loop_inc_bb = self.context.append_basic_block(function, "loop_inc");
+                let after_loop_bb = self.context.append_basic_block(function, "after_loop");
+
+                self.builder.build_unconditional_branch(loop_cond_bb)?;
+                self.builder.position_at_end(loop_cond_bb);
+
+                if let Some(condition) = condition {
+                    let condition_value = self.compile_expression(condition)?;
+                    let condition_value = match condition_value {
+                        Value::Bool(v) => v,
+                        _ => return Err(CompileError::MissingTypeAnnotation),
+                    };
+                    self.builder.build_conditional_branch(condition_value, loop_body_bb, after_loop_bb)?;
+                } else {
+                    self.builder.build_unconditional_branch(loop_body_bb)?;
+                }
+
+                self.builder.position_at_end(loop_body_bb);
+                self.compile_block(body)?;
+                self.builder.build_unconditional_branch(loop_inc_bb)?;
+
+                self.builder.position_at_end(loop_inc_bb);
+                if let Some(increment) = increment {
+                    let _ = self.compile_expression(increment)?;
+                }
+                self.builder.build_unconditional_branch(loop_cond_bb)?;
+
+                self.builder.position_at_end(after_loop_bb);
+            }
+            ASTNode::AssignmentExpression { name, value } => {
+                self.compile_assignment(name, value)?;
             }
             ASTNode::VariableDeclaration {
                 name,
@@ -320,9 +353,10 @@ impl<'ctx> Compiler<'ctx> {
                             }
                         }
                     }
-                    _ => todo!(), // Handle other types
+                    _ => todo!(),
                 }
             }
+            ASTNode::AssignmentExpression { name, value } => self.compile_assignment(name, value),
             _ => todo!(),
         }
     }
@@ -332,6 +366,17 @@ impl<'ctx> Compiler<'ctx> {
             self.compile_statement(node)?;
         }
         Ok(())
+    }
+
+    fn compile_assignment(&self, name: &str, value_node: &ASTNode) -> CompileResult<Value<'ctx>> {
+        let (ptr, _, is_mutable) = self.variables.get(name).ok_or_else(|| CompileError::UndefinedVariable(name.to_string()))?;
+        if !*is_mutable {
+            return Err(CompileError::CannotAssignToImmutableVariable(name.to_string()));
+        }
+
+        let value = self.compile_expression(value_node)?;
+        self.builder.build_store(*ptr, value.clone().to_basic_value())?;
+        Ok(value)
     }
 
     pub fn to_string(&self) -> String {

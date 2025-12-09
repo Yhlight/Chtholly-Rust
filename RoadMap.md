@@ -20,7 +20,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [ ] **Control Flow:**
     - [x] if-else statements.
     - [x] while loops.
-    - [ ] for loops.
+    - [x] for loops.
 - [x] **Assignment:**
     - [x] Variable assignment (e.g., `a = 10;`).
 - [ ] **Functions:**

@@ -361,4 +361,77 @@ mod tests {
 
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_parse_for_statement() {
+        let code = r#"
+            fn main() {
+                for (let i = 0; i < 10; i = i + 1) {
+                    let a = 10;
+                }
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        assert_eq!(
+            ast,
+            vec![
+                ASTNode::Function {
+                    name: "main".to_string(),
+                    args: vec![],
+                    body: vec![
+                        ASTNode::ForStatement {
+                            init: Some(Box::new(ASTNode::VariableDeclaration {
+                                is_mutable: false,
+                                name: "i".to_string(),
+                                type_annotation: None,
+                                value: Some(Box::new(ASTNode::IntegerLiteral(0))),
+                            })),
+                            condition: Some(Box::new(ASTNode::BinaryExpression {
+                                op: BinaryOperator::LessThan,
+                                left: Box::new(ASTNode::Identifier("i".to_string())),
+                                right: Box::new(ASTNode::IntegerLiteral(10)),
+                            })),
+                            increment: Some(Box::new(ASTNode::AssignmentExpression {
+                                name: "i".to_string(),
+                                value: Box::new(ASTNode::BinaryExpression {
+                                    op: BinaryOperator::Add,
+                                    left: Box::new(ASTNode::Identifier("i".to_string())),
+                                    right: Box::new(ASTNode::IntegerLiteral(1)),
+                                }),
+                            })),
+                            body: vec![
+                                ASTNode::VariableDeclaration {
+                                    is_mutable: false,
+                                    name: "a".to_string(),
+                                    type_annotation: None,
+                                    value: Some(Box::new(ASTNode::IntegerLiteral(10))),
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_compile_for_statement() {
+        let code = r#"
+            fn main() {
+                for (let mut i = 0; i < 10; i = i + 1) {
+                    let a = 10;
+                }
+            }
+        "#;
+        let parser = Parser::new(code).unwrap();
+        let ast = parser.parse().unwrap();
+
+        let context = Context::create();
+        let mut compiler = Compiler::new(&context);
+        compiler.compile(&ast).unwrap();
+
+        insta::assert_snapshot!(compiler.to_string());
+    }
 }

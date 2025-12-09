@@ -1,0 +1,32 @@
+---
+source: src/lib.rs
+expression: compiler.to_string()
+---
+; ModuleID = 'chtholly'
+source_filename = "chtholly"
+
+define i32 @main() {
+entry:
+  %i = alloca i32, align 4
+  store i32 0, ptr %i, align 4
+  br label %loop_cond
+
+loop_cond:                                        ; preds = %loop_inc, %entry
+  %i1 = load i32, ptr %i, align 4
+  %lttmp = icmp slt i32 %i1, 10
+  br i1 %lttmp, label %loop_body, label %after_loop
+
+loop_body:                                        ; preds = %loop_cond
+  %a = alloca i32, align 4
+  store i32 10, ptr %a, align 4
+  br label %loop_inc
+
+loop_inc:                                         ; preds = %loop_body
+  %i2 = load i32, ptr %i, align 4
+  %addtmp = add i32 %i2, 1
+  store i32 %addtmp, ptr %i, align 4
+  br label %loop_cond
+
+after_loop:                                       ; preds = %loop_cond
+  ret i32 0
+}

@@ -57,4 +57,10 @@ pub enum ASTNode {
         value: Box<ASTNode>,
     },
     Comment(String),
+    ForStatement {
+        init: Option<Box<ASTNode>>,
+        condition: Option<Box<ASTNode>>,
+        increment: Option<Box<ASTNode>>,
+        body: Vec<ASTNode>,
+    },
 }

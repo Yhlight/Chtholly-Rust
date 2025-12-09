@@ -52,6 +52,7 @@ impl<'a> Parser<'a> {
             &Token::Let => self.parse_variable_declaration(tokens),
             &Token::If => self.parse_if_statement(tokens),
             &Token::While => self.parse_while_statement(tokens),
+            &Token::For => self.parse_for_statement(tokens),
             Token::Identifier(_) => {
                 let mut temp_tokens = tokens.clone();
                 temp_tokens.next();
@@ -296,5 +297,63 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    fn parse_for_statement(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
+        tokens.next();
+
+        if tokens.next() != Some(&Token::LParen) {
+            return Err(ParserError::UnexpectedToken);
+        }
+
+        let init = if tokens.peek() != Some(&&Token::Semicolon) {
+            Some(Box::new(self.parse_statement(tokens)?))
+        } else {
+            None
+        };
+
+        if tokens.peek() == Some(&&Token::Semicolon) {
+            tokens.next();
+        }
+
+        let condition = if tokens.peek() != Some(&&Token::Semicolon) {
+            Some(Box::new(self.parse_expression(tokens)?))
+        } else {
+            None
+        };
+
+        if tokens.peek() == Some(&&Token::Semicolon) {
+            tokens.next();
+        }
+
+        let increment = if tokens.peek() != Some(&&Token::RParen) {
+            Some(Box::new(self.parse_expression_or_assignment(tokens)?))
+        } else {
+            None
+        };
+
+        if tokens.next() != Some(&Token::RParen) {
+            return Err(ParserError::UnexpectedToken);
+        }
+
+        let body = self.parse_block(tokens)?;
+
+        Ok(ASTNode::ForStatement {
+            init,
+            condition,
+            increment,
+            body,
+        })
+    }
+
+    fn parse_expression_or_assignment(&self, tokens: &mut Peekable<Iter<Token>>) -> ParseResult<ASTNode> {
+        if let Some(Token::Identifier(_)) = tokens.peek() {
+            let mut temp_tokens = tokens.clone();
+            temp_tokens.next();
+            if temp_tokens.peek() == Some(&&Token::Assign) {
+                return self.parse_assignment_expression(tokens);
+            }
+        }
+        self.parse_expression(tokens)
     }
 }
