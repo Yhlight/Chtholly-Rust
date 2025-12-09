@@ -9,10 +9,10 @@ This phase focuses on implementing the fundamental features of the language, inc
 *   **Lexer:** Implemented.
 *   **Parser:** In-progress. Implemented variable declarations and expression parsing (unary, binary, grouping).
 *   **AST:** In-progress. Expanded to include nodes for various expression types.
-*   **Basic Semantic Analysis:**
-    *   **Type System:** Implement the basic type system, including primitive types, arrays, and strings.
-    *   **Variable Declarations:** Support for `let` and `let mut` variable declarations.
-    *   **Scope Management:** Implement symbol tables to manage scopes and variable visibility.
+*   **Basic Semantic Analysis:** In-progress.
+    *   **Interpreter:** Implemented a tree-walk interpreter for executing ASTs.
+    *   **Scope Management:** Implemented a symbol table (Environment) to manage variable scopes.
+    *   **Expression Evaluation:** The interpreter can evaluate arithmetic and logical expressions.
 
 ## Phase 2: Ownership and Borrowing
 
