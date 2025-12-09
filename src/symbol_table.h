@@ -15,11 +15,20 @@ namespace Chtholly
         Moved
     };
 
+    enum class SymbolType
+    {
+        Variable,
+        Function
+    };
+
     struct SymbolInfo
     {
         std::string type;
         bool isMutable;
         SymbolState state;
+        SymbolType symbolType = SymbolType::Variable;
+        std::vector<std::string> parameterTypes;
+        std::string returnType;
         int sharedBorrowCount = 0;
         bool mutableBorrow = false;
         int lifetime = 0;

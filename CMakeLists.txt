@@ -20,3 +20,7 @@ add_test(NAME test_parser COMMAND test_parser)
 add_executable(test_semantic_analyzer tests/test_semantic_analyzer.cpp src/lexer.cpp src/parser.cpp src/semantic_analyzer.cpp src/symbol_table.cpp)
 target_include_directories(test_semantic_analyzer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_test(NAME test_semantic_analyzer COMMAND test_semantic_analyzer)
+
+add_executable(test_functions tests/test_functions.cpp src/lexer.cpp src/parser.cpp src/semantic_analyzer.cpp src/symbol_table.cpp)
+target_include_directories(test_functions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME test_functions COMMAND test_functions)

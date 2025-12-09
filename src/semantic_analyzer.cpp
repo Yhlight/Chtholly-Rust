@@ -140,12 +140,21 @@ namespace Chtholly
             throw std::runtime_error("Variable '" + stmt.name.lexeme + "' already defined in this scope.");
         }
 
-        SymbolInfo info{stmt.type.lexeme, stmt.isMutable, SymbolState::Valid};
+        std::string varType = stmt.type.lexeme;
+        if (stmt.initializer)
+        {
+            check(stmt.initializer);
+            if (varType.empty())
+            {
+                varType = typeOf(stmt.initializer);
+            }
+        }
+
+        SymbolInfo info{varType, stmt.isMutable, SymbolState::Valid};
         symbolTable.define(stmt.name.lexeme, info);
 
         if (stmt.initializer)
         {
-            check(stmt.initializer);
             SymbolInfo* lhsInfo = symbolTable.lookup(stmt.name.lexeme);
             checkForDanglingReference(lhsInfo, stmt.initializer);
         }
@@ -222,6 +231,170 @@ namespace Chtholly
                 }
             }
         }
+    }
+
+    void SemanticAnalyzer::visit(const FunctionStmt& stmt)
+    {
+        SymbolInfo funcInfo;
+        funcInfo.symbolType = SymbolType::Function;
+        funcInfo.returnType = stmt.returnType.lexeme;
+        for (const auto& paramType : stmt.parameterTypes)
+        {
+            funcInfo.parameterTypes.push_back(paramType.lexeme);
+        }
+        symbolTable.define(stmt.name.lexeme, funcInfo);
+
+        FunctionType enclosingFunction = currentFunction;
+        currentFunction = FunctionType::FUNCTION;
+        std::string enclosingReturnType = currentReturnType;
+        currentReturnType = funcInfo.returnType;
+
+        symbolTable.enterScope();
+        for (size_t i = 0; i < stmt.parameters.size(); ++i)
+        {
+            SymbolInfo paramInfo{stmt.parameterTypes[i].lexeme, false, SymbolState::Valid};
+            symbolTable.define(stmt.parameters[i].lexeme, paramInfo);
+        }
+
+        for (const auto& statement : stmt.body->statements)
+        {
+            check(statement);
+        }
+        symbolTable.exitScope();
+        currentFunction = enclosingFunction;
+        currentReturnType = enclosingReturnType;
+    }
+
+    void SemanticAnalyzer::visit(const ReturnStmt& stmt)
+    {
+        if (currentFunction == FunctionType::NONE)
+        {
+            throw std::runtime_error("Cannot return from top-level code.");
+        }
+
+        if (stmt.value)
+        {
+            std::string valueType = typeOf(stmt.value);
+            if (valueType != currentReturnType)
+            {
+                throw std::runtime_error("Return type mismatch. Expected " + currentReturnType + " but got " + valueType + ".");
+            }
+
+            if (auto unaryExpr = std::dynamic_pointer_cast<UnaryExpr>(stmt.value))
+            {
+                if (unaryExpr->op.type == TokenType::AMPERSAND)
+                {
+                    if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(unaryExpr->right))
+                    {
+                        SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
+                        if (info && info->lifetime == symbolTable.getCurrentLifetime())
+                        {
+                            throw std::runtime_error("Cannot return a reference to a local variable.");
+                        }
+                    }
+                }
+            }
+        }
+        else if (currentReturnType != "void")
+        {
+            throw std::runtime_error("Return type mismatch. Expected " + currentReturnType + " but got void.");
+        }
+    }
+
+    void SemanticAnalyzer::visit(const CallExpr& expr)
+    {
+        check(expr.callee);
+
+        for (const auto& arg : expr.arguments)
+        {
+            check(arg);
+        }
+
+        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.callee))
+        {
+            SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
+            if (!info || info->symbolType != SymbolType::Function)
+            {
+                throw std::runtime_error("Can only call functions and classes.");
+            }
+
+            if (expr.arguments.size() != info->parameterTypes.size())
+            {
+                throw std::runtime_error("Expected " + std::to_string(info->parameterTypes.size()) + " arguments but got " + std::to_string(expr.arguments.size()) + ".");
+            }
+
+            for (size_t i = 0; i < expr.arguments.size(); ++i)
+            {
+                std::string argType = typeOf(expr.arguments[i]);
+                if (argType != info->parameterTypes[i])
+                {
+                    throw std::runtime_error("Argument type mismatch for parameter " + std::to_string(i + 1) + ". Expected " + info->parameterTypes[i] + " but got " + argType + ".");
+                }
+            }
+        }
+    }
+
+    std::string SemanticAnalyzer::typeOf(const std::shared_ptr<Expr>& expr)
+    {
+        if (auto literalExpr = std::dynamic_pointer_cast<LiteralExpr>(expr))
+        {
+            return std::visit([](auto&& arg) -> std::string {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, int>) return "i32";
+                if constexpr (std::is_same_v<T, double>) return "f64";
+                if constexpr (std::is_same_v<T, std::string>) return "string";
+                if constexpr (std::is_same_v<T, char>) return "char";
+                if constexpr (std::is_same_v<T, bool>) return "bool";
+                return "unknown";
+            }, literalExpr->value);
+        }
+
+        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr))
+        {
+            SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
+            if (info)
+            {
+                return info->type;
+            }
+        }
+
+        if (auto binaryExpr = std::dynamic_pointer_cast<BinaryExpr>(expr))
+        {
+            switch (binaryExpr->op.type)
+            {
+                case TokenType::GREATER:
+                case TokenType::GREATER_EQUAL:
+                case TokenType::LESS:
+                case TokenType::LESS_EQUAL:
+                case TokenType::BANG_EQUAL:
+                case TokenType::EQUAL_EQUAL:
+                    return "bool";
+                default:
+                    return typeOf(binaryExpr->left);
+            }
+        }
+
+        if (auto unaryExpr = std::dynamic_pointer_cast<UnaryExpr>(expr))
+        {
+            if (unaryExpr->op.type == TokenType::AMPERSAND)
+            {
+                return "&" + typeOf(unaryExpr->right);
+            }
+        }
+
+        if (auto callExpr = std::dynamic_pointer_cast<CallExpr>(expr))
+        {
+            if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(callExpr->callee))
+            {
+                SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
+                if (info && info->symbolType == SymbolType::Function)
+                {
+                    return info->returnType;
+                }
+            }
+        }
+
+        return "unknown";
     }
 
 } // namespace Chtholly

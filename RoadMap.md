@@ -45,9 +45,9 @@ This is the most critical phase of the project, as it implements the core memory
 
 This phase adds more complex control flow structures and function handling.
 
-- **[ ] Functions:**
-    - [ ] Implement function definitions with `fn`.
-    - [ ] Implement function calls.
+- **[x] Functions:**
+    - [x] Implement function definitions with `fn`.
+    - [x] Implement function calls.
 - **[ ] Control Flow:**
     - [ ] `if-else` expressions.
     - [ ] `while` loops.

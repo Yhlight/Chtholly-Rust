@@ -21,6 +21,7 @@ namespace Chtholly
         void visit(const LiteralExpr& expr) override;
         void visit(const VariableExpr& expr) override;
         void visit(const AssignExpr& expr) override;
+        void visit(const CallExpr& expr) override;
 
         void visit(const ExpressionStmt& stmt) override;
         void visit(const LetStmt& stmt) override;
@@ -28,14 +29,24 @@ namespace Chtholly
         void visit(const IfStmt& stmt) override;
         void visit(const WhileStmt& stmt) override;
         void visit(const ForStmt& stmt) override;
+        void visit(const FunctionStmt& stmt) override;
+        void visit(const ReturnStmt& stmt) override;
 
     private:
+        enum class FunctionType {
+            NONE,
+            FUNCTION
+        };
+
         void check(const std::shared_ptr<Expr>& expr);
         void check(const std::shared_ptr<Stmt>& stmt);
         void checkForDanglingReference(const SymbolInfo* lhsInfo, const std::shared_ptr<Expr>& rhsExpr);
+        std::string typeOf(const std::shared_ptr<Expr>& expr);
 
         SymbolTable symbolTable;
         std::unordered_set<std::string> copyTypes;
+        FunctionType currentFunction = FunctionType::NONE;
+        std::string currentReturnType;
 
     };
 

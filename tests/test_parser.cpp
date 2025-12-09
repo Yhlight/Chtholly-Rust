@@ -18,6 +18,30 @@ public:
 
     void visit(const Chtholly::BinaryExpr& expr) override {}
     void visit(const Chtholly::UnaryExpr& expr) override {}
+    void visit(const Chtholly::CallExpr& expr) override {
+        result += "call";
+    }
+    void visit(const Chtholly::FunctionStmt& stmt) override {
+        result += "fn " + stmt.name.lexeme + "(";
+        for (size_t i = 0; i < stmt.parameters.size(); ++i)
+        {
+            result += stmt.parameters[i].lexeme + ": " + stmt.parameterTypes[i].lexeme;
+            if (i < stmt.parameters.size() - 1)
+            {
+                result += ", ";
+            }
+        }
+        result += "): " + stmt.returnType.lexeme + " { ... }";
+    }
+    void visit(const Chtholly::ReturnStmt& stmt) override {
+        result += "return";
+        if (stmt.value)
+        {
+            result += " ";
+            stmt.value->accept(*this);
+        }
+        result += ";";
+    }
 
     void visit(const Chtholly::LiteralExpr& expr) override
     {
@@ -195,6 +219,34 @@ void test_for_statement()
     std::cout << "test_for_statement passed." << std::endl;
 }
 
+void test_function_declaration()
+{
+    std::string source = "fn add(a: i32, b: i32): i32 { return a + b; }";
+    Chtholly::Lexer lexer(source);
+    std::vector<Chtholly::Token> tokens = lexer.scanTokens();
+    Chtholly::Parser parser(tokens);
+    std::vector<std::shared_ptr<Chtholly::Stmt>> statements = parser.parse();
+
+    assert(statements.size() == 1);
+
+    AstPrinter printer;
+    std::string output = printer.print(statements[0]);
+
+    assert(output == "fn add(a: i32, b: i32): i32 { ... }");
+    std::cout << "test_function_declaration passed." << std::endl;
+}
+
+void test_uninitialized_untyped_let()
+{
+    std::string source = "let x;";
+    Chtholly::Lexer lexer(source);
+    std::vector<Chtholly::Token> tokens = lexer.scanTokens();
+    Chtholly::Parser parser(tokens);
+    std::vector<std::shared_ptr<Chtholly::Stmt>> statements = parser.parse();
+    assert(parser.hadError());
+    std::cout << "test_uninitialized_untyped_let passed." << std::endl;
+}
+
 int main()
 {
     test_simple_let_statement();
@@ -203,5 +255,7 @@ int main()
     test_if_else_statement();
     test_while_statement();
     test_for_statement();
+    test_function_declaration();
+    test_uninitialized_untyped_let();
     return 0;
 }

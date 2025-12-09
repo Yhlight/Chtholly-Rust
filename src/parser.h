@@ -18,11 +18,13 @@ namespace Chtholly
     private:
         Token parseType();
         std::shared_ptr<Stmt> declaration();
+        std::shared_ptr<Stmt> functionDeclaration();
         std::shared_ptr<Stmt> letDeclaration(bool isMutable);
         std::shared_ptr<Stmt> statement();
         std::shared_ptr<Stmt> ifStatement();
         std::shared_ptr<Stmt> whileStatement();
         std::shared_ptr<Stmt> forStatement();
+        std::shared_ptr<Stmt> returnStatement();
         std::vector<std::shared_ptr<Stmt>> block();
         std::shared_ptr<Stmt> expressionStatement();
         std::shared_ptr<Expr> expression();
@@ -32,6 +34,8 @@ namespace Chtholly
         std::shared_ptr<Expr> term();
         std::shared_ptr<Expr> factor();
         std::shared_ptr<Expr> unary();
+        std::shared_ptr<Expr> call();
+        std::shared_ptr<Expr> finishCall(std::shared_ptr<Expr> callee);
         std::shared_ptr<Expr> primary();
 
         bool match(const std::vector<TokenType>& types);

@@ -30,6 +30,7 @@ namespace Chtholly
     {
         try
         {
+            if (match({TokenType::FN})) return functionDeclaration();
             if (match({TokenType::LET})) {
                 bool isMutable = match({TokenType::MUT});
                 auto letStmt = letDeclaration(isMutable);
@@ -47,14 +48,31 @@ namespace Chtholly
 
     Token Parser::parseType()
     {
+        std::string typeString = "";
+        Token startToken = peek();
+        bool isRef = false;
+
         if (match({TokenType::AMPERSAND}))
         {
-            match({TokenType::MUT});
+            typeString += "&";
+            isRef = true;
+            if (match({TokenType::MUT}))
+            {
+                typeString += "mut ";
+            }
         }
-        if (match({TokenType::IDENTIFIER, TokenType::I32, TokenType::F64, TokenType::BOOL, TokenType::CHAR}))
+
+        if (match({TokenType::IDENTIFIER, TokenType::I32, TokenType::F64, TokenType::BOOL, TokenType::CHAR, TokenType::STRING}))
         {
-            return previous();
+            Token typeNameToken = previous();
+            typeString += typeNameToken.lexeme;
+
+            if (isRef) {
+                return Token{TokenType::IDENTIFIER, typeString, std::monostate{}, startToken.line};
+            }
+            return typeNameToken;
         }
+
         parseError(peek(), "Expect type annotation.");
         return previous();
     }
@@ -65,15 +83,22 @@ namespace Chtholly
         Token name = consume(TokenType::IDENTIFIER, "Expect variable name.");
 
         Token type;
+        bool hasType = false;
         if (match({TokenType::COLON}))
         {
             type = parseType();
+            hasType = true;
         }
 
         std::shared_ptr<Expr> initializer = nullptr;
         if (match({TokenType::EQUAL}))
         {
             initializer = expression();
+        }
+
+        if (!hasType && !initializer)
+        {
+            parseError(name, "Variable declaration must have a type annotation or an initializer.");
         }
 
         return std::make_shared<LetStmt>(name, type, initializer, isMutable);
@@ -84,6 +109,7 @@ namespace Chtholly
         if (match({TokenType::IF})) return ifStatement();
         if (match({TokenType::WHILE})) return whileStatement();
         if (match({TokenType::FOR})) return forStatement();
+        if (match({TokenType::RETURN})) return returnStatement();
         if (match({TokenType::LEFT_BRACE})) return std::make_shared<BlockStmt>(block());
         return expressionStatement();
     }
@@ -151,6 +177,18 @@ namespace Chtholly
         std::shared_ptr<Stmt> body = statement();
 
         return std::make_shared<ForStmt>(initializer, condition, increment, body);
+    }
+
+    std::shared_ptr<Stmt> Parser::returnStatement()
+    {
+        Token keyword = previous();
+        std::shared_ptr<Expr> value = nullptr;
+        if (!check(TokenType::SEMICOLON))
+        {
+            value = expression();
+        }
+        consume(TokenType::SEMICOLON, "Expect ';' after return value.");
+        return std::make_shared<ReturnStmt>(keyword, value);
     }
 
     std::vector<std::shared_ptr<Stmt>> Parser::block()
@@ -271,7 +309,7 @@ namespace Chtholly
             return std::make_shared<UnaryExpr>(op, right, isMutable);
         }
 
-        return primary();
+        return call();
     }
 
     std::shared_ptr<Expr> Parser::primary()
@@ -301,6 +339,45 @@ namespace Chtholly
 
         parseError(peek(), "Expect expression.");
         throw std::runtime_error("Expect expression.");
+    }
+
+    std::shared_ptr<Expr> Parser::call()
+    {
+        std::shared_ptr<Expr> expr = primary();
+
+        while (true)
+        {
+            if (match({TokenType::LEFT_PAREN}))
+            {
+                expr = finishCall(expr);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
+    std::shared_ptr<Expr> Parser::finishCall(std::shared_ptr<Expr> callee)
+    {
+        std::vector<std::shared_ptr<Expr>> arguments;
+        if (!check(TokenType::RIGHT_PAREN))
+        {
+            do
+            {
+                if (arguments.size() >= 255)
+                {
+                    parseError(peek(), "Can't have more than 255 arguments.");
+                }
+                arguments.push_back(expression());
+            } while (match({TokenType::COMMA}));
+        }
+
+        Token paren = consume(TokenType::RIGHT_PAREN, "Expect ')' after arguments.");
+
+        return std::make_shared<CallExpr>(callee, paren, arguments);
     }
 
     bool Parser::match(const std::vector<TokenType>& types)
@@ -369,6 +446,35 @@ namespace Chtholly
             }
             advance();
         }
+    }
+
+    std::shared_ptr<Stmt> Parser::functionDeclaration()
+    {
+        Token name = consume(TokenType::IDENTIFIER, "Expect function name.");
+        consume(TokenType::LEFT_PAREN, "Expect '(' after function name.");
+        std::vector<Token> parameters;
+        std::vector<Token> parameterTypes;
+        if (!check(TokenType::RIGHT_PAREN))
+        {
+            do
+            {
+                if (parameters.size() >= 255)
+                {
+                    parseError(peek(), "Can't have more than 255 parameters.");
+                }
+                parameters.push_back(consume(TokenType::IDENTIFIER, "Expect parameter name."));
+                consume(TokenType::COLON, "Expect ':' after parameter name.");
+                parameterTypes.push_back(parseType());
+            } while (match({TokenType::COMMA}));
+        }
+        consume(TokenType::RIGHT_PAREN, "Expect ')' after parameters.");
+
+        consume(TokenType::COLON, "Expect ':' before return type.");
+        Token returnType = parseType();
+
+        consume(TokenType::LEFT_BRACE, "Expect '{' before function body.");
+        std::shared_ptr<BlockStmt> body = std::make_shared<BlockStmt>(block());
+        return std::make_shared<FunctionStmt>(name, parameters, parameterTypes, returnType, body);
     }
 
 } // namespace Chtholly

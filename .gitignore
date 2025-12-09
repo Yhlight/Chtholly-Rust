@@ -18,6 +18,7 @@ chtholly
 test_lexer
 test_parser
 test_semantic_analyzer
+test_functions
 
 # Testing
 Testing/

@@ -14,6 +14,7 @@ namespace Chtholly
     struct LiteralExpr;
     struct VariableExpr;
     struct AssignExpr;
+    struct CallExpr;
 
     // Visitor for Expressions
     class ExprVisitor
@@ -25,6 +26,7 @@ namespace Chtholly
         virtual void visit(const LiteralExpr& expr) = 0;
         virtual void visit(const VariableExpr& expr) = 0;
         virtual void visit(const AssignExpr& expr) = 0;
+        virtual void visit(const CallExpr& expr) = 0;
     };
 
     // Base class for all expressions
@@ -89,6 +91,19 @@ namespace Chtholly
         void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
     };
 
+    struct CallExpr : Expr
+    {
+        std::shared_ptr<Expr> callee;
+        Token paren; // For error reporting
+        std::vector<std::shared_ptr<Expr>> arguments;
+
+        CallExpr(std::shared_ptr<Expr> callee, Token paren, std::vector<std::shared_ptr<Expr>> arguments)
+            : callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
+
+        void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+
     // Forward declarations for Statements
     struct ExpressionStmt;
     struct LetStmt;
@@ -96,6 +111,8 @@ namespace Chtholly
     struct IfStmt;
     struct WhileStmt;
     struct ForStmt;
+    struct FunctionStmt;
+    struct ReturnStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -108,6 +125,8 @@ namespace Chtholly
         virtual void visit(const IfStmt& stmt) = 0;
         virtual void visit(const WhileStmt& stmt) = 0;
         virtual void visit(const ForStmt& stmt) = 0;
+        virtual void visit(const FunctionStmt& stmt) = 0;
+        virtual void visit(const ReturnStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -137,6 +156,31 @@ namespace Chtholly
 
         LetStmt(Token name, Token type, std::shared_ptr<Expr> initializer, bool isMutable)
             : name(std::move(name)), type(std::move(type)), initializer(std::move(initializer)), isMutable(isMutable) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct FunctionStmt : Stmt
+    {
+        Token name;
+        std::vector<Token> parameters;
+        std::vector<Token> parameterTypes;
+        Token returnType;
+        std::shared_ptr<BlockStmt> body;
+
+        FunctionStmt(Token name, std::vector<Token> parameters, std::vector<Token> parameterTypes, Token returnType, std::shared_ptr<BlockStmt> body)
+            : name(std::move(name)), parameters(std::move(parameters)), parameterTypes(std::move(parameterTypes)), returnType(std::move(returnType)), body(std::move(body)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct ReturnStmt : Stmt
+    {
+        Token keyword; // For error reporting
+        std::shared_ptr<Expr> value;
+
+        ReturnStmt(Token keyword, std::shared_ptr<Expr> value)
+            : keyword(std::move(keyword)), value(std::move(value)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };
