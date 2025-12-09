@@ -32,6 +32,7 @@ namespace Chtholly
     private:
         void check(const std::shared_ptr<Expr>& expr);
         void check(const std::shared_ptr<Stmt>& stmt);
+        void checkForDanglingReference(const SymbolInfo* lhsInfo, const std::shared_ptr<Expr>& rhsExpr);
 
         SymbolTable symbolTable;
         std::unordered_set<std::string> copyTypes;

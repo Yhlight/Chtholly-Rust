@@ -11,6 +11,7 @@ namespace Chtholly
     void SymbolTable::enterScope()
     {
         scopes.emplace_back();
+        lifetimeCounter++;
     }
 
     void SymbolTable::exitScope()
@@ -30,7 +31,7 @@ namespace Chtholly
         }
     }
 
-    bool SymbolTable::define(const std::string& name, const SymbolInfo& info)
+    bool SymbolTable::define(const std::string& name, SymbolInfo& info)
     {
         if (scopes.empty())
         {
@@ -39,6 +40,7 @@ namespace Chtholly
         if(isDefinedInCurrentScope(name)){
             return false;
         }
+        info.lifetime = getCurrentLifetime();
         scopes.back().symbols[name] = info;
         return true;
     }
@@ -73,6 +75,11 @@ namespace Chtholly
         {
             scopes.back().borrowedSymbols.push_back(name);
         }
+    }
+
+    int SymbolTable::getCurrentLifetime() const
+    {
+        return lifetimeCounter;
     }
 
 } // namespace Chtholly

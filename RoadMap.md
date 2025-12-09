@@ -37,8 +37,8 @@ This is the most critical phase of the project, as it implements the core memory
     - [x] Implement immutable borrows (`&`).
     - [x] Implement mutable borrows (`&mut`).
     - [x] Enforce the borrowing rules (multiple readers or one writer).
-- **[ ] Lifetime Management:**
-    - [ ] Implement lifetime analysis to prevent dangling references.
+- **[x] Lifetime Management:**
+    - [x] Implement lifetime analysis to prevent dangling references.
     - [ ] Implement lifetime elision rules to simplify common patterns.
 
 ### Phase 3: Control Flow and Functions

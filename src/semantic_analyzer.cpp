@@ -123,6 +123,8 @@ namespace Chtholly
         }
         check(expr.value);
 
+        checkForDanglingReference(info, expr.value);
+
         info->state = SymbolState::Valid;
     }
 
@@ -138,14 +140,15 @@ namespace Chtholly
             throw std::runtime_error("Variable '" + stmt.name.lexeme + "' already defined in this scope.");
         }
 
+        SymbolInfo info{stmt.type.lexeme, stmt.isMutable, SymbolState::Valid};
+        symbolTable.define(stmt.name.lexeme, info);
 
         if (stmt.initializer)
         {
             check(stmt.initializer);
+            SymbolInfo* lhsInfo = symbolTable.lookup(stmt.name.lexeme);
+            checkForDanglingReference(lhsInfo, stmt.initializer);
         }
-
-        SymbolInfo info{stmt.type.lexeme, stmt.isMutable, SymbolState::Valid};
-        symbolTable.define(stmt.name.lexeme, info);
     }
 
     void SemanticAnalyzer::visit(const BlockStmt& stmt)
@@ -201,6 +204,24 @@ namespace Chtholly
     void SemanticAnalyzer::check(const std::shared_ptr<Stmt>& stmt)
     {
         stmt->accept(*this);
+    }
+
+    void SemanticAnalyzer::checkForDanglingReference(const SymbolInfo* lhsInfo, const std::shared_ptr<Expr>& rhsExpr)
+    {
+        if (auto unaryExpr = std::dynamic_pointer_cast<UnaryExpr>(rhsExpr))
+        {
+            if (unaryExpr->op.type == TokenType::AMPERSAND)
+            {
+                if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(unaryExpr->right))
+                {
+                    SymbolInfo* rhsInfo = symbolTable.lookup(varExpr->name.lexeme);
+                    if (rhsInfo && lhsInfo->lifetime < rhsInfo->lifetime)
+                    {
+                        throw std::runtime_error("Dangling reference: variable '" + varExpr->name.lexeme + "' does not live long enough.");
+                    }
+                }
+            }
+        }
     }
 
 } // namespace Chtholly

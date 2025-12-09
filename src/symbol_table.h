@@ -22,6 +22,7 @@ namespace Chtholly
         SymbolState state;
         int sharedBorrowCount = 0;
         bool mutableBorrow = false;
+        int lifetime = 0;
     };
 
     class SymbolTable
@@ -32,10 +33,11 @@ namespace Chtholly
         void enterScope();
         void exitScope();
 
-        bool define(const std::string& name, const SymbolInfo& info);
+        bool define(const std::string& name, SymbolInfo& info);
         SymbolInfo* lookup(const std::string& name);
         bool isDefinedInCurrentScope(const std::string& name) const;
         void borrow(const std::string& name);
+        int getCurrentLifetime() const;
 
 
     private:
@@ -44,6 +46,8 @@ namespace Chtholly
             std::vector<std::string> borrowedSymbols;
         };
         std::vector<Scope> scopes;
+        // Lifetime counter, a larger value indicates a more nested scope with a shorter lifetime.
+        int lifetimeCounter = 0;
     };
 
 } // namespace Chtholly
