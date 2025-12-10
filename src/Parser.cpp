@@ -37,6 +37,9 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::CLASS) {
         return parse_class_definition();
     }
+    if (peek().type == TokenType::ENUM) {
+        return parse_enum_definition();
+    }
     if (peek().type == TokenType::FN) {
         return parse_function_definition();
     }
@@ -461,6 +464,53 @@ std::unique_ptr<StmtAST> Parser::parse_class_definition() {
     return std::make_unique<ClassDeclAST>(class_name, std::move(members), std::move(methods));
 }
 
+std::unique_ptr<StmtAST> Parser::parse_enum_definition() {
+    advance(); // consume 'enum'
+    if (peek().type != TokenType::IDENTIFIER) {
+        throw std::runtime_error("Expected enum name after 'enum'");
+    }
+    std::string enum_name = advance().value;
+
+    if (peek().type != TokenType::LEFT_BRACE) {
+        throw std::runtime_error("Expected '{' after enum name");
+    }
+    advance(); // consume '{'
+
+    std::vector<std::unique_ptr<EnumVariantAST>> variants;
+    while (peek().type != TokenType::RIGHT_BRACE) {
+        if (peek().type != TokenType::IDENTIFIER) {
+            throw std::runtime_error("Expected identifier for enum variant");
+        }
+        std::string variant_name = advance().value;
+
+        std::vector<std::unique_ptr<TypeNameAST>> types;
+        if (peek().type == TokenType::LEFT_PAREN) {
+            advance(); // consume '('
+            while (peek().type != TokenType::RIGHT_PAREN) {
+                types.push_back(parse_type());
+                if (peek().type == TokenType::COMMA) {
+                    advance();
+                } else if (peek().type != TokenType::RIGHT_PAREN) {
+                    throw std::runtime_error("Expected ',' or ')' in enum variant type list");
+                }
+            }
+            advance(); // consume ')'
+        }
+
+        variants.push_back(std::make_unique<EnumVariantAST>(variant_name, std::move(types)));
+
+        if (peek().type == TokenType::COMMA) {
+            advance();
+        } else if (peek().type != TokenType::RIGHT_BRACE) {
+            throw std::runtime_error("Expected ',' or '}' after enum variant");
+        }
+    }
+
+    advance(); // consume '}'
+
+    return std::make_unique<EnumDeclAST>(enum_name, std::move(variants));
+}
+
 std::unique_ptr<BlockStmtAST> Parser::parse_block() {
     if (peek().type != TokenType::LEFT_BRACE) {
         throw std::runtime_error("Expected '{' to start a block");
@@ -546,7 +596,30 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
             return std::make_unique<BoolExprAST>(false);
         }
         if (peek().type == TokenType::IDENTIFIER) {
-            auto var = std::make_unique<VariableExprAST>(advance().value);
+            std::string name = advance().value;
+            if (peek().type == TokenType::DOUBLE_COLON) {
+                advance(); // consume '::'
+                if (peek().type != TokenType::IDENTIFIER) {
+                    throw std::runtime_error("Expected identifier after '::'");
+                }
+                std::string variant_name = advance().value;
+                std::vector<std::unique_ptr<ExprAST>> args;
+                if (peek().type == TokenType::LEFT_PAREN) {
+                    advance(); // consume '('
+                    while (peek().type != TokenType::RIGHT_PAREN) {
+                        args.push_back(parse_expression());
+                        if (peek().type == TokenType::COMMA) {
+                            advance();
+                        } else if (peek().type != TokenType::RIGHT_PAREN) {
+                            throw std::runtime_error("Expected ',' or ')' in enum variant argument list");
+                        }
+                    }
+                    advance(); // consume ')'
+                }
+                return std::make_unique<EnumVariantExprAST>(name, variant_name, std::move(args));
+            }
+
+            auto var = std::make_unique<VariableExprAST>(name);
             if (peek().type == TokenType::LEFT_BRACE) {
                 advance(); // consume '{'
                 std::vector<std::unique_ptr<MemberInitializerAST>> members;

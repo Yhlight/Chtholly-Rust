@@ -113,7 +113,10 @@ Token Lexer::nextToken() {
         case ']': advance(); return Token(TokenType::RIGHT_BRACKET, "]", line, column - 1);
         case ',': advance(); return Token(TokenType::COMMA, ",", line, column - 1);
         case '.': advance(); return Token(TokenType::DOT, ".", line, column - 1);
-        case ':': advance(); return Token(TokenType::COLON, ":", line, column - 1);
+        case ':':
+            advance();
+            if (peek() == ':') { advance(); return Token(TokenType::DOUBLE_COLON, "::", line, column - 2); }
+            return Token(TokenType::COLON, ":", line, column - 1);
         case ';': advance(); return Token(TokenType::SEMICOLON, ";", line, column - 1);
     }
 

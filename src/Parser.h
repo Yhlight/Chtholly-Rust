@@ -25,6 +25,7 @@ private:
     std::unique_ptr<StmtAST> parse_struct_definition();
     std::unique_ptr<StmtAST> parse_class_definition();
     std::unique_ptr<StmtAST> parse_function_definition();
+    std::unique_ptr<StmtAST> parse_enum_definition();
     std::unique_ptr<StmtAST> parse_if_statement();
     std::unique_ptr<StmtAST> parse_while_statement();
     std::unique_ptr<StmtAST> parse_do_while_statement();

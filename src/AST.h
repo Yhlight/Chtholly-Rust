@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <utility>
 #include "Token.h"
 #include "Type.h"
 
@@ -231,6 +232,23 @@ public:
         array->print(level + 2);
         std::cout << indent(level + 1) << "Index:" << std::endl;
         index->print(level + 2);
+    }
+};
+
+class EnumVariantExprAST : public ExprAST {
+public:
+    std::string enumName;
+    std::string variantName;
+    std::vector<std::unique_ptr<ExprAST>> args;
+
+    EnumVariantExprAST(std::string enumName, std::string variantName, std::vector<std::unique_ptr<ExprAST>> args)
+        : enumName(std::move(enumName)), variantName(std::move(variantName)), args(std::move(args)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "EnumVariantExpr: " << enumName << "::" << variantName << std::endl;
+        for (const auto& arg : args) {
+            arg->print(level + 1);
+        }
     }
 };
 
@@ -479,6 +497,39 @@ public:
         }
     }
 };
+
+class EnumVariantAST : public ASTNode {
+public:
+    std::string name;
+    std::vector<std::unique_ptr<TypeNameAST>> types;
+
+    EnumVariantAST(std::string name, std::vector<std::unique_ptr<TypeNameAST>> types)
+        : name(std::move(name)), types(std::move(types)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "EnumVariant: " << name << std::endl;
+        for (const auto& type : types) {
+            type->print(level + 1);
+        }
+    }
+};
+
+class EnumDeclAST : public StmtAST {
+public:
+    std::string name;
+    std::vector<std::unique_ptr<EnumVariantAST>> variants;
+
+    EnumDeclAST(std::string name, std::vector<std::unique_ptr<EnumVariantAST>> variants)
+        : name(std::move(name)), variants(std::move(variants)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "EnumDecl: " << name << std::endl;
+        for (const auto& variant : variants) {
+            variant->print(level + 1);
+        }
+    }
+};
+
 
 inline void FunctionDeclAST::print(int level) const {
     std::cout << indent(level) << "FunctionDecl: " << name << std::endl;

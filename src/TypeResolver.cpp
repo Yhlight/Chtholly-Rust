@@ -42,3 +42,11 @@ std::shared_ptr<Type> TypeResolver::resolve(const TypeNameAST& typeName) {
     // Add other built-in types here
     throw std::runtime_error("Unknown type '" + typeName.name + "'");
 }
+
+std::shared_ptr<Type> TypeResolver::resolve(const EnumDeclAST& enumDecl) {
+    auto type = symbolTable.find_type(enumDecl.name);
+    if (!type) {
+        throw std::runtime_error("Unknown enum type '" + enumDecl.name + "'");
+    }
+    return type;
+}

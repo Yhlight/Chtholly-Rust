@@ -1,6 +1,7 @@
 #include "SemanticAnalyzer.h"
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include "Type.h"
 
 SemanticAnalyzer::SemanticAnalyzer() : typeResolver(symbolTable) {
@@ -16,6 +17,8 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
             visit(*structDecl);
         } else if (auto* classDecl = dynamic_cast<ClassDeclAST*>(stmt.get())) {
             visit(*classDecl);
+        } else if (auto* enumDecl = dynamic_cast<EnumDeclAST*>(stmt.get())) {
+            visit(*enumDecl);
         } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             auto funcType = std::make_shared<FunctionType>();
             funcType->returnType = typeResolver.resolve(*funcDecl->returnType);
@@ -96,6 +99,10 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<ArrayLiteralExprAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<ArrayIndexExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<EnumDeclAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<EnumVariantExprAST*>(&node)) {
         return visit(*p);
     }
     return nullptr;
@@ -317,6 +324,45 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(NumberExprAST& node) {
     } else {
         node.type = std::make_shared<FloatType>(64);
     }
+    return node.type;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(EnumDeclAST& node) {
+    std::unordered_map<std::string, std::vector<std::shared_ptr<Type>>> variants;
+    for (const auto& variant : node.variants) {
+        std::vector<std::shared_ptr<Type>> types;
+        for (const auto& type : variant->types) {
+            types.push_back(typeResolver.resolve(*type));
+        }
+        variants[variant->name] = types;
+    }
+    auto enumType = std::make_shared<EnumType>(node.name, variants);
+    if (!symbolTable.add_type(node.name, enumType)) {
+        throw std::runtime_error("Enum '" + node.name + "' already declared.");
+    }
+    return nullptr;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(EnumVariantExprAST& node) {
+    auto type = symbolTable.find_type(node.enumName);
+    if (!type || !type->isEnum()) {
+        throw std::runtime_error("Type '" + node.enumName + "' is not an enum.");
+    }
+    auto* enumType = static_cast<EnumType*>(type.get());
+    if (enumType->variants.find(node.variantName) == enumType->variants.end()) {
+        throw std::runtime_error("Enum '" + node.enumName + "' has no variant named '" + node.variantName + "'.");
+    }
+    auto& variantTypes = enumType->variants[node.variantName];
+    if (variantTypes.size() != node.args.size()) {
+        throw std::runtime_error("Incorrect number of arguments for enum variant '" + node.variantName + "'.");
+    }
+    for (size_t i = 0; i < node.args.size(); ++i) {
+        auto argType = visit(*node.args[i]);
+        if (argType->toString() != variantTypes[i]->toString()) {
+            throw std::runtime_error("Type mismatch for argument " + std::to_string(i) + " of enum variant '" + node.variantName + "'.");
+        }
+    }
+    node.type = type;
     return node.type;
 }
 

@@ -12,6 +12,7 @@ class TypeResolver {
 public:
     TypeResolver(SymbolTable& symbolTable);
     std::shared_ptr<Type> resolve(const TypeNameAST& typeName);
+    std::shared_ptr<Type> resolve(const EnumDeclAST& enumDecl);
 private:
     SymbolTable& symbolTable;
 };

@@ -20,7 +20,8 @@ public:
         TK_Struct,
         TK_Reference,
         TK_Array,
-        TK_DynamicArray
+        TK_DynamicArray,
+        TK_Enum
     };
 
     TypeKind kind;
@@ -39,6 +40,7 @@ public:
     virtual bool isCopy() const { return false; }
     virtual bool isArray() const { return false; }
     virtual bool isDynamicArray() const { return false; }
+    virtual bool isEnum() const { return false; }
 
     virtual std::string toString() const = 0;
 };
@@ -199,6 +201,18 @@ public:
         return elementType->toString() + "[]";
     }
     bool isDynamicArray() const override { return true; }
+};
+
+class EnumType : public Type {
+public:
+    std::string name;
+    std::unordered_map<std::string, std::vector<std::shared_ptr<Type>>> variants;
+
+    EnumType(std::string name, std::unordered_map<std::string, std::vector<std::shared_ptr<Type>>> variants)
+        : Type(TK_Enum), name(std::move(name)), variants(std::move(variants)) {}
+
+    std::string toString() const override { return name; }
+    bool isEnum() const override { return true; }
 };
 
 // ... other type classes can be added here ...

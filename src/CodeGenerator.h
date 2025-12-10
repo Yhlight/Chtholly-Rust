@@ -60,6 +60,8 @@ private:
     llvm::Value* visit(BorrowExprAST& node);
     llvm::Value* visit(ArrayLiteralExprAST& node);
     llvm::Value* visit(ArrayIndexExprAST& node);
+    llvm::Value* visit(EnumDeclAST& node);
+    llvm::Value* visit(EnumVariantExprAST& node);
 };
 
 #endif // CHTHOLLY_CODEGENERATOR_H

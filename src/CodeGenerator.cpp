@@ -23,6 +23,8 @@ void CodeGenerator::generate(BlockStmtAST& ast) {
             visit(*structDecl);
         } else if (auto* classDecl = dynamic_cast<ClassDeclAST*>(stmt.get())) {
             visit(*classDecl);
+        } else if (auto* enumDecl = dynamic_cast<EnumDeclAST*>(stmt.get())) {
+            visit(*enumDecl);
         } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             llvm::Type* returnType = resolveType(*funcDecl->returnType);
             std::vector<llvm::Type*> argTypes;
@@ -188,6 +190,31 @@ llvm::Type* CodeGenerator::resolveType(const Type& type) {
         }
         return structType;
     }
+    if (auto* enumType = dynamic_cast<const EnumType*>(&type)) {
+        std::vector<llvm::Type*> body;
+        body.push_back(builder->getInt32Ty()); // Tag
+
+        uint64_t maxSize = 0;
+        for (const auto& variant : enumType->variants) {
+            uint64_t currentSize = 0;
+            for (const auto& type : variant.second) {
+                currentSize += module->getDataLayout().getTypeStoreSize(resolveType(*type));
+            }
+            if (currentSize > maxSize) {
+                maxSize = currentSize;
+            }
+        }
+
+        if (maxSize > 0) {
+            body.push_back(llvm::ArrayType::get(builder->getInt8Ty(), maxSize));
+        }
+
+        auto* structType = llvm::StructType::getTypeByName(*context, enumType->name);
+        if (!structType) {
+            structType = llvm::StructType::create(*context, body, enumType->name);
+        }
+        return structType;
+    }
     throw std::runtime_error("Unknown type in code generator");
 }
 
@@ -242,6 +269,10 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<ArrayLiteralExprAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<ArrayIndexExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<EnumDeclAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<EnumVariantExprAST*>(&node)) {
         return visit(*p);
     }
     return nullptr;
@@ -887,4 +918,41 @@ llvm::Value* CodeGenerator::visit(ArrayIndexExprAST& node) {
         auto* gep = builder->CreateGEP(arrayType, array, {builder->getInt32(0), index});
         return builder->CreateLoad(arrayType->getElementType(), gep);
     }
+}
+
+llvm::Value* CodeGenerator::visit(EnumDeclAST& node) {
+    auto type = typeResolver.resolve(node);
+    resolveType(*type);
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(EnumVariantExprAST& node) {
+    auto* enumType = llvm::StructType::getTypeByName(*context, node.enumName);
+    auto* enumAlloca = builder->CreateAlloca(enumType, nullptr, node.enumName);
+
+    int variantIndex = 0;
+    auto* enumInfo = static_cast<EnumType*>(node.type.get());
+    for (auto it = enumInfo->variants.begin(); it != enumInfo->variants.end(); ++it) {
+        if (it->first == node.variantName) {
+            break;
+        }
+        variantIndex++;
+    }
+
+    builder->CreateStore(builder->getInt32(variantIndex), builder->CreateStructGEP(enumType, enumAlloca, 0));
+
+    if (!node.args.empty()) {
+        if (enumType->getNumElements() > 1) {
+            auto* dataGEP = builder->CreateStructGEP(enumType, enumAlloca, 1);
+            uint64_t offset = 0;
+            for (size_t i = 0; i < node.args.size(); ++i) {
+                auto* argValue = visit(*node.args[i]);
+                auto* typedDataGEP = builder->CreateGEP(builder->getInt8Ty(), dataGEP, builder->getInt64(offset));
+                builder->CreateStore(argValue, builder->CreateBitCast(typedDataGEP, argValue->getType()->getPointerTo()));
+                offset += module->getDataLayout().getTypeStoreSize(argValue->getType());
+            }
+        }
+    }
+
+    return builder->CreateLoad(enumType, enumAlloca);
 }
