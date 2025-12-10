@@ -62,10 +62,10 @@ This phase introduces user-defined data types.
 - **[x] `struct`:**
     - [x] Implement `struct` definitions.
     - [x] Implement struct instantiation and field access.
-- **[ ] `class`:**
-    - [ ] Implement `class` definitions.
-    - [ ] Implement constructors and destructors.
-    - [ ] Implement member functions with `self`, `&self`, and `&mut self`.
+- **[x] `class`:**
+    - [x] Implement `class` definitions.
+    - [x] Implement constructors and destructors.
+    - [x] Implement member functions with `self`, `&self`, and `&mut self`.
     - [ ] Implement access control (`public`/`private`).
 - **[ ] Enums:**
     - [ ] Implement `enum` definitions.

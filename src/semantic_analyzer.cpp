@@ -150,7 +150,7 @@ namespace Chtholly
             }
         }
 
-        SymbolInfo info{varType, stmt.isMutable, SymbolState::Valid};
+        SymbolInfo info(varType, stmt.isMutable, SymbolState::Valid);
         symbolTable.define(stmt.name.lexeme, info);
 
         if (stmt.initializer)
@@ -425,15 +425,44 @@ namespace Chtholly
             check(arg);
         }
 
-        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.callee))
+        if (auto getExpr = std::dynamic_pointer_cast<GetExpr>(expr.callee))
+        {
+            std::string objectType = typeOf(getExpr->object);
+            SymbolInfo* classInfo = symbolTable.lookup(objectType);
+            if (classInfo && classInfo->symbolType == SymbolType::Class)
+            {
+                auto methodIt = classInfo->fields.find(getExpr->name.lexeme);
+                if (methodIt != classInfo->fields.end())
+                {
+                    SymbolInfo& methodInfo = methodIt->second;
+                    if (methodInfo.symbolType == SymbolType::Function)
+                    {
+                        if (expr.arguments.size() != methodInfo.parameterTypes.size())
+                        {
+                            throw std::runtime_error("Expected " + std::to_string(methodInfo.parameterTypes.size()) + " arguments but got " + std::to_string(expr.arguments.size()) + ".");
+                        }
+
+                        for (size_t i = 0; i < expr.arguments.size(); ++i)
+                        {
+                            std::string argType = typeOf(expr.arguments[i]);
+                            if (argType != methodInfo.parameterTypes[i])
+                            {
+                                throw std::runtime_error("Argument type mismatch for parameter " + std::to_string(i + 1) + ". Expected " + methodInfo.parameterTypes[i] + " but got " + argType + ".");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.callee))
         {
             SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
-            if (!info || info->symbolType != SymbolType::Function)
+            if (!info || (info->symbolType != SymbolType::Function && info->symbolType != SymbolType::Class))
             {
                 throw std::runtime_error("Can only call functions and classes.");
             }
 
-            if (expr.arguments.size() != info->parameterTypes.size())
+            if (info->symbolType == SymbolType::Function && expr.arguments.size() != info->parameterTypes.size())
             {
                 throw std::runtime_error("Expected " + std::to_string(info->parameterTypes.size()) + " arguments but got " + std::to_string(expr.arguments.size()) + ".");
             }
@@ -511,12 +540,16 @@ namespace Chtholly
         if (auto getExpr = std::dynamic_pointer_cast<GetExpr>(expr))
         {
             std::string objectType = typeOf(getExpr->object);
-            SymbolInfo* structInfo = symbolTable.lookup(objectType);
-            if (structInfo && structInfo->symbolType == SymbolType::Struct)
+            SymbolInfo* classInfo = symbolTable.lookup(objectType);
+            if (classInfo && (classInfo->symbolType == SymbolType::Struct || classInfo->symbolType == SymbolType::Class))
             {
-                auto fieldIt = structInfo->fields.find(getExpr->name.lexeme);
-                if (fieldIt != structInfo->fields.end())
+                auto fieldIt = classInfo->fields.find(getExpr->name.lexeme);
+                if (fieldIt != classInfo->fields.end())
                 {
+                    if (fieldIt->second.symbolType == SymbolType::Function)
+                    {
+                        return fieldIt->second.returnType;
+                    }
                     return fieldIt->second.type;
                 }
             }
@@ -524,6 +557,15 @@ namespace Chtholly
         if (auto structInitializerExpr = std::dynamic_pointer_cast<StructInitializerExpr>(expr))
         {
             return structInitializerExpr->name.lexeme;
+        }
+
+        if (auto thisExpr = std::dynamic_pointer_cast<ThisExpr>(expr))
+        {
+            SymbolInfo* info = symbolTable.lookup(thisExpr->keyword.lexeme);
+            if (info)
+            {
+                return info->type;
+            }
         }
 
         return "unknown";
@@ -543,6 +585,19 @@ namespace Chtholly
     void SemanticAnalyzer::visit(const GetExpr& expr)
     {
         check(expr.object);
+        std::string objectType = typeOf(expr.object);
+        SymbolInfo* classInfo = symbolTable.lookup(objectType);
+        if (!classInfo || (classInfo->symbolType != SymbolType::Struct && classInfo->symbolType != SymbolType::Class))
+        {
+            throw std::runtime_error("Cannot access property on non-struct or non-class type.");
+        }
+
+        auto fieldIt = classInfo->fields.find(expr.name.lexeme);
+        if (fieldIt == classInfo->fields.end())
+        {
+            // It's not a field, so it must be a method.
+            // We don't have to do anything here, because the typeOf method will handle it.
+        }
     }
 
     void SemanticAnalyzer::visit(const SetExpr& expr)
@@ -551,16 +606,23 @@ namespace Chtholly
         check(expr.object);
 
         std::string objectType = typeOf(expr.object);
-        SymbolInfo* structInfo = symbolTable.lookup(objectType);
-        if (!structInfo || structInfo->symbolType != SymbolType::Struct)
+        SymbolInfo* classInfo = symbolTable.lookup(objectType);
+        if (!classInfo || (classInfo->symbolType != SymbolType::Struct && classInfo->symbolType != SymbolType::Class))
         {
-            throw std::runtime_error("Cannot access property on non-struct type.");
+            throw std::runtime_error("Cannot access property on non-struct or non-class type.");
         }
 
-        auto fieldIt = structInfo->fields.find(expr.name.lexeme);
-        if (fieldIt == structInfo->fields.end())
+        auto fieldIt = classInfo->fields.find(expr.name.lexeme);
+        if (fieldIt == classInfo->fields.end())
         {
-            throw std::runtime_error("Struct " + objectType + " has no field named " + expr.name.lexeme + ".");
+            throw std::runtime_error("Class " + objectType + " has no field named " + expr.name.lexeme + ".");
+        }
+
+        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.object)) {
+            SymbolInfo* objectInfo = symbolTable.lookup(varExpr->name.lexeme);
+            if (objectInfo && !objectInfo->isMutable) {
+                throw std::runtime_error("Cannot assign to field of immutable object.");
+            }
         }
 
         if (!fieldIt->second.isMutable)
@@ -581,6 +643,47 @@ namespace Chtholly
         {
             check(initializer.second);
         }
+    }
+
+    void SemanticAnalyzer::visit(const ClassStmt& stmt)
+    {
+        SymbolInfo classInfo(stmt.name.lexeme, false, SymbolState::Valid, SymbolType::Class);
+        for (const auto& field : stmt.fields)
+        {
+            SymbolInfo fieldInfo(field->type.lexeme, field->isMutable, SymbolState::Valid);
+            classInfo.fields[field->name.lexeme] = fieldInfo;
+        }
+        for (const auto& method : stmt.methods)
+        {
+            SymbolInfo methodInfo(method->returnType.lexeme, false, SymbolState::Valid, SymbolType::Function);
+            for (const auto& paramType : method->parameterTypes)
+            {
+                methodInfo.parameterTypes.push_back(paramType.lexeme);
+            }
+            classInfo.fields[method->name.lexeme] = methodInfo;
+        }
+        symbolTable.define(stmt.name.lexeme, classInfo);
+
+        ClassType enclosingClass = currentClass;
+        currentClass = ClassType::CLASS;
+        symbolTable.enterScope();
+        SymbolInfo selfInfo(stmt.name.lexeme, false, SymbolState::Valid);
+        symbolTable.define("self", selfInfo);
+        for (const auto& method : stmt.methods)
+        {
+            check(method);
+        }
+        symbolTable.exitScope();
+        currentClass = enclosingClass;
+    }
+
+    void SemanticAnalyzer::visit(const ThisExpr& expr)
+    {
+        if (currentClass == ClassType::NONE)
+        {
+            throw std::runtime_error("Cannot use 'self' outside of a class.");
+        }
+        check(std::make_shared<VariableExpr>(expr.keyword));
     }
 
 } // namespace Chtholly

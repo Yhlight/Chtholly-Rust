@@ -160,6 +160,16 @@ public:
         result += expr.name.lexeme + "{ ... }";
     }
 
+    void visit(const Chtholly::ClassStmt& stmt) override
+    {
+        result += "class " + stmt.name.lexeme + " { ... }";
+    }
+
+    void visit(const Chtholly::ThisExpr& expr) override
+    {
+        result += "self";
+    }
+
 private:
     std::string result;
 };

@@ -18,6 +18,7 @@ namespace Chtholly
     struct GetExpr;
     struct SetExpr;
     struct StructInitializerExpr;
+    struct ThisExpr;
 
     // Visitor for Expressions
     class ExprVisitor
@@ -33,6 +34,7 @@ namespace Chtholly
         virtual void visit(const GetExpr& expr) = 0;
         virtual void visit(const SetExpr& expr) = 0;
         virtual void visit(const StructInitializerExpr& expr) = 0;
+        virtual void visit(const ThisExpr& expr) = 0;
     };
 
     // Base class for all expressions
@@ -143,6 +145,15 @@ namespace Chtholly
         void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
     };
 
+    struct ThisExpr : Expr
+    {
+        Token keyword;
+
+        ThisExpr(Token keyword) : keyword(std::move(keyword)) {}
+
+        void accept(ExprVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
 
     // Forward declarations for Statements
     struct ExpressionStmt;
@@ -159,6 +170,7 @@ namespace Chtholly
     struct ContinueStmt;
     struct FallthroughStmt;
     struct StructStmt;
+    struct ClassStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -179,6 +191,7 @@ namespace Chtholly
         virtual void visit(const ContinueStmt& stmt) = 0;
         virtual void visit(const FallthroughStmt& stmt) = 0;
         virtual void visit(const StructStmt& stmt) = 0;
+        virtual void visit(const ClassStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -339,6 +352,18 @@ namespace Chtholly
 
         StructStmt(Token name, std::vector<std::shared_ptr<LetStmt>> fields)
             : name(std::move(name)), fields(std::move(fields)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct ClassStmt : Stmt
+    {
+        Token name;
+        std::vector<std::shared_ptr<LetStmt>> fields;
+        std::vector<std::shared_ptr<FunctionStmt>> methods;
+
+        ClassStmt(Token name, std::vector<std::shared_ptr<LetStmt>> fields, std::vector<std::shared_ptr<FunctionStmt>> methods)
+            : name(std::move(name)), fields(std::move(fields)), methods(std::move(methods)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };

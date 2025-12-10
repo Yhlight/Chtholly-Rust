@@ -26,6 +26,7 @@ namespace Chtholly
         void visit(const GetExpr& expr) override;
         void visit(const SetExpr& expr) override;
         void visit(const StructInitializerExpr& expr) override;
+        void visit(const ThisExpr& expr) override;
 
         void visit(const ExpressionStmt& stmt) override;
         void visit(const LetStmt& stmt) override;
@@ -41,11 +42,17 @@ namespace Chtholly
         void visit(const ContinueStmt& stmt) override;
         void visit(const FallthroughStmt& stmt) override;
         void visit(const StructStmt& stmt) override;
+        void visit(const ClassStmt& stmt) override;
 
     private:
         enum class FunctionType {
             NONE,
             FUNCTION
+        };
+
+        enum class ClassType {
+            NONE,
+            CLASS
         };
 
         enum class LoopType {
@@ -62,6 +69,7 @@ namespace Chtholly
         SymbolTable symbolTable;
         std::set<std::string> copyTypes;
         FunctionType currentFunction = FunctionType::NONE;
+        ClassType currentClass = ClassType::NONE;
         LoopType currentLoop = LoopType::NONE;
         std::string currentReturnType;
 

@@ -30,6 +30,7 @@ namespace Chtholly
     {
         try
         {
+            if (match({TokenType::CLASS})) return classDeclaration();
             if (match({TokenType::FN})) return functionDeclaration();
             if (match({TokenType::STRUCT})) return structDeclaration();
             if (match({TokenType::LET})) {
@@ -376,6 +377,7 @@ namespace Chtholly
     {
         if (match({TokenType::FALSE})) return std::make_shared<LiteralExpr>(false);
         if (match({TokenType::TRUE})) return std::make_shared<LiteralExpr>(true);
+        if (match({TokenType::SELF})) return std::make_shared<ThisExpr>(previous());
 
         if (match({TokenType::INTEGER, TokenType::FLOAT, TokenType::STRING, TokenType::CHAR}))
         {
@@ -583,6 +585,36 @@ namespace Chtholly
 
         consume(TokenType::RIGHT_BRACE, "Expect '}' after struct body.");
         return std::make_shared<StructStmt>(name, fields);
+    }
+
+    std::shared_ptr<Stmt> Parser::classDeclaration()
+    {
+        Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
+        consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
+
+        std::vector<std::shared_ptr<LetStmt>> fields;
+        std::vector<std::shared_ptr<FunctionStmt>> methods;
+        while (!check(TokenType::RIGHT_BRACE) && !isAtEnd())
+        {
+            if (match({TokenType::LET}))
+            {
+                bool isMutable = match({TokenType::MUT});
+                fields.push_back(std::dynamic_pointer_cast<LetStmt>(letDeclaration(isMutable)));
+                consume(TokenType::SEMICOLON, "Expect ';' after field declaration.");
+            }
+            else if (match({TokenType::FN}))
+            {
+                methods.push_back(std::dynamic_pointer_cast<FunctionStmt>(functionDeclaration()));
+            }
+            else
+            {
+                parseError(peek(), "Expect 'let' or 'fn' in class body.");
+                break;
+            }
+        }
+
+        consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
+        return std::make_shared<ClassStmt>(name, fields, methods);
     }
 
 } // namespace Chtholly

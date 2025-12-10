@@ -20,7 +20,8 @@ namespace Chtholly
     {
         Variable,
         Function,
-        Struct
+        Struct,
+        Class
     };
 
     struct SymbolInfo
@@ -35,6 +36,10 @@ namespace Chtholly
         bool mutableBorrow = false;
         int lifetime = 0;
         std::unordered_map<std::string, SymbolInfo> fields;
+
+        SymbolInfo() = default;
+        SymbolInfo(std::string type, bool isMutable, SymbolState state, SymbolType symbolType = SymbolType::Variable)
+            : type(std::move(type)), isMutable(isMutable), state(state), symbolType(symbolType) {}
     };
 
     class SymbolTable

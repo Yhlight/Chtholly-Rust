@@ -36,3 +36,7 @@ add_test(NAME test_switch_statement COMMAND test_switch_statement)
 add_executable(test_structs tests/test_structs.cpp src/lexer.cpp src/parser.cpp src/semantic_analyzer.cpp src/symbol_table.cpp)
 target_include_directories(test_structs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_test(NAME test_structs COMMAND test_structs)
+
+add_executable(test_classes tests/test_classes.cpp src/lexer.cpp src/parser.cpp src/semantic_analyzer.cpp src/symbol_table.cpp)
+target_include_directories(test_classes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME test_classes COMMAND test_classes)
