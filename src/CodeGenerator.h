@@ -37,6 +37,7 @@ private:
     llvm::Value* visit(ASTNode& node);
     llvm::Value* visit(VarDeclStmtAST& node);
     llvm::Value* visit(StructDeclAST& node);
+    llvm::Value* visit(ClassDeclAST& node);
     llvm::Value* visit(FunctionDeclAST& node);
     llvm::Value* visit(BlockStmtAST& node);
     llvm::Value* visit(BinaryExprAST& node);

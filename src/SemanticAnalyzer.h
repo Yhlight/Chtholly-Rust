@@ -21,6 +21,7 @@ private:
     std::shared_ptr<Type> visit(ASTNode& node);
     std::shared_ptr<Type> visit(VarDeclStmtAST& node);
     std::shared_ptr<Type> visit(StructDeclAST& node);
+    std::shared_ptr<Type> visit(ClassDeclAST& node);
     std::shared_ptr<Type> visit(FunctionDeclAST& node);
     std::shared_ptr<Type> visit(BlockStmtAST& node);
     std::shared_ptr<Type> visit(BinaryExprAST& node);

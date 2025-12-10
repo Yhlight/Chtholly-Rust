@@ -34,6 +34,9 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::STRUCT) {
         return parse_struct_definition();
     }
+    if (peek().type == TokenType::CLASS) {
+        return parse_class_definition();
+    }
     if (peek().type == TokenType::FN) {
         return parse_function_definition();
     }
@@ -393,6 +396,65 @@ std::unique_ptr<StmtAST> Parser::parse_struct_definition() {
     return std::make_unique<StructDeclAST>(struct_name, std::move(members));
 }
 
+std::unique_ptr<StmtAST> Parser::parse_class_definition() {
+    advance(); // consume 'class'
+    if (peek().type != TokenType::IDENTIFIER) {
+        throw std::runtime_error("Expected class name after 'class'");
+    }
+    std::string class_name = advance().value;
+
+    if (peek().type != TokenType::LEFT_BRACE) {
+        throw std::runtime_error("Expected '{' after class name");
+    }
+    advance(); // consume '{'
+
+    std::vector<std::unique_ptr<MemberVarDeclAST>> members;
+    std::vector<std::unique_ptr<FunctionDeclAST>> methods;
+
+    while (peek().type != TokenType::RIGHT_BRACE) {
+        if (peek().type == TokenType::LET) {
+            advance(); // consume 'let'
+            bool is_mutable = false;
+            if (peek().type == TokenType::MUT) {
+                is_mutable = true;
+                advance(); // consume 'mut'
+            }
+
+            if (peek().type != TokenType::IDENTIFIER) {
+                throw std::runtime_error("Expected identifier for member variable name");
+            }
+            std::string member_name = advance().value;
+
+            if (peek().type != TokenType::COLON) {
+                throw std::runtime_error("Expected ':' after member variable name");
+            }
+            advance(); // consume ':'
+
+            auto type = parse_type();
+
+            std::unique_ptr<ExprAST> default_value = nullptr;
+            if (peek().type == TokenType::EQUAL) {
+                advance(); // consume '='
+                default_value = parse_expression();
+            }
+
+            if (peek().type != TokenType::SEMICOLON) {
+                throw std::runtime_error("Expected ';' after member variable declaration");
+            }
+            advance(); // consume ';'
+            members.push_back(std::make_unique<MemberVarDeclAST>(member_name, std::move(type), is_mutable, std::move(default_value)));
+        } else if (peek().type == TokenType::FN) {
+            methods.push_back(std::unique_ptr<FunctionDeclAST>(static_cast<FunctionDeclAST*>(parse_function_definition().release())));
+        } else {
+            throw std::runtime_error("Expected 'let' or 'fn' in class body");
+        }
+    }
+
+    advance(); // consume '}'
+
+    return std::make_unique<ClassDeclAST>(class_name, std::move(members), std::move(methods));
+}
+
 std::unique_ptr<BlockStmtAST> Parser::parse_block() {
     if (peek().type != TokenType::LEFT_BRACE) {
         throw std::runtime_error("Expected '{' to start a block");
@@ -507,21 +569,26 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
 }
 
 std::unique_ptr<ExprAST> Parser::parse_call_expression(std::unique_ptr<ExprAST> callee) {
-    if (auto* var = dynamic_cast<VariableExprAST*>(callee.get())) {
-        std::vector<std::unique_ptr<ExprAST>> args;
-        advance(); // consume '('
-        while (peek().type != TokenType::RIGHT_PAREN) {
-            args.push_back(parse_expression());
-            if (peek().type == TokenType::COMMA) {
-                advance(); // consume ','
-            } else if (peek().type != TokenType::RIGHT_PAREN) {
-                throw std::runtime_error("Expected ',' or ')' in argument list");
-            }
+    std::vector<std::unique_ptr<ExprAST>> args;
+    advance(); // consume '('
+    while (peek().type != TokenType::RIGHT_PAREN) {
+        args.push_back(parse_expression());
+        if (peek().type == TokenType::COMMA) {
+            advance(); // consume ','
+        } else if (peek().type != TokenType::RIGHT_PAREN) {
+            throw std::runtime_error("Expected ',' or ')' in argument list");
         }
-        advance(); // consume ')'
+    }
+    advance(); // consume ')'
+
+    if (auto* var = dynamic_cast<VariableExprAST*>(callee.get())) {
         return std::make_unique<FunctionCallExprAST>(var->name, std::move(args));
     }
-    throw std::runtime_error("Expected a variable name for a function call");
+    if (auto* memberAccess = dynamic_cast<MemberAccessExprAST*>(callee.get())) {
+        return std::make_unique<FunctionCallExprAST>(std::move(callee), std::move(args));
+    }
+
+    throw std::runtime_error("Expected a variable name or member access for a function call");
 }
 
 

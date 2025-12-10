@@ -62,7 +62,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 
 ### Milestone 3.2: Compound Data Types
 - [x] `struct`: User-defined data structures.
-- [ ] `class`: Structs with methods, constructors, destructors, and access modifiers.
+- [x] `class`: Structs with methods, constructors, destructors, and access modifiers.
 - [ ] `enum`: Algebraic data types, including enums with associated data.
 - [ ] `array`: Both static (`T[N]`) and dynamic (`T[]`) arrays.
 

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 class Type {
 public:
@@ -30,6 +31,7 @@ public:
     bool isString() const { return kind == TK_String; }
     bool isBool() const { return kind == TK_Bool; }
     bool isStruct() const { return kind == TK_Struct; }
+    bool isClass() const { return kind == TK_Class; }
     // Add more checks as needed
 
     virtual bool isCopy() const { return false; }
@@ -107,6 +109,20 @@ public:
     std::string toString() const override { return name; }
 };
 
+class FunctionType;
+
+class ClassType : public Type {
+public:
+    std::string name;
+    std::vector<std::pair<std::string, std::shared_ptr<Type>>> members;
+    std::unordered_map<std::string, std::shared_ptr<FunctionType>> methods;
+
+    ClassType(std::string name, std::vector<std::pair<std::string, std::shared_ptr<Type>>> members, std::unordered_map<std::string, std::shared_ptr<FunctionType>> methods)
+        : Type(TK_Class), name(std::move(name)), members(std::move(members)), methods(std::move(methods)) {}
+
+    std::string toString() const override { return name; }
+};
+
 class FunctionType : public Type {
 public:
     std::shared_ptr<Type> returnType;
@@ -116,6 +132,16 @@ public:
 
     std::string toString() const override {
         return "function";
+    }
+};
+
+class MethodType : public FunctionType {
+public:
+    std::shared_ptr<ClassType> parentClass;
+    MethodType(std::shared_ptr<ClassType> parentClass, std::shared_ptr<FunctionType> funcType)
+        : parentClass(std::move(parentClass)) {
+        returnType = funcType->returnType;
+        argTypes = funcType->argTypes;
     }
 };
 

@@ -21,6 +21,8 @@ void CodeGenerator::generate(BlockStmtAST& ast) {
     for (auto& stmt : ast.statements) {
         if (auto* structDecl = dynamic_cast<StructDeclAST*>(stmt.get())) {
             visit(*structDecl);
+        } else if (auto* classDecl = dynamic_cast<ClassDeclAST*>(stmt.get())) {
+            visit(*classDecl);
         } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             llvm::Type* returnType = resolveType(*funcDecl->returnType);
             std::vector<llvm::Type*> argTypes;
@@ -34,7 +36,7 @@ void CodeGenerator::generate(BlockStmtAST& ast) {
 
     // Second pass: generate code for all statements
     for (auto& stmt : ast.statements) {
-        if (!dynamic_cast<StructDeclAST*>(stmt.get())) {
+        if (!dynamic_cast<StructDeclAST*>(stmt.get()) && !dynamic_cast<ClassDeclAST*>(stmt.get())) {
             visit(*stmt);
         }
     }
@@ -172,6 +174,9 @@ llvm::Type* CodeGenerator::resolveType(const Type& type) {
     if (auto* structType = dynamic_cast<const StructType*>(&type)) {
         return llvm::StructType::getTypeByName(*context, structType->name);
     }
+    if (auto* classType = dynamic_cast<const ClassType*>(&type)) {
+        return llvm::StructType::getTypeByName(*context, classType->name);
+    }
     throw std::runtime_error("Unknown type in code generator");
 }
 
@@ -180,6 +185,8 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
     if (auto* p = dynamic_cast<VarDeclStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<StructDeclAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ClassDeclAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<FunctionDeclAST*>(&node)) {
         return visit(*p);
@@ -272,6 +279,52 @@ llvm::Value* CodeGenerator::visit(SwitchStmtAST& node) {
 
     return nullptr;
 }
+
+llvm::Value* CodeGenerator::visit(ClassDeclAST& node) {
+    std::vector<llvm::Type*> memberTypes;
+    for (const auto& member : node.members) {
+        memberTypes.push_back(resolveType(*member->type));
+    }
+    llvm::StructType::create(*context, memberTypes, node.name);
+
+    for (const auto& method : node.methods) {
+        std::string mangledName = "_ZN" + std::to_string(node.name.length()) + node.name + std::to_string(method->name.length()) + method->name + "Ev";
+        llvm::Function* function = module->getFunction(mangledName);
+        if (!function) {
+            llvm::Type* returnType = resolveType(*method->returnType);
+            std::vector<llvm::Type*> argTypes;
+            // 'self' parameter
+            argTypes.push_back(llvm::StructType::getTypeByName(*context, node.name)->getPointerTo());
+            for (const auto& arg : method->args) {
+                argTypes.push_back(resolveType(*arg.type));
+            }
+            llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argTypes, false);
+            function = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, mangledName, module.get());
+        }
+
+        llvm::BasicBlock* basicBlock = llvm::BasicBlock::Create(*context, "entry", function);
+        builder->SetInsertPoint(basicBlock);
+
+        namedValues.clear();
+        auto arg_it = function->arg_begin();
+        arg_it->setName("self");
+        llvm::AllocaInst* selfAlloca = builder->CreateAlloca(arg_it->getType(), nullptr, "self");
+        builder->CreateStore(arg_it, selfAlloca);
+        namedValues["self"] = selfAlloca;
+
+        for (auto& arg : method->args) {
+            ++arg_it;
+            llvm::AllocaInst* alloca = builder->CreateAlloca(arg_it->getType(), nullptr, arg.name);
+            builder->CreateStore(arg_it, alloca);
+            namedValues[arg.name] = alloca;
+        }
+
+        visit(*method->body);
+    }
+
+    return nullptr;
+}
+
 
 llvm::Value* CodeGenerator::visit(StructDeclAST& node) {
     std::vector<llvm::Type*> memberTypes;
@@ -370,7 +423,11 @@ llvm::Value* CodeGenerator::visit(VarDeclStmtAST& node) {
 
     // For now, all variables are stack allocated.
     llvm::AllocaInst* alloca = builder->CreateAlloca(initVal->getType(), nullptr, node.varName);
-    builder->CreateStore(initVal, alloca);
+    if (initVal->getType()->isStructTy()) {
+        builder->CreateMemCpy(alloca, llvm::MaybeAlign(), initVal, llvm::MaybeAlign(), module->getDataLayout().getTypeStoreSize(initVal->getType()));
+    } else {
+        builder->CreateStore(initVal, alloca);
+    }
     namedValues[node.varName] = alloca;
 
     if (node.initExpr->type->isString()) {
@@ -453,7 +510,11 @@ llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
             builder->CreateCall(freeFunc, {oldVal});
         }
 
-        builder->CreateStore(rhs, lhs);
+        if (rhs->getType()->isStructTy()) {
+            builder->CreateMemCpy(lhs, llvm::MaybeAlign(), rhs, llvm::MaybeAlign(), module->getDataLayout().getTypeStoreSize(rhs->getType()));
+        } else {
+            builder->CreateStore(rhs, lhs);
+        }
 
         if (node.rhs->type->isString()) {
              if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
@@ -537,19 +598,52 @@ llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
 }
 
 llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
-    llvm::Function* callee = module->getFunction(node.callee);
-    if (!callee) {
-        // A temporary hack to support printf
-        if (node.callee == "println") {
-            callee = module->getFunction("printf");
-            if (!callee) throw std::runtime_error("Could not find printf function");
-        } else {
-            throw std::runtime_error("Unknown function referenced: " + node.callee);
+    if (auto* memberAccess = dynamic_cast<MemberAccessExprAST*>(node.callee.get())) {
+        auto* methodType = dynamic_cast<MethodType*>(memberAccess->type.get());
+        std::string mangledName = "_ZN" + std::to_string(methodType->parentClass->name.length()) + methodType->parentClass->name + std::to_string(memberAccess->memberName.length()) + memberAccess->memberName + "Ev";
+        llvm::Function* callee = module->getFunction(mangledName);
+        if (!callee) {
+            throw std::runtime_error("Unknown method referenced: " + memberAccess->memberName);
         }
+
+        std::vector<llvm::Value*> argValues;
+        argValues.push_back(visit(*memberAccess)); // self
+        for (auto& arg : node.args) {
+            argValues.push_back(visit(*arg));
+        }
+
+        return builder->CreateCall(callee, argValues, "calltmp");
+    }
+
+    llvm::Function* callee = nullptr;
+    if (auto* var = dynamic_cast<VariableExprAST*>(node.callee.get())) {
+        callee = module->getFunction(var->name);
+        if (!callee) {
+            // A temporary hack to support printf
+            if (var->name == "println") {
+                callee = module->getFunction("printf");
+                if (!callee) throw std::runtime_error("Could not find printf function");
+            } else {
+                throw std::runtime_error("Unknown function referenced: " + var->name);
+            }
+        }
+    } else if (auto* memberAccess = dynamic_cast<MemberAccessExprAST*>(node.callee.get())) {
+        auto* methodType = dynamic_cast<MethodType*>(memberAccess->type.get());
+        std::string mangledName = "_ZN" + std::to_string(methodType->parentClass->name.length()) + methodType->parentClass->name + std::to_string(memberAccess->memberName.length()) + memberAccess->memberName + "Ev";
+        callee = module->getFunction(mangledName);
+        if (!callee) {
+            throw std::runtime_error("Unknown method referenced: " + memberAccess->memberName);
+        }
+    } else {
+        throw std::runtime_error("Invalid callee expression.");
     }
 
     if (callee->arg_size() != node.args.size() && callee->isVarArg() == false) {
-        throw std::runtime_error("Incorrect number of arguments passed to function " + node.callee);
+        if (auto* var = dynamic_cast<VariableExprAST*>(node.callee.get())) {
+            throw std::runtime_error("Incorrect number of arguments passed to function " + var->name);
+        } else {
+            throw std::runtime_error("Incorrect number of arguments passed to function");
+        }
     }
 
     std::vector<llvm::Value*> argValues;

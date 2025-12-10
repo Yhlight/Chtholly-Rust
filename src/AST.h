@@ -106,13 +106,16 @@ public:
 // Expression class for a function call
 class FunctionCallExprAST : public ExprAST {
 public:
-    std::string callee;
+    std::unique_ptr<ExprAST> callee;
     std::vector<std::unique_ptr<ExprAST>> args;
-    FunctionCallExprAST(const std::string& callee, std::vector<std::unique_ptr<ExprAST>> args)
-        : callee(callee), args(std::move(args)) {}
+    FunctionCallExprAST(std::unique_ptr<ExprAST> callee, std::vector<std::unique_ptr<ExprAST>> args)
+        : callee(std::move(callee)), args(std::move(args)) {}
+    FunctionCallExprAST(const std::string& callee_name, std::vector<std::unique_ptr<ExprAST>> args)
+        : callee(std::make_unique<VariableExprAST>(callee_name)), args(std::move(args)) {}
 
     void print(int level = 0) const override {
-        std::cout << indent(level) << "FunctionCallExprAST: " << callee << " [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+        std::cout << indent(level) << "FunctionCallExprAST: [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+        callee->print(level + 1);
         for (const auto& arg : args) {
             arg->print(level + 1);
         }
@@ -390,6 +393,29 @@ public:
         std::cout << indent(level) << "StructDecl: " << name << std::endl;
         for (const auto& member : members) {
             member->print(level + 1);
+        }
+    }
+};
+
+// Statement class for class declarations
+class ClassDeclAST : public StmtAST {
+public:
+    std::string name;
+    std::vector<std::unique_ptr<MemberVarDeclAST>> members;
+    std::vector<std::unique_ptr<FunctionDeclAST>> methods;
+
+    ClassDeclAST(std::string name, std::vector<std::unique_ptr<MemberVarDeclAST>> members, std::vector<std::unique_ptr<FunctionDeclAST>> methods)
+        : name(std::move(name)), members(std::move(members)), methods(std::move(methods)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "ClassDecl: " << name << std::endl;
+        std::cout << indent(level + 1) << "Members:" << std::endl;
+        for (const auto& member : members) {
+            member->print(level + 2);
+        }
+        std::cout << indent(level + 1) << "Methods:" << std::endl;
+        for (const auto& method : methods) {
+            method->print(level + 2);
         }
     }
 };
