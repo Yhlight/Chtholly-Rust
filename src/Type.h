@@ -18,7 +18,8 @@ public:
         TK_Function,
         TK_Class,
         TK_Struct,
-        TK_Reference
+        TK_Reference,
+        TK_Array
     };
 
     TypeKind kind;
@@ -35,6 +36,7 @@ public:
     // Add more checks as needed
 
     virtual bool isCopy() const { return false; }
+    virtual bool isArray() const { return false; }
 
     virtual std::string toString() const = 0;
 };
@@ -169,6 +171,20 @@ public:
     bool isCopy() const override { return true; }
 };
 
+
+class ArrayType : public Type {
+public:
+    std::shared_ptr<Type> elementType;
+    int size;
+
+    ArrayType(std::shared_ptr<Type> elementType, int size)
+        : Type(TK_Array), elementType(std::move(elementType)), size(size) {}
+
+    std::string toString() const override {
+        return elementType->toString() + "[" + std::to_string(size) + "]";
+    }
+    bool isArray() const { return true; }
+};
 
 // ... other type classes can be added here ...
 

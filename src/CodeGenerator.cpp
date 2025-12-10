@@ -177,6 +177,9 @@ llvm::Type* CodeGenerator::resolveType(const Type& type) {
     if (auto* classType = dynamic_cast<const ClassType*>(&type)) {
         return llvm::StructType::getTypeByName(*context, classType->name);
     }
+    if (auto* arrayType = dynamic_cast<const ArrayType*>(&type)) {
+        return llvm::ArrayType::get(resolveType(*arrayType->elementType), arrayType->size);
+    }
     throw std::runtime_error("Unknown type in code generator");
 }
 
@@ -227,6 +230,10 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<FallthroughStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<BorrowExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ArrayLiteralExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ArrayIndexExprAST*>(&node)) {
         return visit(*p);
     }
     return nullptr;
@@ -422,9 +429,11 @@ llvm::Value* CodeGenerator::visit(VarDeclStmtAST& node) {
     }
 
     // For now, all variables are stack allocated.
-    llvm::AllocaInst* alloca = builder->CreateAlloca(initVal->getType(), nullptr, node.varName);
-    if (initVal->getType()->isStructTy()) {
-        builder->CreateMemCpy(alloca, llvm::MaybeAlign(), initVal, llvm::MaybeAlign(), module->getDataLayout().getTypeStoreSize(initVal->getType()));
+    llvm::Type* varType = resolveType(*node.initExpr->type);
+    llvm::AllocaInst* alloca = builder->CreateAlloca(varType, nullptr, node.varName);
+
+    if (varType->isStructTy() || varType->isArrayTy()) {
+        builder->CreateMemCpy(alloca, llvm::MaybeAlign(), initVal, llvm::MaybeAlign(), module->getDataLayout().getTypeStoreSize(varType));
     } else {
         builder->CreateStore(initVal, alloca);
     }
@@ -591,7 +600,7 @@ llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
     }
 
     // Load the value from the memory location
-    if (isMemberAccess) {
+    if (isMemberAccess || v->getAllocatedType()->isArrayTy()) {
         return v;
     }
     return builder->CreateLoad(v->getAllocatedType(), v, node.name.c_str());
@@ -816,4 +825,25 @@ llvm::Value* CodeGenerator::visit(BorrowExprAST& node) {
         return namedValues[varExpr->name];
     }
     throw std::runtime_error("Can only borrow variables for now.");
+}
+
+llvm::Value* CodeGenerator::visit(ArrayLiteralExprAST& node) {
+    auto* arrayType = llvm::cast<llvm::ArrayType>(resolveType(*node.type));
+    auto* alloca = builder->CreateAlloca(arrayType, nullptr, "arraylit");
+
+    for (size_t i = 0; i < node.elements.size(); ++i) {
+        auto* elementValue = visit(*node.elements[i]);
+        auto* gep = builder->CreateGEP(arrayType, alloca, {builder->getInt32(0), builder->getInt32(i)});
+        builder->CreateStore(elementValue, gep);
+    }
+
+    return alloca;
+}
+
+llvm::Value* CodeGenerator::visit(ArrayIndexExprAST& node) {
+    auto* array = visit(*node.array);
+    auto* index = visit(*node.index);
+    auto* arrayType = llvm::cast<llvm::ArrayType>(llvm::cast<llvm::AllocaInst>(array)->getAllocatedType());
+    auto* gep = builder->CreateGEP(arrayType, array, {builder->getInt32(0), index});
+    return builder->CreateLoad(arrayType->getElementType(), gep);
 }

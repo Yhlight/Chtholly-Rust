@@ -45,6 +45,8 @@ private:
     std::shared_ptr<Type> visit(TypeNameAST& node);
     std::shared_ptr<Type> visit(BorrowExprAST& node);
     std::shared_ptr<Type> visit(ReferenceTypeAST& node);
+    std::shared_ptr<Type> visit(ArrayLiteralExprAST& node);
+    std::shared_ptr<Type> visit(ArrayIndexExprAST& node);
 };
 
 #endif // CHTHOLLY_SEMANTICANALYZER_H

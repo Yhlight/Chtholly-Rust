@@ -65,7 +65,8 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 - [x] `struct`: User-defined data structures.
 - [x] `class`: Structs with methods, constructors, destructors, and access modifiers.
 - [ ] `enum`: Algebraic data types, including enums with associated data.
-- [ ] `array`: Both static (`T[N]`) and dynamic (`T[]`) arrays.
+- [x] `array`: Static (`T[N]`) arrays.
+- [ ] `array`: Dynamic (`T[]`) arrays.
 
 ### Milestone 3.3: Generics & Contracts
 - [ ] Generic functions (`fn add<T>(a: T, b: T) -> T`).

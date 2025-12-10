@@ -91,6 +91,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<ReferenceTypeAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<ArrayTypeAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ArrayLiteralExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ArrayIndexExprAST*>(&node)) {
+        return visit(*p);
     }
     return nullptr;
 }
@@ -590,4 +596,36 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(ReferenceTypeAST& node) {
     auto referencedType = typeResolver.resolve(*node.referencedType);
     return std::make_shared<ReferenceType>(referencedType, node.isMutable);
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayLiteralExprAST& node) {
+    if (node.elements.empty()) {
+        throw std::runtime_error("Array literals cannot be empty.");
+    }
+
+    auto firstElementType = visit(*node.elements[0]);
+    for (size_t i = 1; i < node.elements.size(); ++i) {
+        auto elementType = visit(*node.elements[i]);
+        if (elementType->toString() != firstElementType->toString()) {
+            throw std::runtime_error("All elements in an array literal must have the same type.");
+        }
+    }
+
+    node.type = std::make_shared<ArrayType>(firstElementType, node.elements.size());
+    return node.type;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayIndexExprAST& node) {
+    auto arrayType = visit(*node.array);
+    if (!arrayType->isArray()) {
+        throw std::runtime_error("Cannot index into a non-array type.");
+    }
+
+    auto indexType = visit(*node.index);
+    if (!indexType->isInteger()) {
+        throw std::runtime_error("Array index must be an integer.");
+    }
+
+    node.type = static_cast<ArrayType*>(arrayType.get())->elementType;
+    return node.type;
 }

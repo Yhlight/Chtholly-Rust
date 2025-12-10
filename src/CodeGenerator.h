@@ -58,6 +58,8 @@ private:
     llvm::Value* visit(BreakStmtAST& node);
     llvm::Value* visit(FallthroughStmtAST& node);
     llvm::Value* visit(BorrowExprAST& node);
+    llvm::Value* visit(ArrayLiteralExprAST& node);
+    llvm::Value* visit(ArrayIndexExprAST& node);
 };
 
 #endif // CHTHOLLY_CODEGENERATOR_H

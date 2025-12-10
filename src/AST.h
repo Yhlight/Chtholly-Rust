@@ -12,6 +12,7 @@
 std::string indent(int level);
 class SemanticAnalyzer;
 class BlockStmtAST;
+class ExprAST;
 
 // Base class for all AST nodes
 class ASTNode {
@@ -43,6 +44,18 @@ public:
         referencedType->print(level + 1);
     }
 };
+
+class ArrayTypeAST : public TypeNameAST {
+public:
+    std::unique_ptr<TypeNameAST> elementType;
+    std::unique_ptr<ExprAST> size; // Can be nullptr for dynamic arrays/slices in the future
+
+    ArrayTypeAST(std::unique_ptr<TypeNameAST> elementType, std::unique_ptr<ExprAST> size)
+        : TypeNameAST(""), elementType(std::move(elementType)), size(std::move(size)) {}
+
+    void print(int level = 0) const override;
+};
+
 
 // Base class for all expression nodes
 class ExprAST : public ASTNode {
@@ -184,6 +197,40 @@ public:
     void print(int level = 0) const override {
         std::cout << indent(level) << "MemberAccessExprAST: " << memberName << std::endl;
         object->print(level + 1);
+    }
+};
+
+// Expression class for array literals
+class ArrayLiteralExprAST : public ExprAST {
+public:
+    std::vector<std::unique_ptr<ExprAST>> elements;
+
+    ArrayLiteralExprAST(std::vector<std::unique_ptr<ExprAST>> elements)
+        : elements(std::move(elements)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "ArrayLiteralExprAST: [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+        for (const auto& element : elements) {
+            element->print(level + 1);
+        }
+    }
+};
+
+// Expression class for array indexing
+class ArrayIndexExprAST : public ExprAST {
+public:
+    std::unique_ptr<ExprAST> array;
+    std::unique_ptr<ExprAST> index;
+
+    ArrayIndexExprAST(std::unique_ptr<ExprAST> array, std::unique_ptr<ExprAST> index)
+        : array(std::move(array)), index(std::move(index)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "ArrayIndexExprAST: [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
+        std::cout << indent(level + 1) << "Array:" << std::endl;
+        array->print(level + 2);
+        std::cout << indent(level + 1) << "Index:" << std::endl;
+        index->print(level + 2);
     }
 };
 
@@ -493,5 +540,15 @@ inline std::string indent(int level) {
     }
     return res;
 }
+
+inline void ArrayTypeAST::print(int level) const {
+    std::cout << indent(level) << "ArrayType:" << std::endl;
+    elementType->print(level + 1);
+    if (size) {
+        std::cout << indent(level + 1) << "Size:" << std::endl;
+        size->print(level + 2);
+    }
+}
+
 
 #endif // CHTHOLLY_AST_H

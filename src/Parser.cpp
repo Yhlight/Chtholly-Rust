@@ -29,7 +29,7 @@ bool Parser::is_at_end() {
 
 std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::LET) {
-        return parse_variable_declaration();
+        return std::unique_ptr<StmtAST>(parse_variable_declaration(true).release());
     }
     if (peek().type == TokenType::STRUCT) {
         return parse_struct_definition();
@@ -232,11 +232,15 @@ std::unique_ptr<StmtAST> Parser::parse_for_statement() {
     advance(); // consume '('
 
     std::unique_ptr<StmtAST> init;
-    if (peek().type != TokenType::SEMICOLON) {
-        init = parse_statement();
-    } else {
-        advance(); // consume ';'
+    if (peek().type == TokenType::LET) {
+        init = std::unique_ptr<StmtAST>(parse_variable_declaration(false).release());
+    } else if (peek().type != TokenType::SEMICOLON) {
+        init = parse_expression_statement();
     }
+    if (peek().type != TokenType::SEMICOLON) {
+        throw std::runtime_error("Expected ';' after for loop initializer");
+    }
+    advance(); // consume ';'
 
     std::unique_ptr<ExprAST> condition;
     if (peek().type != TokenType::SEMICOLON) {
@@ -262,7 +266,7 @@ std::unique_ptr<StmtAST> Parser::parse_for_statement() {
 }
 
 
-std::unique_ptr<StmtAST> Parser::parse_variable_declaration() {
+std::unique_ptr<VarDeclStmtAST> Parser::parse_variable_declaration(bool consume_semicolon) {
     advance(); // consume 'let'
     bool is_mutable = false;
     if (peek().type == TokenType::MUT) {
@@ -287,10 +291,12 @@ std::unique_ptr<StmtAST> Parser::parse_variable_declaration() {
         initializer = parse_expression();
     }
 
-    if (peek().type != TokenType::SEMICOLON) {
-        throw std::runtime_error("Expected ';' after variable declaration");
+    if (consume_semicolon) {
+        if (peek().type != TokenType::SEMICOLON) {
+            throw std::runtime_error("Expected ';' after variable declaration");
+        }
+        advance(); // consume ';'
     }
-    advance(); // consume ';'
 
     return std::make_unique<VarDeclStmtAST>(var_name, is_mutable, std::move(type), std::move(initializer));
 }
@@ -488,7 +494,17 @@ std::unique_ptr<TypeNameAST> Parser::parse_type() {
         throw std::runtime_error("Expected a type name");
     }
     // This will need to be extended to handle complex types like arrays, etc.
-    return std::make_unique<TypeNameAST>(advance().value);
+    auto base_type = std::make_unique<TypeNameAST>(advance().value);
+    if (peek().type == TokenType::LEFT_BRACKET) {
+        advance(); // consume '['
+        auto size = parse_expression();
+        if (peek().type != TokenType::RIGHT_BRACKET) {
+            throw std::runtime_error("Expected ']' after array size");
+        }
+        advance(); // consume ']'
+        return std::make_unique<ArrayTypeAST>(std::move(base_type), std::move(size));
+    }
+    return base_type;
 }
 
 
@@ -559,6 +575,20 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
             advance(); // consume ')'
             return expr;
         }
+        if (peek().type == TokenType::LEFT_BRACKET) {
+            advance(); // consume '['
+            std::vector<std::unique_ptr<ExprAST>> elements;
+            while (peek().type != TokenType::RIGHT_BRACKET) {
+                elements.push_back(parse_expression());
+                if (peek().type == TokenType::COMMA) {
+                    advance();
+                } else if (peek().type != TokenType::RIGHT_BRACKET) {
+                    throw std::runtime_error("Expected ',' or ']' in array literal");
+                }
+            }
+            advance(); // consume ']'
+            return std::make_unique<ArrayLiteralExprAST>(std::move(elements));
+        }
         return nullptr;
     }();
 
@@ -623,6 +653,17 @@ std::unique_ptr<ExprAST> Parser::parse_binary_expression(int expr_prec, std::uni
             }
             std::string memberName = advance().value;
             lhs = std::make_unique<MemberAccessExprAST>(std::move(lhs), memberName);
+            continue;
+        }
+
+        if (peek().type == TokenType::LEFT_BRACKET) {
+            advance(); // consume '['
+            auto index = parse_expression();
+            if (peek().type != TokenType::RIGHT_BRACKET) {
+                throw std::runtime_error("Expected ']' after array index");
+            }
+            advance(); // consume ']'
+            lhs = std::make_unique<ArrayIndexExprAST>(std::move(lhs), std::move(index));
             continue;
         }
 
