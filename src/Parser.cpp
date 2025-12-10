@@ -594,6 +594,8 @@ std::unique_ptr<ExprAST> Parser::parse_call_expression(std::unique_ptr<ExprAST> 
 
 int Parser::get_token_precedence() {
     switch (peek().type) {
+        case TokenType::EQUAL:
+            return 2;
         case TokenType::PLUS:
         case TokenType::MINUS:
             return 10;
@@ -637,7 +639,11 @@ std::unique_ptr<ExprAST> Parser::parse_binary_expression(int expr_prec, std::uni
 
         int next_prec = get_token_precedence();
         if (tok_prec < next_prec) {
-            rhs = parse_binary_expression(tok_prec + 1, std::move(rhs));
+            if (op == TokenType::EQUAL) { // Right-associative
+                rhs = parse_binary_expression(tok_prec, std::move(rhs));
+            } else { // Left-associative
+                rhs = parse_binary_expression(tok_prec + 1, std::move(rhs));
+            }
             if (!rhs) {
                 return nullptr;
             }
