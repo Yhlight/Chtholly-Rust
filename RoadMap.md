@@ -58,7 +58,6 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 - [x] `while` loops.
 - [x] `do-while` loops.
 - [x] C-style `for` loops.
-- [ ] `foreach` loops based on the iterator pattern.
 - [x] `switch-case` statements with improved semantics (e.g., no fall-through by default).
 
 ### Milestone 3.2: Compound Data Types
@@ -71,8 +70,6 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 ### Milestone 3.3: Generics & Contracts
 - [ ] Generic functions (`fn add<T>(a: T, b: T) -> T`).
 - [ ] Generic data structures (`class Point<T>`).
-- [ ] Implement the `contract` system for defining interfaces (similar to Rust's traits).
-- [ ] Support for associated types within contracts.
 
 ## Phase 4: Standard Library & Tooling
 
