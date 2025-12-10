@@ -31,6 +31,7 @@ namespace Chtholly
         try
         {
             if (match({TokenType::CLASS})) return classDeclaration();
+            if (match({TokenType::ENUM})) return enumDeclaration();
             if (match({TokenType::FN})) return functionDeclaration();
             if (match({TokenType::STRUCT})) return structDeclaration();
             if (match({TokenType::LET})) {
@@ -615,6 +616,41 @@ namespace Chtholly
 
         consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
         return std::make_shared<ClassStmt>(name, fields, methods);
+    }
+
+    std::shared_ptr<Stmt> Parser::enumDeclaration()
+    {
+        Token name = consume(TokenType::IDENTIFIER, "Expect enum name.");
+        consume(TokenType::LEFT_BRACE, "Expect '{' before enum body.");
+
+        std::vector<Token> variants;
+        std::vector<std::vector<Token>> variantTypes;
+        while (!check(TokenType::RIGHT_BRACE) && !isAtEnd())
+        {
+            variants.push_back(consume(TokenType::IDENTIFIER, "Expect variant name."));
+            if (match({TokenType::LEFT_PAREN}))
+            {
+                std::vector<Token> types;
+                do
+                {
+                    types.push_back(parseType());
+                } while (match({TokenType::COMMA}));
+                consume(TokenType::RIGHT_PAREN, "Expect ')' after variant types.");
+                variantTypes.push_back(types);
+            }
+            else
+            {
+                variantTypes.push_back({});
+            }
+
+            if (!match({TokenType::COMMA}))
+            {
+                break;
+            }
+        }
+
+        consume(TokenType::RIGHT_BRACE, "Expect '}' after enum body.");
+        return std::make_shared<EnumStmt>(name, variants, variantTypes);
     }
 
 } // namespace Chtholly

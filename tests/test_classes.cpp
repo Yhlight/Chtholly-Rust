@@ -120,9 +120,13 @@ void test_invalid_self_use()
 
 int main()
 {
+    std::cout << "--- Running test_class_declaration ---" << std::endl;
     test_class_declaration();
+    std::cout << "--- Running test_class_instantiation ---" << std::endl;
     test_class_instantiation();
+    std::cout << "--- Running test_member_access ---" << std::endl;
     test_member_access();
+    std::cout << "--- Running test_invalid_self_use ---" << std::endl;
     test_invalid_self_use();
     return 0;
 }

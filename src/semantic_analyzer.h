@@ -43,6 +43,7 @@ namespace Chtholly
         void visit(const FallthroughStmt& stmt) override;
         void visit(const StructStmt& stmt) override;
         void visit(const ClassStmt& stmt) override;
+        void visit(const EnumStmt& stmt) override;
 
     private:
         enum class FunctionType {

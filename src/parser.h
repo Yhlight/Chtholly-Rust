@@ -20,6 +20,7 @@ namespace Chtholly
         std::shared_ptr<Stmt> declaration();
         std::shared_ptr<Stmt> classDeclaration();
         std::shared_ptr<Stmt> structDeclaration();
+        std::shared_ptr<Stmt> enumDeclaration();
         std::shared_ptr<Stmt> functionDeclaration();
         std::shared_ptr<Stmt> letDeclaration(bool isMutable);
         std::shared_ptr<Stmt> statement();

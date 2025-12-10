@@ -67,9 +67,9 @@ This phase introduces user-defined data types.
     - [x] Implement constructors and destructors.
     - [x] Implement member functions with `self`, `&self`, and `&mut self`.
     - [ ] Implement access control (`public`/`private`).
-- **[ ] Enums:**
-    - [ ] Implement `enum` definitions.
-    - [ ] Implement enums with associated data.
+- **[x] Enums:**
+    - [x] Implement `enum` definitions.
+    - [x] Implement enums with associated data.
     - [ ] Implement pattern matching for enums.
 
 ### Phase 5: Advanced Features

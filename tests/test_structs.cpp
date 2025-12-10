@@ -118,7 +118,7 @@ void test_invalid_field_assignment()
             let y: i32;
         }
         fn main(): void {
-            let p = Point{x: 1, y: 2};
+            let mut p = Point{x: 1, y: 2};
             p.x = 3;
         }
     )";
@@ -135,17 +135,22 @@ void test_invalid_field_assignment()
     catch (const std::runtime_error& e)
     {
         std::string error_message = e.what();
-        assert(error_message.find("Cannot assign to immutable field.") != std::string::npos);
+        assert(error_message.find("Cannot assign to immutable field") != std::string::npos);
         std::cout << "test_invalid_field_assignment passed." << std::endl;
     }
 }
 
 int main()
 {
+    std::cout << "--- Running test_struct_declaration ---" << std::endl;
     test_struct_declaration();
+    std::cout << "--- Running test_struct_instantiation ---" << std::endl;
     test_struct_instantiation();
+    std::cout << "--- Running test_field_access ---" << std::endl;
     test_field_access();
+    std::cout << "--- Running test_field_assignment ---" << std::endl;
     test_field_assignment();
+    std::cout << "--- Running test_invalid_field_assignment ---" << std::endl;
     test_invalid_field_assignment();
     return 0;
 }

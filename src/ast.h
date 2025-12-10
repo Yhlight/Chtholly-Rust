@@ -171,6 +171,7 @@ namespace Chtholly
     struct FallthroughStmt;
     struct StructStmt;
     struct ClassStmt;
+    struct EnumStmt;
 
     // Visitor for Statements
     class StmtVisitor
@@ -192,6 +193,7 @@ namespace Chtholly
         virtual void visit(const FallthroughStmt& stmt) = 0;
         virtual void visit(const StructStmt& stmt) = 0;
         virtual void visit(const ClassStmt& stmt) = 0;
+        virtual void visit(const EnumStmt& stmt) = 0;
     };
 
     // Base class for all statements
@@ -364,6 +366,18 @@ namespace Chtholly
 
         ClassStmt(Token name, std::vector<std::shared_ptr<LetStmt>> fields, std::vector<std::shared_ptr<FunctionStmt>> methods)
             : name(std::move(name)), fields(std::move(fields)), methods(std::move(methods)) {}
+
+        void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
+    };
+
+    struct EnumStmt : Stmt
+    {
+        Token name;
+        std::vector<Token> variants;
+        std::vector<std::vector<Token>> variantTypes;
+
+        EnumStmt(Token name, std::vector<Token> variants, std::vector<std::vector<Token>> variantTypes)
+            : name(std::move(name)), variants(std::move(variants)), variantTypes(std::move(variantTypes)) {}
 
         void accept(StmtVisitor& visitor) const override { visitor.visit(*this); }
     };

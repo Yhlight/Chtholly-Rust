@@ -40,3 +40,7 @@ add_test(NAME test_structs COMMAND test_structs)
 add_executable(test_classes tests/test_classes.cpp src/lexer.cpp src/parser.cpp src/semantic_analyzer.cpp src/symbol_table.cpp)
 target_include_directories(test_classes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_test(NAME test_classes COMMAND test_classes)
+
+add_executable(test_enums tests/test_enums.cpp src/lexer.cpp src/parser.cpp src/semantic_analyzer.cpp src/symbol_table.cpp)
+target_include_directories(test_enums PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_test(NAME test_enums COMMAND test_enums)

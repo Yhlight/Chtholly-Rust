@@ -90,12 +90,11 @@ namespace Chtholly
             throw std::runtime_error("Cannot move '" + expr.name.lexeme + "' as it is borrowed.");
         }
 
-        // If the type is not a copy type, move it
-        if (copyTypes.find(info->type) == copyTypes.end())
+        // If the type is not a copy type and not self, move it
+        if (copyTypes.find(info->type) == copyTypes.end() && expr.name.lexeme != "self")
         {
             info->state = SymbolState::Moved;
         }
-
     }
 
     void SemanticAnalyzer::visit(const AssignExpr& expr)
@@ -528,7 +527,20 @@ namespace Chtholly
 
         if (auto callExpr = std::dynamic_pointer_cast<CallExpr>(expr))
         {
-            if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(callExpr->callee))
+            if (auto getExpr = std::dynamic_pointer_cast<GetExpr>(callExpr->callee))
+            {
+                std::string objectType = typeOf(getExpr->object);
+                SymbolInfo* classInfo = symbolTable.lookup(objectType);
+                if (classInfo && classInfo->symbolType == SymbolType::Class)
+                {
+                    auto methodIt = classInfo->fields.find(getExpr->name.lexeme);
+                    if (methodIt != classInfo->fields.end() && methodIt->second.symbolType == SymbolType::Function)
+                    {
+                        return methodIt->second.returnType;
+                    }
+                }
+            }
+            else if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(callExpr->callee))
             {
                 SymbolInfo* info = symbolTable.lookup(varExpr->name.lexeme);
                 if (info && info->symbolType == SymbolType::Function)
@@ -540,11 +552,11 @@ namespace Chtholly
         if (auto getExpr = std::dynamic_pointer_cast<GetExpr>(expr))
         {
             std::string objectType = typeOf(getExpr->object);
-            SymbolInfo* classInfo = symbolTable.lookup(objectType);
-            if (classInfo && (classInfo->symbolType == SymbolType::Struct || classInfo->symbolType == SymbolType::Class))
+            SymbolInfo* typeInfo = symbolTable.lookup(objectType);
+            if (typeInfo && (typeInfo->symbolType == SymbolType::Struct || typeInfo->symbolType == SymbolType::Class))
             {
-                auto fieldIt = classInfo->fields.find(getExpr->name.lexeme);
-                if (fieldIt != classInfo->fields.end())
+                auto fieldIt = typeInfo->fields.find(getExpr->name.lexeme);
+                if (fieldIt != typeInfo->fields.end())
                 {
                     if (fieldIt->second.symbolType == SymbolType::Function)
                     {
@@ -586,17 +598,17 @@ namespace Chtholly
     {
         check(expr.object);
         std::string objectType = typeOf(expr.object);
-        SymbolInfo* classInfo = symbolTable.lookup(objectType);
-        if (!classInfo || (classInfo->symbolType != SymbolType::Struct && classInfo->symbolType != SymbolType::Class))
+        SymbolInfo* typeInfo = symbolTable.lookup(objectType);
+        if (!typeInfo || (typeInfo->symbolType != SymbolType::Struct && typeInfo->symbolType != SymbolType::Class))
         {
-            throw std::runtime_error("Cannot access property on non-struct or non-class type.");
+            // Defer to typeOf to throw the error
+            return;
         }
 
-        auto fieldIt = classInfo->fields.find(expr.name.lexeme);
-        if (fieldIt == classInfo->fields.end())
+        auto fieldIt = typeInfo->fields.find(expr.name.lexeme);
+        if (fieldIt == typeInfo->fields.end())
         {
-            // It's not a field, so it must be a method.
-            // We don't have to do anything here, because the typeOf method will handle it.
+            throw std::runtime_error("Type '" + objectType + "' has no field named '" + expr.name.lexeme + "'.");
         }
     }
 
@@ -606,28 +618,33 @@ namespace Chtholly
         check(expr.object);
 
         std::string objectType = typeOf(expr.object);
-        SymbolInfo* classInfo = symbolTable.lookup(objectType);
-        if (!classInfo || (classInfo->symbolType != SymbolType::Struct && classInfo->symbolType != SymbolType::Class))
+        SymbolInfo* typeInfo = symbolTable.lookup(objectType);
+        if (!typeInfo || (typeInfo->symbolType != SymbolType::Struct && typeInfo->symbolType != SymbolType::Class))
         {
             throw std::runtime_error("Cannot access property on non-struct or non-class type.");
         }
 
-        auto fieldIt = classInfo->fields.find(expr.name.lexeme);
-        if (fieldIt == classInfo->fields.end())
+        auto fieldIt = typeInfo->fields.find(expr.name.lexeme);
+        if (fieldIt == typeInfo->fields.end())
         {
-            throw std::runtime_error("Class " + objectType + " has no field named " + expr.name.lexeme + ".");
+            throw std::runtime_error("Type '" + objectType + "' has no field named '" + expr.name.lexeme + "'.");
         }
+        const SymbolInfo& fieldInfo = fieldIt->second;
 
-        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.object)) {
+        if (auto varExpr = std::dynamic_pointer_cast<VariableExpr>(expr.object))
+        {
             SymbolInfo* objectInfo = symbolTable.lookup(varExpr->name.lexeme);
-            if (objectInfo && !objectInfo->isMutable) {
-                throw std::runtime_error("Cannot assign to field of immutable object.");
+            if (objectInfo)
+            {
+                if (!objectInfo->isMutable)
+                {
+                    throw std::runtime_error("Cannot assign to field of immutable object '" + varExpr->name.lexeme + "'.");
+                }
+                if (!fieldInfo.isMutable)
+                {
+                    throw std::runtime_error("Cannot assign to immutable field '" + expr.name.lexeme + "'.");
+                }
             }
-        }
-
-        if (!fieldIt->second.isMutable)
-        {
-            throw std::runtime_error("Cannot assign to immutable field.");
         }
     }
 
@@ -684,6 +701,21 @@ namespace Chtholly
             throw std::runtime_error("Cannot use 'self' outside of a class.");
         }
         check(std::make_shared<VariableExpr>(expr.keyword));
+    }
+
+    void SemanticAnalyzer::visit(const EnumStmt& stmt)
+    {
+        SymbolInfo info{stmt.name.lexeme, false, SymbolState::Valid, SymbolType::Enum};
+        for (size_t i = 0; i < stmt.variants.size(); ++i)
+        {
+            std::vector<std::string> variantTypes;
+            for (const auto& type : stmt.variantTypes[i])
+            {
+                variantTypes.push_back(type.lexeme);
+            }
+            info.variants[stmt.variants[i].lexeme] = variantTypes;
+        }
+        symbolTable.define(stmt.name.lexeme, info);
     }
 
 } // namespace Chtholly

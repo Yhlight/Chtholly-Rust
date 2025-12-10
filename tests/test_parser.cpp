@@ -170,6 +170,11 @@ public:
         result += "self";
     }
 
+    void visit(const Chtholly::EnumStmt& stmt) override
+    {
+        result += "enum " + stmt.name.lexeme + " { ... }";
+    }
+
 private:
     std::string result;
 };
