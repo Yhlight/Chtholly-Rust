@@ -10,10 +10,10 @@ CodeGenerator::CodeGenerator(SymbolTable& symbolTable) : typeResolver(symbolTabl
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>("ChthollyModule", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
-    declarePrintf();
-    declareMalloc();
-    declareStrcpy();
-    declareFree();
+    // declarePrintf();
+    // declareMalloc();
+    // declareStrcpy();
+    // declareFree();
 }
 
 void CodeGenerator::generate(BlockStmtAST& ast) {
@@ -45,7 +45,7 @@ void CodeGenerator::generate(BlockStmtAST& ast) {
 }
 
 void CodeGenerator::dump() const {
-    module->print(llvm::errs(), nullptr);
+    module->print(llvm::outs(), nullptr);
 }
 
 void CodeGenerator::declarePrintf() {

@@ -2,6 +2,8 @@
 build/
 *.o
 *.out
+*.out.*
+*.log
 chtholly
 
 # CMake files

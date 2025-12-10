@@ -1,14 +1,6 @@
 ; ModuleID = 'ChthollyModule'
 source_filename = "ChthollyModule"
 
-declare i32 @printf(ptr, ...)
-
-declare ptr @malloc(i64)
-
-declare ptr @strcpy(ptr, ptr)
-
-declare void @free(ptr)
-
 define i32 @main() {
 entry:
   %i = alloca i32, align 4
@@ -23,7 +15,7 @@ loop.body:                                        ; preds = %loop.cond, %entry
 
 loop.cond:                                        ; preds = %loop.body
   %i2 = load i32, ptr %i, align 4
-  %lttmp = icmp slt i32 %i2, 5
+  %lttmp = icmp slt i32 %i2, 10
   %dowhilecond = icmp ne i1 %lttmp, false
   br i1 %dowhilecond, label %loop.body, label %loop.exit
 
