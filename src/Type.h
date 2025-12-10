@@ -158,9 +158,10 @@ class ReferenceType : public Type {
 public:
     std::shared_ptr<Type> referencedType;
     bool isMutable;
+    int dataLifetimeId;
 
-    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable)
-        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable) {}
+    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable, int dataLifetimeId = 0)
+        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable), dataLifetimeId(dataLifetimeId) {}
 
     std::string toString() const override {
         return std::string("&") + (isMutable ? "mut " : "") + referencedType->toString();

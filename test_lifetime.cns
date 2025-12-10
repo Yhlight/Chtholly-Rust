@@ -1,0 +1,8 @@
+fn main(): i32 {
+    let mut r: &i32;
+    {
+        let x = 10;
+        r = &x;
+    } // x is dropped here
+    return 0; // r is now a dangling reference
+}

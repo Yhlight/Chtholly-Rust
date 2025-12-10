@@ -1,18 +1,24 @@
 #include "SymbolTable.h"
 
-SymbolTable::SymbolTable() {
+SymbolTable::SymbolTable() : lifetimeCounter(0) {
     // Start with a single global scope
     scopeStack.emplace_back();
+    lifetimeCounter++;
 }
 
 void SymbolTable::enterScope() {
     scopeStack.emplace_back();
+    lifetimeCounter++;
 }
 
 void SymbolTable::leaveScope() {
     if (!scopeStack.empty()) {
         scopeStack.pop_back();
     }
+}
+
+int SymbolTable::getCurrentLifetimeId() const {
+    return lifetimeCounter;
 }
 
 bool SymbolTable::addSymbol(const std::string& name, std::shared_ptr<Type> type, bool isMutable) {

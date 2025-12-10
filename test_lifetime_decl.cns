@@ -1,0 +1,7 @@
+fn main(): i32 {
+    let x = 10;
+    {
+        let y = &x; // This should be valid
+    }
+    return 0;
+}

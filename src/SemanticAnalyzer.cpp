@@ -99,6 +99,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     std::shared_ptr<Type> initType = nullptr;
     if (node.initExpr) {
         initType = visit(*node.initExpr);
+        if (auto* refType = dynamic_cast<ReferenceType*>(initType.get())) {
+            if (symbolTable.getCurrentLifetimeId() < refType->dataLifetimeId) {
+                throw std::runtime_error("Dangling reference: variable '" + node.varName + "' has a longer lifetime than the borrowed data.");
+            }
+        }
         if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
             Symbol* symbol = symbolTable.findSymbol(varExpr->name);
             if (symbol && !symbol->type->isCopy()) {
@@ -124,6 +129,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     if (!symbolTable.addSymbol(node.varName, varType, node.isMutable)) {
         throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
     }
+    Symbol* symbol = symbolTable.findSymbol(node.varName);
+    symbol->lifetimeId = symbolTable.getCurrentLifetimeId();
     return nullptr; // Statements don't have a type
 }
 
@@ -252,6 +259,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
         }
 
         auto rhsType = visit(*node.rhs);
+        if (auto* refType = dynamic_cast<ReferenceType*>(rhsType.get())) {
+            if (lhsSymbol->lifetimeId < refType->dataLifetimeId) {
+                throw std::runtime_error("Dangling reference: borrowed data does not live long enough for assignment to '" + lhsVar->name + "'.");
+            }
+        }
         if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
             Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
             if (rhsSymbol && !rhsSymbol->type->isCopy()) {
@@ -582,12 +594,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
             symbol->immutableBorrows++;
             symbol->borrowedInScope = true;
         }
+        node.type = std::make_shared<ReferenceType>(exprType, node.isMutable, symbol->lifetimeId);
+    } else {
+        throw std::runtime_error("Cannot take a reference to a temporary value.");
     }
-    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable);
     return node.type;
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ReferenceTypeAST& node) {
     auto referencedType = typeResolver.resolve(*node.referencedType);
-    return std::make_shared<ReferenceType>(referencedType, node.isMutable);
+    return std::make_shared<ReferenceType>(referencedType, node.isMutable, 0);
 }

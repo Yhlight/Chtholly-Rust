@@ -16,6 +16,7 @@ struct Symbol {
     int immutableBorrows = 0;
     bool mutableBorrow = false;
     bool borrowedInScope = false;
+    int lifetimeId = 0;
 };
 
 // A single scope, mapping names to symbols
@@ -28,6 +29,7 @@ public:
 
     void enterScope();
     void leaveScope();
+    int getCurrentLifetimeId() const;
 
     // Tries to add a symbol to the current scope.
     // Returns true on success, false if the symbol already exists in the current scope.
@@ -47,6 +49,7 @@ public:
 private:
     std::vector<Scope> scopeStack;
     std::unordered_map<std::string, std::shared_ptr<Type>> types;
+    int lifetimeCounter;
 };
 
 #endif // CHTHOLLY_SYMBOLTABLE_H
