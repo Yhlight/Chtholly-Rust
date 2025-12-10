@@ -37,11 +37,85 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::IF) {
         return parse_if_statement();
     }
+    if (peek().type == TokenType::SWITCH) {
+        return parse_switch_statement();
+    }
+    if (peek().type == TokenType::BREAK) {
+        return parse_break_statement();
+    }
+    if (peek().type == TokenType::FALLTHROUGH) {
+        return parse_fallthrough_statement();
+    }
     if (peek().type == TokenType::RETURN) {
         return parse_return_statement();
     }
     return parse_expression_statement();
 }
+
+std::unique_ptr<StmtAST> Parser::parse_break_statement() {
+    advance(); // consume 'break'
+    if (peek().type != TokenType::SEMICOLON) {
+        throw std::runtime_error("Expected ';' after 'break'");
+    }
+    advance(); // consume ';'
+    return std::make_unique<BreakStmtAST>();
+}
+
+std::unique_ptr<StmtAST> Parser::parse_fallthrough_statement() {
+    advance(); // consume 'fallthrough'
+    if (peek().type != TokenType::SEMICOLON) {
+        throw std::runtime_error("Expected ';' after 'fallthrough'");
+    }
+    advance(); // consume ';'
+    return std::make_unique<FallthroughStmtAST>();
+}
+
+std::unique_ptr<StmtAST> Parser::parse_switch_statement() {
+    advance(); // consume 'switch'
+    if (peek().type != TokenType::LEFT_PAREN) {
+        throw std::runtime_error("Expected '(' after 'switch'");
+    }
+    advance(); // consume '('
+    auto condition = parse_expression();
+    if (peek().type != TokenType::RIGHT_PAREN) {
+        throw std::runtime_error("Expected ')' after switch condition");
+    }
+    advance(); // consume ')'
+
+    if (peek().type != TokenType::LEFT_BRACE) {
+        throw std::runtime_error("Expected '{' for switch body");
+    }
+    advance(); // consume '{'
+
+    std::vector<std::unique_ptr<CaseBlockAST>> cases;
+    while (peek().type != TokenType::RIGHT_BRACE) {
+        if (peek().type == TokenType::CASE) {
+            advance(); // consume 'case'
+            auto value = parse_expression();
+            if (peek().type != TokenType::COLON) {
+                throw std::runtime_error("Expected ':' after case value");
+            }
+            advance(); // consume ':'
+            auto body = parse_block();
+            cases.push_back(std::make_unique<CaseBlockAST>(std::move(value), std::move(body)));
+        } else if (peek().type == TokenType::DEFAULT) {
+            advance(); // consume 'default'
+            if (peek().type != TokenType::COLON) {
+                throw std::runtime_error("Expected ':' after 'default'");
+            }
+            advance(); // consume ':'
+            auto body = parse_block();
+            cases.push_back(std::make_unique<CaseBlockAST>(nullptr, std::move(body)));
+        } else {
+            throw std::runtime_error("Expected 'case' or 'default' in switch body");
+        }
+    }
+
+    advance(); // consume '}'
+
+    return std::make_unique<SwitchStmtAST>(std::move(condition), std::move(cases));
+}
+
 
 std::unique_ptr<StmtAST> Parser::parse_return_statement() {
     advance(); // consume 'return'

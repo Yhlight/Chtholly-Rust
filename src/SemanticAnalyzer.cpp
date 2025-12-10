@@ -57,6 +57,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<SwitchStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<CaseBlockAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<BreakStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<FallthroughStmtAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<TypeNameAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<BorrowExprAST*>(&node)) {
@@ -317,6 +325,56 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(IfStmtAST& node) {
 
     return nullptr; // Statements don't have a type
 }
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(SwitchStmtAST& node) {
+    auto conditionType = visit(*node.condition);
+    if (!conditionType->isInteger() && !conditionType->isString()) {
+        throw std::runtime_error("Switch condition must be an integer or a string.");
+    }
+
+    bool oldInSwitch = inSwitch;
+    inSwitch = true;
+
+    for (auto& caseBlock : node.cases) {
+        visit(*caseBlock);
+        if (caseBlock->value) {
+            if (!dynamic_cast<NumberExprAST*>(caseBlock->value.get()) && !dynamic_cast<StringExprAST*>(caseBlock->value.get())) {
+                throw std::runtime_error("Case value must be a literal.");
+            }
+            auto caseType = visit(*caseBlock->value);
+            if (caseType->toString() != conditionType->toString()) {
+                throw std::runtime_error("Case value type does not match switch condition type.");
+            }
+        }
+    }
+
+    inSwitch = oldInSwitch;
+
+    return nullptr; // Statements don't have a type
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(CaseBlockAST& node) {
+    if (node.value) {
+        visit(*node.value);
+    }
+    visit(*node.body);
+    return nullptr; // Statements don't have a type
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(BreakStmtAST& node) {
+    if (!inSwitch) {
+        throw std::runtime_error("Break statement outside of a switch statement.");
+    }
+    return nullptr; // Statements don't have a type
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(FallthroughStmtAST& node) {
+    if (!inSwitch) {
+        throw std::runtime_error("Fallthrough statement outside of a switch statement.");
+    }
+    return nullptr; // Statements don't have a type
+}
+
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(TypeNameAST& node) {
     return nullptr;

@@ -63,6 +63,63 @@ void CodeGenerator::declareFree() {
     module->getOrInsertFunction("free", free_type);
 }
 
+void CodeGenerator::createStringSwitch(SwitchStmtAST& node) {
+    llvm::Value* condV = visit(*node.condition);
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock* switchEndBB = llvm::BasicBlock::Create(*context, "switch.end", function);
+
+    llvm::BasicBlock* oldSwitchExit = currentSwitchExit;
+    currentSwitchExit = switchEndBB;
+
+    llvm::BasicBlock* nextCaseBB = llvm::BasicBlock::Create(*context, "switch.case.check", function);
+    builder->CreateBr(nextCaseBB);
+
+    llvm::Function* strcmpFunc = module->getFunction("strcmp");
+    if (!strcmpFunc) {
+        llvm::Type* i8_ptr_type = builder->getInt8Ty()->getPointerTo();
+        llvm::FunctionType* strcmp_type = llvm::FunctionType::get(builder->getInt32Ty(), {i8_ptr_type, i8_ptr_type}, false);
+        strcmpFunc = llvm::cast<llvm::Function>(module->getOrInsertFunction("strcmp", strcmp_type).getCallee());
+    }
+
+    llvm::BasicBlock* defaultBB = nullptr;
+
+    for (const auto& caseBlock : node.cases) {
+        if (caseBlock->value) {
+            builder->SetInsertPoint(nextCaseBB);
+            llvm::Value* caseVal = visit(*caseBlock->value);
+            llvm::Value* cmp = builder->CreateCall(strcmpFunc, {condV, caseVal}, "strcmp");
+            llvm::Value* is_eq = builder->CreateICmpEQ(cmp, builder->getInt32(0), "is_eq");
+
+            llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(*context, "switch.case", function);
+            nextCaseBB = llvm::BasicBlock::Create(*context, "switch.case.check", function);
+            builder->CreateCondBr(is_eq, caseBB, nextCaseBB);
+
+            builder->SetInsertPoint(caseBB);
+            visit(*caseBlock->body);
+            if (!builder->GetInsertBlock()->getTerminator()) {
+                builder->CreateBr(switchEndBB);
+            }
+        } else {
+            defaultBB = llvm::BasicBlock::Create(*context, "switch.default", function);
+            builder->SetInsertPoint(defaultBB);
+            visit(*caseBlock->body);
+            if (!builder->GetInsertBlock()->getTerminator()) {
+                builder->CreateBr(switchEndBB);
+            }
+        }
+    }
+
+    builder->SetInsertPoint(nextCaseBB);
+    if (defaultBB) {
+        builder->CreateBr(defaultBB);
+    } else {
+        builder->CreateBr(switchEndBB);
+    }
+
+    builder->SetInsertPoint(switchEndBB);
+    currentSwitchExit = oldSwitchExit;
+}
+
 
 llvm::Type* CodeGenerator::resolveType(const TypeNameAST& typeName) {
     if (auto* refType = dynamic_cast<const ReferenceTypeAST*>(&typeName)) {
@@ -136,9 +193,79 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<SwitchStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<BreakStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<FallthroughStmtAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<BorrowExprAST*>(&node)) {
         return visit(*p);
     }
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(SwitchStmtAST& node) {
+    if (node.condition->type->isString()) {
+        createStringSwitch(node);
+        return nullptr;
+    }
+
+    llvm::Value* condV = visit(*node.condition);
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock* switchEndBB = llvm::BasicBlock::Create(*context, "switch.end", function);
+
+    // Save the old switch exit and set the new one
+    llvm::BasicBlock* oldSwitchExit = currentSwitchExit;
+    currentSwitchExit = switchEndBB;
+
+    llvm::SwitchInst* switchInst = builder->CreateSwitch(condV, switchEndBB, node.cases.size());
+
+    for (const auto& caseBlock : node.cases) {
+        if (caseBlock->value) {
+            llvm::ConstantInt* caseVal = llvm::cast<llvm::ConstantInt>(visit(*caseBlock->value));
+            llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(*context, "switch.case", function);
+            switchInst->addCase(caseVal, caseBB);
+            builder->SetInsertPoint(caseBB);
+        } else {
+            llvm::BasicBlock* defaultBB = llvm::BasicBlock::Create(*context, "switch.default", function);
+            switchInst->setDefaultDest(defaultBB);
+            builder->SetInsertPoint(defaultBB);
+        }
+
+        visit(*caseBlock->body);
+
+        // Check for fallthrough or break
+        bool hasTerminator = !caseBlock->body->statements.empty() &&
+                             (dynamic_cast<FallthroughStmtAST*>(caseBlock->body->statements.back().get()) ||
+                              dynamic_cast<BreakStmtAST*>(caseBlock->body->statements.back().get()));
+
+        if (!builder->GetInsertBlock()->getTerminator() && !hasTerminator) {
+            builder->CreateBr(switchEndBB);
+        }
+    }
+
+    builder->SetInsertPoint(switchEndBB);
+
+    // Restore the old switch exit
+    currentSwitchExit = oldSwitchExit;
+
+    return nullptr;
+}
+
+
+llvm::Value* CodeGenerator::visit(BreakStmtAST& node) {
+    if (!currentSwitchExit) {
+        throw std::runtime_error("Break statement outside of a switch statement.");
+    }
+    builder->CreateBr(currentSwitchExit);
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(FallthroughStmtAST& node) {
+    // A fallthrough is implemented by not creating a branch to the switch.end
+    // block. The IR builder will continue to the next basic block, which will
+    // be the next case.
     return nullptr;
 }
 

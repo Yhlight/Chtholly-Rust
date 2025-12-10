@@ -58,7 +58,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 - [ ] `while` and `do-while` loops.
 - [ ] C-style `for` loops.
 - [ ] `foreach` loops based on the iterator pattern.
-- [ ] `switch-case` statements with improved semantics (e.g., no fall-through by default).
+- [x] `switch-case` statements with improved semantics (e.g., no fall-through by default).
 
 ### Milestone 3.2: Compound Data Types
 - [ ] `struct`: User-defined data structures.

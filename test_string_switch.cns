@@ -1,0 +1,18 @@
+fn main(): i32 {
+    let s = "hello";
+    switch (s) {
+        case "hello": {
+            println("world");
+            break;
+        }
+        case "world": {
+            println("hello");
+            break;
+        }
+        default: {
+            println("default");
+            break;
+        }
+    }
+    return 0;
+}

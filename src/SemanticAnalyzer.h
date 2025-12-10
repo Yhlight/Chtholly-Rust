@@ -15,6 +15,7 @@ private:
     SymbolTable symbolTable;
     TypeResolver typeResolver;
     FunctionDeclAST* currentFunction = nullptr;
+    bool inSwitch = false;
 
     std::shared_ptr<Type> visit(ASTNode& node);
     std::shared_ptr<Type> visit(VarDeclStmtAST& node);
@@ -28,6 +29,10 @@ private:
     std::shared_ptr<Type> visit(ExprStmtAST& node);
     std::shared_ptr<Type> visit(ReturnStmtAST& node);
     std::shared_ptr<Type> visit(IfStmtAST& node);
+    std::shared_ptr<Type> visit(SwitchStmtAST& node);
+    std::shared_ptr<Type> visit(CaseBlockAST& node);
+    std::shared_ptr<Type> visit(BreakStmtAST& node);
+    std::shared_ptr<Type> visit(FallthroughStmtAST& node);
     std::shared_ptr<Type> visit(BoolExprAST& node);
     std::shared_ptr<Type> visit(TypeNameAST& node);
     std::shared_ptr<Type> visit(BorrowExprAST& node);

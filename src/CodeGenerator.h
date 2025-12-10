@@ -20,8 +20,10 @@ private:
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::map<std::string, llvm::AllocaInst*> namedValues;
     std::vector<llvm::AllocaInst*> ownedValues; // Track owned values
+    llvm::BasicBlock* currentSwitchExit = nullptr;
     TypeResolver typeResolver;
 
+    void createStringSwitch(SwitchStmtAST& node);
     void declarePrintf();
     void declareMalloc();
     void declareStrcpy();
@@ -42,6 +44,9 @@ private:
     llvm::Value* visit(ExprStmtAST& node);
     llvm::Value* visit(ReturnStmtAST& node);
     llvm::Value* visit(IfStmtAST& node);
+    llvm::Value* visit(SwitchStmtAST& node);
+    llvm::Value* visit(BreakStmtAST& node);
+    llvm::Value* visit(FallthroughStmtAST& node);
     llvm::Value* visit(BorrowExprAST& node);
 };
 

@@ -9,8 +9,9 @@ static const std::unordered_map<std::string, TokenType> KEYWORDS = {
     {"struct", TokenType::STRUCT}, {"enum", TokenType::ENUM}, {"public", TokenType::PUBLIC},
     {"private", TokenType::PRIVATE}, {"require", TokenType::REQUIRE}, {"import", TokenType::IMPORT},
     {"use", TokenType::USE}, {"as", TokenType::AS}, {"package", TokenType::PACKAGE},
-    {"switch", TokenType::SWITCH}, {"case", TokenType::CASE}, {"break", TokenType::BREAK},
-    {"fallthrough", TokenType::FALLTHROUGH}, {"do", TokenType::DO}, {"foreach", TokenType::FOREACH},
+    {"switch", TokenType::SWITCH}, {"case", TokenType::CASE}, {"default", TokenType::DEFAULT},
+    {"break", TokenType::BREAK}, {"fallthrough", TokenType::FALLTHROUGH},
+    {"do", TokenType::DO}, {"foreach", TokenType::FOREACH},
     {"true", TokenType::TRUE}, {"false", TokenType::FALSE}
 };
 

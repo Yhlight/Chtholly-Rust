@@ -150,6 +150,56 @@ public:
     void print(int level = 0) const override {}
 };
 
+// Statement class for break statements
+class BreakStmtAST : public StmtAST {
+public:
+    BreakStmtAST() = default;
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "BreakStmtAST" << std::endl;
+    }
+};
+
+// Statement class for fallthrough statements
+class FallthroughStmtAST : public StmtAST {
+public:
+    FallthroughStmtAST() = default;
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "FallthroughStmtAST" << std::endl;
+    }
+};
+
+// Represents a single case in a switch statement
+class CaseBlockAST : public ASTNode {
+public:
+    std::unique_ptr<ExprAST> value; // The value for the case, can be nullptr for default
+    std::unique_ptr<BlockStmtAST> body;
+
+    CaseBlockAST(std::unique_ptr<ExprAST> value, std::unique_ptr<BlockStmtAST> body)
+        : value(std::move(value)), body(std::move(body)) {}
+
+    void print(int level = 0) const override;
+};
+
+// Statement class for switch statements
+class SwitchStmtAST : public StmtAST {
+public:
+    std::unique_ptr<ExprAST> condition;
+    std::vector<std::unique_ptr<CaseBlockAST>> cases;
+
+    SwitchStmtAST(std::unique_ptr<ExprAST> condition, std::vector<std::unique_ptr<CaseBlockAST>> cases)
+        : condition(std::move(condition)), cases(std::move(cases)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "SwitchStmtAST:" << std::endl;
+        std::cout << indent(level + 1) << "Condition:" << std::endl;
+        condition->print(level + 2);
+        std::cout << indent(level + 1) << "Cases:" << std::endl;
+        for (const auto& caseBlock : cases) {
+            caseBlock->print(level + 2);
+        }
+    }
+};
+
 // Statement class for wrapping an expression
 class ExprStmtAST : public StmtAST {
 public:
@@ -241,6 +291,16 @@ inline void FunctionDeclAST::print(int level) const {
     returnType->print(level + 2);
     std::cout << indent(level + 1) << "Body:" << std::endl;
     body->print(level + 2);
+}
+
+inline void CaseBlockAST::print(int level) const {
+    std::cout << indent(level) << "CaseBlockAST:" << std::endl;
+    if (value) {
+        value->print(level + 1);
+    } else {
+        std::cout << indent(level + 1) << "Default case" << std::endl;
+    }
+    body->print(level + 1);
 }
 
 
