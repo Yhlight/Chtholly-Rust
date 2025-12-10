@@ -3,9 +3,10 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Casting.h>
+#include "SymbolTable.h"
 
 
-CodeGenerator::CodeGenerator() {
+CodeGenerator::CodeGenerator(SymbolTable& symbolTable) : typeResolver(symbolTable), isMemberAccess(false) {
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>("ChthollyModule", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
@@ -16,9 +17,11 @@ CodeGenerator::CodeGenerator() {
 }
 
 void CodeGenerator::generate(BlockStmtAST& ast) {
-    // First pass: declare all functions
+    // First pass: declare all structs and functions
     for (auto& stmt : ast.statements) {
-        if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
+        if (auto* structDecl = dynamic_cast<StructDeclAST*>(stmt.get())) {
+            visit(*structDecl);
+        } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             llvm::Type* returnType = resolveType(*funcDecl->returnType);
             std::vector<llvm::Type*> argTypes;
             for (const auto& arg : funcDecl->args) {
@@ -31,7 +34,9 @@ void CodeGenerator::generate(BlockStmtAST& ast) {
 
     // Second pass: generate code for all statements
     for (auto& stmt : ast.statements) {
-        visit(*stmt);
+        if (!dynamic_cast<StructDeclAST*>(stmt.get())) {
+            visit(*stmt);
+        }
     }
 }
 
@@ -164,12 +169,17 @@ llvm::Type* CodeGenerator::resolveType(const Type& type) {
     if (auto* refType = dynamic_cast<const ReferenceType*>(&type)) {
         return resolveType(*refType->referencedType)->getPointerTo();
     }
+    if (auto* structType = dynamic_cast<const StructType*>(&type)) {
+        return llvm::StructType::getTypeByName(*context, structType->name);
+    }
     throw std::runtime_error("Unknown type in code generator");
 }
 
 
 llvm::Value* CodeGenerator::visit(ASTNode& node) {
     if (auto* p = dynamic_cast<VarDeclStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<StructDeclAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<FunctionDeclAST*>(&node)) {
         return visit(*p);
@@ -184,6 +194,10 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<BoolExprAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<VariableExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<StructInitializerExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<MemberAccessExprAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<FunctionCallExprAST*>(&node)) {
         return visit(*p);
@@ -257,6 +271,76 @@ llvm::Value* CodeGenerator::visit(SwitchStmtAST& node) {
     currentSwitchExit = oldSwitchExit;
 
     return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(StructDeclAST& node) {
+    std::vector<llvm::Type*> memberTypes;
+    for (const auto& member : node.members) {
+        memberTypes.push_back(resolveType(*member->type));
+    }
+    llvm::StructType::create(*context, memberTypes, node.name);
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(StructInitializerExprAST& node) {
+    auto* structType = llvm::StructType::getTypeByName(*context, node.structName);
+    if (!structType) {
+        throw std::runtime_error("Struct type '" + node.structName + "' not found.");
+    }
+
+    llvm::AllocaInst* alloca = builder->CreateAlloca(structType, nullptr, node.structName + ".instance");
+
+    if (node.members[0]->name.empty()) { // Aggregate initialization
+        for (size_t i = 0; i < node.members.size(); ++i) {
+            llvm::Value* memberValue = visit(*node.members[i]->value);
+            builder->CreateStore(memberValue, builder->CreateStructGEP(structType, alloca, i));
+        }
+    } else { // Designated initialization
+        auto* structInfo = dynamic_cast<StructType*>(node.type.get());
+        for (const auto& memberInit : node.members) {
+            int memberIndex = -1;
+            for (size_t i = 0; i < structInfo->members.size(); ++i) {
+                if (structInfo->members[i].first == memberInit->name) {
+                    memberIndex = i;
+                    break;
+                }
+            }
+            if (memberIndex == -1) {
+                throw std::runtime_error("Struct '" + node.structName + "' has no member named '" + memberInit->name + "'.");
+            }
+
+            llvm::Value* memberValue = visit(*memberInit->value);
+            builder->CreateStore(memberValue, builder->CreateStructGEP(structType, alloca, memberIndex));
+        }
+    }
+
+    return alloca;
+}
+
+llvm::Value* CodeGenerator::visit(MemberAccessExprAST& node) {
+    isMemberAccess = true;
+    llvm::Value* object = visit(*node.object);
+    isMemberAccess = false;
+    auto* structType = dynamic_cast<StructType*>(node.object->type.get());
+    if (!structType) {
+        throw std::runtime_error("Member access on non-struct type.");
+    }
+
+    int memberIndex = -1;
+    for (size_t i = 0; i < structType->members.size(); ++i) {
+        if (structType->members[i].first == node.memberName) {
+            memberIndex = i;
+            break;
+        }
+    }
+
+    if (memberIndex == -1) {
+        throw std::runtime_error("Struct '" + structType->name + "' has no member named '" + node.memberName + "'.");
+    }
+
+    auto* llvmStructType = llvm::StructType::getTypeByName(*context, structType->name);
+    llvm::Value* memberPtr = builder->CreateStructGEP(llvmStructType, object, memberIndex);
+    return builder->CreateLoad(llvmStructType->getElementType(memberIndex), memberPtr);
 }
 
 
@@ -446,6 +530,9 @@ llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
     }
 
     // Load the value from the memory location
+    if (isMemberAccess) {
+        return v;
+    }
     return builder->CreateLoad(v->getAllocatedType(), v, node.name.c_str());
 }
 

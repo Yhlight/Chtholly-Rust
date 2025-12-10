@@ -22,6 +22,7 @@ private:
     // Parsing methods
     std::unique_ptr<StmtAST> parse_statement();
     std::unique_ptr<StmtAST> parse_variable_declaration();
+    std::unique_ptr<StmtAST> parse_struct_definition();
     std::unique_ptr<StmtAST> parse_function_definition();
     std::unique_ptr<StmtAST> parse_if_statement();
     std::unique_ptr<StmtAST> parse_while_statement();

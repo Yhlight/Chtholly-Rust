@@ -133,6 +133,57 @@ public:
     }
 };
 
+// Represents a single member initializer in a struct initializer list
+class MemberInitializerAST : public ASTNode {
+public:
+    std::string name; // Optional, for designated initializers
+    std::unique_ptr<ExprAST> value;
+
+    MemberInitializerAST(std::unique_ptr<ExprAST> value, std::string name = "")
+        : name(std::move(name)), value(std::move(value)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "MemberInitializerAST: ";
+        if (!name.empty()) {
+            std::cout << name << " = ";
+        }
+        std::cout << std::endl;
+        value->print(level + 1);
+    }
+};
+
+// Expression class for struct initializers
+class StructInitializerExprAST : public ExprAST {
+public:
+    std::string structName;
+    std::vector<std::unique_ptr<MemberInitializerAST>> members;
+
+    StructInitializerExprAST(std::string structName, std::vector<std::unique_ptr<MemberInitializerAST>> members)
+        : structName(std::move(structName)), members(std::move(members)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "StructInitializerExprAST: " << structName << std::endl;
+        for (const auto& member : members) {
+            member->print(level + 1);
+        }
+    }
+};
+
+// Expression class for member access
+class MemberAccessExprAST : public ExprAST {
+public:
+    std::unique_ptr<ExprAST> object;
+    std::string memberName;
+
+    MemberAccessExprAST(std::unique_ptr<ExprAST> object, std::string memberName)
+        : object(std::move(object)), memberName(std::move(memberName)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "MemberAccessExprAST: " << memberName << std::endl;
+        object->print(level + 1);
+    }
+};
+
 
 // Base class for all statement nodes
 class StmtAST : public ASTNode {};
@@ -303,6 +354,44 @@ public:
         : name(std::move(name)), args(std::move(args)), returnType(std::move(returnType)), body(std::move(body)) {}
 
     void print(int level = 0) const override;
+};
+
+// Represents a member variable declaration in a struct or class
+class MemberVarDeclAST : public ASTNode {
+public:
+    std::string name;
+    std::unique_ptr<TypeNameAST> type;
+    bool isMutable;
+    std::unique_ptr<ExprAST> defaultValue; // For default values
+
+    MemberVarDeclAST(std::string name, std::unique_ptr<TypeNameAST> type, bool isMutable, std::unique_ptr<ExprAST> defaultValue)
+        : name(std::move(name)), type(std::move(type)), isMutable(isMutable), defaultValue(std::move(defaultValue)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << (isMutable ? "Member(mut) " : "Member ") << name << ":" << std::endl;
+        type->print(level + 1);
+        if (defaultValue) {
+            std::cout << indent(level + 1) << "Default:" << std::endl;
+            defaultValue->print(level + 2);
+        }
+    }
+};
+
+// Statement class for struct declarations
+class StructDeclAST : public StmtAST {
+public:
+    std::string name;
+    std::vector<std::unique_ptr<MemberVarDeclAST>> members;
+
+    StructDeclAST(std::string name, std::vector<std::unique_ptr<MemberVarDeclAST>> members)
+        : name(std::move(name)), members(std::move(members)) {}
+
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "StructDecl: " << name << std::endl;
+        for (const auto& member : members) {
+            member->print(level + 1);
+        }
+    }
 };
 
 

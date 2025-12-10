@@ -16,7 +16,8 @@ public:
         TK_Void,
         TK_Function,
         TK_Class,
-        TK_Struct
+        TK_Struct,
+        TK_Reference
     };
 
     TypeKind kind;
@@ -28,6 +29,7 @@ public:
     bool isFloat() const { return kind == TK_Float; }
     bool isString() const { return kind == TK_String; }
     bool isBool() const { return kind == TK_Bool; }
+    bool isStruct() const { return kind == TK_Struct; }
     // Add more checks as needed
 
     virtual bool isCopy() const { return false; }
@@ -94,6 +96,17 @@ public:
     bool isCopy() const override { return true; }
 };
 
+class StructType : public Type {
+public:
+    std::string name;
+    std::vector<std::pair<std::string, std::shared_ptr<Type>>> members;
+
+    StructType(std::string name, std::vector<std::pair<std::string, std::shared_ptr<Type>>> members)
+        : Type(TK_Struct), name(std::move(name)), members(std::move(members)) {}
+
+    std::string toString() const override { return name; }
+};
+
 class FunctionType : public Type {
 public:
     std::shared_ptr<Type> returnType;
@@ -121,7 +134,7 @@ public:
     bool isMutable;
 
     ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable)
-        : Type(TK_Class), referencedType(std::move(referencedType)), isMutable(isMutable) {}
+        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable) {}
 
     std::string toString() const override {
         return std::string("&") + (isMutable ? "mut " : "") + referencedType->toString();

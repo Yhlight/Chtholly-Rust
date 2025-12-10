@@ -61,7 +61,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 - [x] `switch-case` statements with improved semantics (e.g., no fall-through by default).
 
 ### Milestone 3.2: Compound Data Types
-- [ ] `struct`: User-defined data structures.
+- [x] `struct`: User-defined data structures.
 - [ ] `class`: Structs with methods, constructors, destructors, and access modifiers.
 - [ ] `enum`: Algebraic data types, including enums with associated data.
 - [ ] `array`: Both static (`T[N]`) and dynamic (`T[]`) arrays.

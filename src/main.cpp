@@ -56,15 +56,15 @@ int main(int argc, char** argv) {
     }
 
     if (ast) {
+        SemanticAnalyzer analyzer;
         try {
-            SemanticAnalyzer analyzer;
             analyzer.analyze(*ast);
         } catch (const std::exception& e) {
             std::cerr << "Semantic error: " << e.what() << std::endl;
             return 1;
         }
 
-        CodeGenerator generator;
+        CodeGenerator generator(analyzer.getSymbolTable());
         try {
             generator.generate(*ast);
             generator.dump();

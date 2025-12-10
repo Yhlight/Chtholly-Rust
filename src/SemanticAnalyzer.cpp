@@ -3,16 +3,18 @@
 #include <stdexcept>
 #include "Type.h"
 
-SemanticAnalyzer::SemanticAnalyzer() {
+SemanticAnalyzer::SemanticAnalyzer() : typeResolver(symbolTable) {
     // Pre-populate with built-in functions
     auto printlnType = std::make_shared<FunctionType>(); // This is a simplification
     symbolTable.addSymbol("println", printlnType, false);
 }
 
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
-    // First pass: register all function declarations
+    // First pass: register all type and function declarations
     for (auto& stmt : ast.statements) {
-        if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
+        if (auto* structDecl = dynamic_cast<StructDeclAST*>(stmt.get())) {
+            visit(*structDecl);
+        } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             auto funcType = std::make_shared<FunctionType>();
             funcType->returnType = typeResolver.resolve(*funcDecl->returnType);
             for (auto& arg : funcDecl->args) {
@@ -28,12 +30,16 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
 
     // Second pass: analyze all statements
     for (auto& stmt : ast.statements) {
-        visit(*stmt);
+        if (!dynamic_cast<StructDeclAST*>(stmt.get())) {
+            visit(*stmt);
+        }
     }
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
     if (auto* p = dynamic_cast<VarDeclStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<StructDeclAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<FunctionDeclAST*>(&node)) {
         return visit(*p);
@@ -49,6 +55,10 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<VariableExprAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<StructInitializerExprAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<MemberAccessExprAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<FunctionCallExprAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<ExprStmtAST*>(&node)) {
@@ -56,6 +66,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
     } else if (auto* p = dynamic_cast<ReturnStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<WhileStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<DoWhileStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ForStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<SwitchStmtAST*>(&node)) {
         return visit(*p);
@@ -106,6 +122,26 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     }
     return nullptr; // Statements don't have a type
 }
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
+    std::vector<std::pair<std::string, std::shared_ptr<Type>>> members;
+    for (const auto& member : node.members) {
+        auto memberType = typeResolver.resolve(*member->type);
+        if (member->defaultValue) {
+            auto defaultType = visit(*member->defaultValue);
+            if (memberType->toString() != defaultType->toString()) {
+                throw std::runtime_error("Type mismatch for default value of member '" + member->name + "' in struct '" + node.name + "'.");
+            }
+        }
+        members.emplace_back(member->name, memberType);
+    }
+    auto structType = std::make_shared<StructType>(node.name, members);
+    if (!symbolTable.add_type(node.name, structType)) {
+        throw std::runtime_error("Struct '" + node.name + "' already declared.");
+    }
+    return nullptr; // Statements don't have a type
+}
+
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
     auto returnType = typeResolver.resolve(*node.returnType);
@@ -248,6 +284,70 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VariableExprAST& node) {
     return node.type;
 }
 
+std::shared_ptr<Type> SemanticAnalyzer::visit(StructInitializerExprAST& node) {
+    auto type = symbolTable.find_type(node.structName);
+    if (!type) {
+        throw std::runtime_error("Struct '" + node.structName + "' not declared.");
+    }
+    auto* structType = dynamic_cast<StructType*>(type.get());
+    if (!structType) {
+        throw std::runtime_error("'" + node.structName + "' is not a struct.");
+    }
+
+    if (node.members.size() != structType->members.size()) {
+        throw std::runtime_error("Incorrect number of initializers for struct '" + node.structName + "'.");
+    }
+
+    bool isDesignated = !node.members.empty() && !node.members[0]->name.empty();
+
+    if (isDesignated) {
+        for (const auto& memberInit : node.members) {
+            bool found = false;
+            for (const auto& member : structType->members) {
+                if (member.first == memberInit->name) {
+                    found = true;
+                    auto initType = visit(*memberInit->value);
+                    if (initType->toString() != member.second->toString()) {
+                        throw std::runtime_error("Type mismatch for member '" + memberInit->name + "' in struct '" + node.structName + "'.");
+                    }
+                    break;
+                }
+            }
+            if (!found) {
+                throw std::runtime_error("Struct '" + node.structName + "' has no member named '" + memberInit->name + "'.");
+            }
+        }
+    } else {
+        for (size_t i = 0; i < node.members.size(); ++i) {
+            auto initType = visit(*node.members[i]->value);
+            if (initType->toString() != structType->members[i].second->toString()) {
+                throw std::runtime_error("Type mismatch for member '" + structType->members[i].first + "' in struct '" + node.structName + "'.");
+            }
+        }
+    }
+
+    node.type = type;
+    return node.type;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(MemberAccessExprAST& node) {
+    auto objectType = visit(*node.object);
+    auto* structType = dynamic_cast<StructType*>(objectType.get());
+    if (!structType) {
+        throw std::runtime_error("Member access on non-struct type.");
+    }
+
+    for (const auto& member : structType->members) {
+        if (member.first == node.memberName) {
+            node.type = member.second;
+            return node.type;
+        }
+    }
+
+    throw std::runtime_error("Struct '" + structType->name + "' has no member named '" + node.memberName + "'.");
+}
+
+
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
     if (node.callee == "println") {
         for (auto& arg : node.args) {
@@ -373,6 +473,43 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FallthroughStmtAST& node) {
         throw std::runtime_error("Fallthrough statement outside of a switch statement.");
     }
     return nullptr; // Statements don't have a type
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(WhileStmtAST& node) {
+    auto conditionType = visit(*node.condition);
+    if (!conditionType->isBool()) {
+        throw std::runtime_error("While condition must be a boolean expression.");
+    }
+    visit(*node.body);
+    return nullptr;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(DoWhileStmtAST& node) {
+    visit(*node.body);
+    auto conditionType = visit(*node.condition);
+    if (!conditionType->isBool()) {
+        throw std::runtime_error("Do-while condition must be a boolean expression.");
+    }
+    return nullptr;
+}
+
+std::shared_ptr<Type> SemanticAnalyzer::visit(ForStmtAST& node) {
+    symbolTable.enterScope();
+    if (node.init) {
+        visit(*node.init);
+    }
+    if (node.condition) {
+        auto conditionType = visit(*node.condition);
+        if (!conditionType->isBool()) {
+            throw std::runtime_error("For condition must be a boolean expression.");
+        }
+    }
+    if (node.increment) {
+        visit(*node.increment);
+    }
+    visit(*node.body);
+    symbolTable.leaveScope();
+    return nullptr;
 }
 
 

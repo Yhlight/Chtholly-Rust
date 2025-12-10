@@ -31,6 +31,9 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::LET) {
         return parse_variable_declaration();
     }
+    if (peek().type == TokenType::STRUCT) {
+        return parse_struct_definition();
+    }
     if (peek().type == TokenType::FN) {
         return parse_function_definition();
     }
@@ -334,6 +337,62 @@ std::unique_ptr<StmtAST> Parser::parse_function_definition() {
     return std::make_unique<FunctionDeclAST>(func_name, std::move(args), std::move(return_type), std::move(body));
 }
 
+std::unique_ptr<StmtAST> Parser::parse_struct_definition() {
+    advance(); // consume 'struct'
+    if (peek().type != TokenType::IDENTIFIER) {
+        throw std::runtime_error("Expected struct name after 'struct'");
+    }
+    std::string struct_name = advance().value;
+
+    if (peek().type != TokenType::LEFT_BRACE) {
+        throw std::runtime_error("Expected '{' after struct name");
+    }
+    advance(); // consume '{'
+
+    std::vector<std::unique_ptr<MemberVarDeclAST>> members;
+    while (peek().type != TokenType::RIGHT_BRACE) {
+        if (peek().type != TokenType::LET) {
+            throw std::runtime_error("Expected 'let' for member variable declaration");
+        }
+        advance(); // consume 'let'
+
+        bool is_mutable = false;
+        if (peek().type == TokenType::MUT) {
+            is_mutable = true;
+            advance(); // consume 'mut'
+        }
+
+        if (peek().type != TokenType::IDENTIFIER) {
+            throw std::runtime_error("Expected identifier for member variable name");
+        }
+        std::string member_name = advance().value;
+
+        if (peek().type != TokenType::COLON) {
+            throw std::runtime_error("Expected ':' after member variable name");
+        }
+        advance(); // consume ':'
+
+        auto type = parse_type();
+
+        std::unique_ptr<ExprAST> default_value = nullptr;
+        if (peek().type == TokenType::EQUAL) {
+            advance(); // consume '='
+            default_value = parse_expression();
+        }
+
+        if (peek().type != TokenType::SEMICOLON) {
+            throw std::runtime_error("Expected ';' after member variable declaration");
+        }
+        advance(); // consume ';'
+
+        members.push_back(std::make_unique<MemberVarDeclAST>(member_name, std::move(type), is_mutable, std::move(default_value)));
+    }
+
+    advance(); // consume '}'
+
+    return std::make_unique<StructDeclAST>(struct_name, std::move(members));
+}
+
 std::unique_ptr<BlockStmtAST> Parser::parse_block() {
     if (peek().type != TokenType::LEFT_BRACE) {
         throw std::runtime_error("Expected '{' to start a block");
@@ -406,7 +465,28 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
             return std::make_unique<BoolExprAST>(false);
         }
         if (peek().type == TokenType::IDENTIFIER) {
-            return std::make_unique<VariableExprAST>(advance().value);
+            auto var = std::make_unique<VariableExprAST>(advance().value);
+            if (peek().type == TokenType::LEFT_BRACE) {
+                advance(); // consume '{'
+                std::vector<std::unique_ptr<MemberInitializerAST>> members;
+                while (peek().type != TokenType::RIGHT_BRACE) {
+                    if (peek().type == TokenType::IDENTIFIER && tokens[current_token_idx + 1].type == TokenType::COLON) {
+                        std::string member_name = advance().value;
+                        advance(); // consume ':'
+                        members.push_back(std::make_unique<MemberInitializerAST>(parse_expression(), member_name));
+                    } else {
+                        members.push_back(std::make_unique<MemberInitializerAST>(parse_expression()));
+                    }
+                    if (peek().type == TokenType::COMMA) {
+                        advance();
+                    } else if (peek().type != TokenType::RIGHT_BRACE) {
+                        throw std::runtime_error("Expected ',' or '}' in struct initializer");
+                    }
+                }
+                advance(); // consume '}'
+                return std::make_unique<StructInitializerExprAST>(var->name, std::move(members));
+            }
+            return var;
         }
         if (peek().type == TokenType::LEFT_PAREN) {
             advance(); // consume '('
@@ -467,6 +547,16 @@ int Parser::get_token_precedence() {
 
 std::unique_ptr<ExprAST> Parser::parse_binary_expression(int expr_prec, std::unique_ptr<ExprAST> lhs) {
     while (true) {
+        if (peek().type == TokenType::DOT) {
+            advance(); // consume '.'
+            if (peek().type != TokenType::IDENTIFIER) {
+                throw std::runtime_error("Expected identifier after '.'");
+            }
+            std::string memberName = advance().value;
+            lhs = std::make_unique<MemberAccessExprAST>(std::move(lhs), memberName);
+            continue;
+        }
+
         int tok_prec = get_token_precedence();
         if (tok_prec < expr_prec) {
             return lhs;

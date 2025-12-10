@@ -8,9 +8,11 @@
 #include <llvm/IR/IRBuilder.h>
 #include <map>
 
+class SymbolTable;
+
 class CodeGenerator {
 public:
-    CodeGenerator();
+    CodeGenerator(SymbolTable& symbolTable);
     void generate(BlockStmtAST& ast);
     void dump() const;
 
@@ -22,6 +24,7 @@ private:
     std::vector<llvm::AllocaInst*> ownedValues; // Track owned values
     llvm::BasicBlock* currentSwitchExit = nullptr;
     TypeResolver typeResolver;
+    bool isMemberAccess = false;
 
     void createStringSwitch(SwitchStmtAST& node);
     void declarePrintf();
@@ -33,6 +36,7 @@ private:
 
     llvm::Value* visit(ASTNode& node);
     llvm::Value* visit(VarDeclStmtAST& node);
+    llvm::Value* visit(StructDeclAST& node);
     llvm::Value* visit(FunctionDeclAST& node);
     llvm::Value* visit(BlockStmtAST& node);
     llvm::Value* visit(BinaryExprAST& node);
@@ -40,6 +44,8 @@ private:
     llvm::Value* visit(StringExprAST& node);
     llvm::Value* visit(BoolExprAST& node);
     llvm::Value* visit(VariableExprAST& node);
+    llvm::Value* visit(StructInitializerExprAST& node);
+    llvm::Value* visit(MemberAccessExprAST& node);
     llvm::Value* visit(FunctionCallExprAST& node);
     llvm::Value* visit(ExprStmtAST& node);
     llvm::Value* visit(ReturnStmtAST& node);

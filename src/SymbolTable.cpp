@@ -40,3 +40,18 @@ Symbol* SymbolTable::findSymbol(const std::string& name) {
 Scope& SymbolTable::getCurrentScope() {
     return scopeStack.back();
 }
+
+bool SymbolTable::add_type(const std::string& name, std::shared_ptr<Type> type) {
+    if (types.count(name)) {
+        return false;
+    }
+    types[name] = std::move(type);
+    return true;
+}
+
+std::shared_ptr<Type> SymbolTable::find_type(const std::string& name) {
+    if (types.count(name)) {
+        return types[name];
+    }
+    return nullptr;
+}

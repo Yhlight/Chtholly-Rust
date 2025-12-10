@@ -6,9 +6,14 @@
 #include <memory>
 #include <string>
 
+class SymbolTable;
+
 class TypeResolver {
 public:
+    TypeResolver(SymbolTable& symbolTable);
     std::shared_ptr<Type> resolve(const TypeNameAST& typeName);
+private:
+    SymbolTable& symbolTable;
 };
 
 #endif // CHTHOLLY_TYPERESOLVER_H

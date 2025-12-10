@@ -40,8 +40,13 @@ public:
     // Returns all symbols in the current scope.
     Scope& getCurrentScope();
 
+    // Type management
+    bool add_type(const std::string& name, std::shared_ptr<Type> type);
+    std::shared_ptr<Type> find_type(const std::string& name);
+
 private:
     std::vector<Scope> scopeStack;
+    std::unordered_map<std::string, std::shared_ptr<Type>> types;
 };
 
 #endif // CHTHOLLY_SYMBOLTABLE_H
