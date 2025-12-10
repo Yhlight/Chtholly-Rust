@@ -37,6 +37,15 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::IF) {
         return parse_if_statement();
     }
+    if (peek().type == TokenType::WHILE) {
+        return parse_while_statement();
+    }
+    if (peek().type == TokenType::DO) {
+        return parse_do_while_statement();
+    }
+    if (peek().type == TokenType::FOR) {
+        return parse_for_statement();
+    }
     if (peek().type == TokenType::SWITCH) {
         return parse_switch_statement();
     }
@@ -163,6 +172,87 @@ std::unique_ptr<StmtAST> Parser::parse_if_statement() {
     }
 
     return std::make_unique<IfStmtAST>(std::move(condition), std::move(thenBranch), std::move(elseBranch));
+}
+
+std::unique_ptr<StmtAST> Parser::parse_while_statement() {
+    advance(); // consume 'while'
+    if (peek().type != TokenType::LEFT_PAREN) {
+        throw std::runtime_error("Expected '(' after 'while'");
+    }
+    advance(); // consume '('
+    auto condition = parse_expression();
+    if (peek().type != TokenType::RIGHT_PAREN) {
+        throw std::runtime_error("Expected ')' after while condition");
+    }
+    advance(); // consume ')'
+
+    auto body = parse_block();
+
+    return std::make_unique<WhileStmtAST>(std::move(condition), std::move(body));
+}
+
+std::unique_ptr<StmtAST> Parser::parse_do_while_statement() {
+    advance(); // consume 'do'
+    auto body = parse_block();
+
+    if (peek().type != TokenType::WHILE) {
+        throw std::runtime_error("Expected 'while' after 'do' block");
+    }
+    advance(); // consume 'while'
+
+    if (peek().type != TokenType::LEFT_PAREN) {
+        throw std::runtime_error("Expected '(' after 'while'");
+    }
+    advance(); // consume '('
+    auto condition = parse_expression();
+    if (peek().type != TokenType::RIGHT_PAREN) {
+        throw std::runtime_error("Expected ')' after while condition");
+    }
+    advance(); // consume ')'
+
+    if (peek().type != TokenType::SEMICOLON) {
+        throw std::runtime_error("Expected ';' after 'do-while' condition");
+    }
+    advance(); // consume ';'
+
+    return std::make_unique<DoWhileStmtAST>(std::move(body), std::move(condition));
+}
+
+std::unique_ptr<StmtAST> Parser::parse_for_statement() {
+    advance(); // consume 'for'
+    if (peek().type != TokenType::LEFT_PAREN) {
+        throw std::runtime_error("Expected '(' after 'for'");
+    }
+    advance(); // consume '('
+
+    std::unique_ptr<StmtAST> init;
+    if (peek().type != TokenType::SEMICOLON) {
+        init = parse_statement();
+    } else {
+        advance(); // consume ';'
+    }
+
+    std::unique_ptr<ExprAST> condition;
+    if (peek().type != TokenType::SEMICOLON) {
+        condition = parse_expression();
+    }
+    if (peek().type != TokenType::SEMICOLON) {
+        throw std::runtime_error("Expected ';' after for loop condition");
+    }
+    advance(); // consume ';'
+
+    std::unique_ptr<ExprAST> increment;
+    if (peek().type != TokenType::RIGHT_PAREN) {
+        increment = parse_expression();
+    }
+    if (peek().type != TokenType::RIGHT_PAREN) {
+        throw std::runtime_error("Expected ')' after for loop increment");
+    }
+    advance(); // consume ')'
+
+    auto body = parse_block();
+
+    return std::make_unique<ForStmtAST>(std::move(init), std::move(condition), std::move(increment), std::move(body));
 }
 
 

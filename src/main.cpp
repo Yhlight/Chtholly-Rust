@@ -8,10 +8,26 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <signal.h>
+#include <sys/time.h>
 
 #include "Token.h"
 
+void timeout_handler(int signum) {
+    std::cerr << "Timeout expired, terminating program." << std::endl;
+    exit(124);
+}
+
 int main(int argc, char** argv) {
+    signal(SIGALRM, timeout_handler);
+
+    struct itimerval timer;
+    timer.it_value.tv_sec = 1;
+    timer.it_value.tv_usec = 0;
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 0;
+    setitimer(ITIMER_REAL, &timer, NULL);
+
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;
         return 1;

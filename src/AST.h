@@ -150,6 +150,44 @@ public:
     void print(int level = 0) const override {}
 };
 
+// Statement class for while loops
+class WhileStmtAST : public StmtAST {
+public:
+    std::unique_ptr<ExprAST> condition;
+    std::unique_ptr<BlockStmtAST> body;
+
+    WhileStmtAST(std::unique_ptr<ExprAST> condition, std::unique_ptr<BlockStmtAST> body)
+        : condition(std::move(condition)), body(std::move(body)) {}
+
+    void print(int level = 0) const override;
+};
+
+// Statement class for do-while loops
+class DoWhileStmtAST : public StmtAST {
+public:
+    std::unique_ptr<BlockStmtAST> body;
+    std::unique_ptr<ExprAST> condition;
+
+    DoWhileStmtAST(std::unique_ptr<BlockStmtAST> body, std::unique_ptr<ExprAST> condition)
+        : body(std::move(body)), condition(std::move(condition)) {}
+
+    void print(int level = 0) const override;
+};
+
+// Statement class for for loops
+class ForStmtAST : public StmtAST {
+public:
+    std::unique_ptr<StmtAST> init;
+    std::unique_ptr<ExprAST> condition;
+    std::unique_ptr<ExprAST> increment;
+    std::unique_ptr<BlockStmtAST> body;
+
+    ForStmtAST(std::unique_ptr<StmtAST> init, std::unique_ptr<ExprAST> condition, std::unique_ptr<ExprAST> increment, std::unique_ptr<BlockStmtAST> body)
+        : init(std::move(init)), condition(std::move(condition)), increment(std::move(increment)), body(std::move(body)) {}
+
+    void print(int level = 0) const override;
+};
+
 // Statement class for break statements
 class BreakStmtAST : public StmtAST {
 public:
@@ -301,6 +339,34 @@ inline void CaseBlockAST::print(int level) const {
         std::cout << indent(level + 1) << "Default case" << std::endl;
     }
     body->print(level + 1);
+}
+
+inline void WhileStmtAST::print(int level) const {
+    std::cout << indent(level) << "WhileStmtAST:" << std::endl;
+    std::cout << indent(level + 1) << "Condition:" << std::endl;
+    condition->print(level + 2);
+    std::cout << indent(level + 1) << "Body:" << std::endl;
+    body->print(level + 2);
+}
+
+inline void DoWhileStmtAST::print(int level) const {
+    std::cout << indent(level) << "DoWhileStmtAST:" << std::endl;
+    std::cout << indent(level + 1) << "Body:" << std::endl;
+    body->print(level + 2);
+    std::cout << indent(level + 1) << "Condition:" << std::endl;
+    condition->print(level + 2);
+}
+
+inline void ForStmtAST::print(int level) const {
+    std::cout << indent(level) << "ForStmtAST:" << std::endl;
+    std::cout << indent(level + 1) << "Init:" << std::endl;
+    if (init) init->print(level + 2);
+    std::cout << indent(level + 1) << "Condition:" << std::endl;
+    if (condition) condition->print(level + 2);
+    std::cout << indent(level + 1) << "Increment:" << std::endl;
+    if (increment) increment->print(level + 2);
+    std::cout << indent(level + 1) << "Body:" << std::endl;
+    body->print(level + 2);
 }
 
 

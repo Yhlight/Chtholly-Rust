@@ -44,6 +44,9 @@ private:
     llvm::Value* visit(ExprStmtAST& node);
     llvm::Value* visit(ReturnStmtAST& node);
     llvm::Value* visit(IfStmtAST& node);
+    llvm::Value* visit(WhileStmtAST& node);
+    llvm::Value* visit(DoWhileStmtAST& node);
+    llvm::Value* visit(ForStmtAST& node);
     llvm::Value* visit(SwitchStmtAST& node);
     llvm::Value* visit(BreakStmtAST& node);
     llvm::Value* visit(FallthroughStmtAST& node);

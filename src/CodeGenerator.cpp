@@ -193,6 +193,12 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<IfStmtAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<WhileStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<DoWhileStmtAST*>(&node)) {
+        return visit(*p);
+    } else if (auto* p = dynamic_cast<ForStmtAST*>(&node)) {
+        return visit(*p);
     } else if (auto* p = dynamic_cast<SwitchStmtAST*>(&node)) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<BreakStmtAST*>(&node)) {
@@ -529,6 +535,100 @@ llvm::Value* CodeGenerator::visit(IfStmtAST& node) {
 
     return nullptr;
 }
+
+llvm::Value* CodeGenerator::visit(WhileStmtAST& node) {
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* loopHeader = llvm::BasicBlock::Create(*context, "loop.header", function);
+    llvm::BasicBlock* loopBody = llvm::BasicBlock::Create(*context, "loop.body", function);
+    llvm::BasicBlock* loopExit = llvm::BasicBlock::Create(*context, "loop.exit", function);
+
+    builder->CreateBr(loopHeader);
+    builder->SetInsertPoint(loopHeader);
+
+    llvm::Value* condV = visit(*node.condition);
+    condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(builder->getInt1Ty(), 0), "whilecond");
+    builder->CreateCondBr(condV, loopBody, loopExit);
+
+    builder->SetInsertPoint(loopBody);
+    visit(*node.body);
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(loopHeader);
+    }
+
+    builder->SetInsertPoint(loopExit);
+
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(DoWhileStmtAST& node) {
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* loopBody = llvm::BasicBlock::Create(*context, "loop.body", function);
+    llvm::BasicBlock* loopCond = llvm::BasicBlock::Create(*context, "loop.cond", function);
+    llvm::BasicBlock* loopExit = llvm::BasicBlock::Create(*context, "loop.exit", function);
+
+    builder->CreateBr(loopBody);
+    builder->SetInsertPoint(loopBody);
+
+    visit(*node.body);
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(loopCond);
+    }
+
+    builder->SetInsertPoint(loopCond);
+    llvm::Value* condV = visit(*node.condition);
+    condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(builder->getInt1Ty(), 0), "dowhilecond");
+    builder->CreateCondBr(condV, loopBody, loopExit);
+
+    builder->SetInsertPoint(loopExit);
+
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::visit(ForStmtAST& node) {
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+
+    // Create blocks for the loop
+    llvm::BasicBlock* initBB = llvm::BasicBlock::Create(*context, "for.init", function);
+    llvm::BasicBlock* condBB = llvm::BasicBlock::Create(*context, "for.cond", function);
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(*context, "for.body", function);
+    llvm::BasicBlock* incBB = llvm::BasicBlock::Create(*context, "for.inc", function);
+    llvm::BasicBlock* exitBB = llvm::BasicBlock::Create(*context, "for.exit", function);
+
+    builder->CreateBr(initBB);
+    builder->SetInsertPoint(initBB);
+    if (node.init) {
+        visit(*node.init);
+    }
+    builder->CreateBr(condBB);
+
+    builder->SetInsertPoint(condBB);
+    if (node.condition) {
+        llvm::Value* condV = visit(*node.condition);
+        condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(builder->getInt1Ty(), 0), "forcond");
+        builder->CreateCondBr(condV, bodyBB, exitBB);
+    } else {
+        builder->CreateBr(bodyBB); // No condition means infinite loop
+    }
+
+    builder->SetInsertPoint(bodyBB);
+    visit(*node.body);
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(incBB);
+    }
+
+    builder->SetInsertPoint(incBB);
+    if (node.increment) {
+        visit(*node.increment);
+    }
+    builder->CreateBr(condBB);
+
+    builder->SetInsertPoint(exitBB);
+
+    return nullptr;
+}
+
 
 llvm::Value* CodeGenerator::visit(BorrowExprAST& node) {
     if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.expression.get())) {
