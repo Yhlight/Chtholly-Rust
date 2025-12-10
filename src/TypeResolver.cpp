@@ -12,10 +12,14 @@ std::shared_ptr<Type> TypeResolver::resolve(const TypeNameAST& typeName) {
 
     if (auto* arrayType = dynamic_cast<const ArrayTypeAST*>(&typeName)) {
         auto elementType = resolve(*arrayType->elementType);
-        if (auto* sizeExpr = dynamic_cast<NumberExprAST*>(arrayType->size.get())) {
-            return std::make_shared<ArrayType>(elementType, sizeExpr->value);
+        if (arrayType->size) {
+            if (auto* sizeExpr = dynamic_cast<NumberExprAST*>(arrayType->size.get())) {
+                return std::make_shared<ArrayType>(elementType, sizeExpr->value);
+            }
+            throw std::runtime_error("Array size must be an integer literal for now.");
+        } else {
+            return std::make_shared<DynamicArrayType>(elementType);
         }
-        throw std::runtime_error("Array size must be an integer literal for now.");
     }
 
     if (typeName.name == "i32") {

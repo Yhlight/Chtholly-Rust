@@ -180,6 +180,14 @@ llvm::Type* CodeGenerator::resolveType(const Type& type) {
     if (auto* arrayType = dynamic_cast<const ArrayType*>(&type)) {
         return llvm::ArrayType::get(resolveType(*arrayType->elementType), arrayType->size);
     }
+    if (auto* dynamicArrayType = dynamic_cast<const DynamicArrayType*>(&type)) {
+        auto* elementType = resolveType(*dynamicArrayType->elementType);
+        auto* structType = llvm::StructType::getTypeByName(*context, "DynamicArray");
+        if (!structType) {
+            structType = llvm::StructType::create(*context, {elementType->getPointerTo(), builder->getInt64Ty(), builder->getInt64Ty()}, "DynamicArray");
+        }
+        return structType;
+    }
     throw std::runtime_error("Unknown type in code generator");
 }
 
@@ -432,14 +440,32 @@ llvm::Value* CodeGenerator::visit(VarDeclStmtAST& node) {
     llvm::Type* varType = resolveType(*node.initExpr->type);
     llvm::AllocaInst* alloca = builder->CreateAlloca(varType, nullptr, node.varName);
 
-    if (varType->isStructTy() || varType->isArrayTy()) {
+    if (varType->isStructTy() && varType->getStructName() == "DynamicArray") {
+        auto* staticArray = initVal;
+        auto* staticArrayType = llvm::cast<llvm::ArrayType>(staticArray->getType()->getContainedType(0));
+        auto* elementType = staticArrayType->getElementType();
+        uint64_t numElements = staticArrayType->getNumElements();
+
+        // Allocate memory on the heap
+        auto* mallocFunc = module->getFunction("malloc");
+        auto* size = builder->getInt64(numElements * module->getDataLayout().getTypeStoreSize(elementType));
+        auto* data = builder->CreateCall(mallocFunc->getFunctionType(), mallocFunc, {size}, "data");
+
+        // Copy elements from the static array to the heap
+        builder->CreateMemCpy(data, llvm::MaybeAlign(), staticArray, llvm::MaybeAlign(), size);
+
+        // Create the dynamic array struct
+        builder->CreateStore(data, builder->CreateStructGEP(varType, alloca, 0));
+        builder->CreateStore(builder->getInt64(numElements), builder->CreateStructGEP(varType, alloca, 1));
+        builder->CreateStore(builder->getInt64(numElements), builder->CreateStructGEP(varType, alloca, 2)); // capacity = length for now
+    } else if (varType->isStructTy() || varType->isArrayTy()) {
         builder->CreateMemCpy(alloca, llvm::MaybeAlign(), initVal, llvm::MaybeAlign(), module->getDataLayout().getTypeStoreSize(varType));
     } else {
         builder->CreateStore(initVal, alloca);
     }
     namedValues[node.varName] = alloca;
 
-    if (node.initExpr->type->isString()) {
+    if (node.initExpr->type->isString() || node.initExpr->type->isDynamicArray()) {
         if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
             // Find the moved variable in ownedValues and remove it
             llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
@@ -492,8 +518,15 @@ llvm::Value* CodeGenerator::visit(BlockStmtAST& node) {
 
     llvm::Function* freeFunc = module->getFunction("free");
     for (size_t i = ownedValuesInScope; i < ownedValues.size(); ++i) {
-        llvm::Value* val = builder->CreateLoad(ownedValues[i]->getAllocatedType(), ownedValues[i]);
-        builder->CreateCall(freeFunc, {val});
+        auto* var = ownedValues[i];
+        if (var->getAllocatedType()->isStructTy() && var->getAllocatedType()->getStructName() == "DynamicArray") {
+            auto* arrayStruct = builder->CreateLoad(var->getAllocatedType(), var);
+            auto* dataPtr = builder->CreateExtractValue(arrayStruct, {0});
+            builder->CreateCall(freeFunc, {dataPtr});
+        } else if (var->getAllocatedType()->isPointerTy()) { // String
+            llvm::Value* val = builder->CreateLoad(var->getAllocatedType(), var);
+            builder->CreateCall(freeFunc, {val});
+        }
     }
     ownedValues.resize(ownedValuesInScope);
 
@@ -843,7 +876,15 @@ llvm::Value* CodeGenerator::visit(ArrayLiteralExprAST& node) {
 llvm::Value* CodeGenerator::visit(ArrayIndexExprAST& node) {
     auto* array = visit(*node.array);
     auto* index = visit(*node.index);
-    auto* arrayType = llvm::cast<llvm::ArrayType>(llvm::cast<llvm::AllocaInst>(array)->getAllocatedType());
-    auto* gep = builder->CreateGEP(arrayType, array, {builder->getInt32(0), index});
-    return builder->CreateLoad(arrayType->getElementType(), gep);
+    if (node.array->type->isDynamicArray()) {
+        auto* dynArrayAlloca = namedValues[static_cast<VariableExprAST*>(node.array.get())->name];
+        auto* dataPtrGEP = builder->CreateStructGEP(dynArrayAlloca->getAllocatedType(), dynArrayAlloca, 0);
+        auto* dataPtr = builder->CreateLoad(resolveType(*static_cast<DynamicArrayType*>(node.array->type.get())->elementType)->getPointerTo(), dataPtrGEP);
+        auto* gep = builder->CreateGEP(resolveType(*static_cast<DynamicArrayType*>(node.array->type.get())->elementType), dataPtr, index);
+        return builder->CreateLoad(resolveType(*static_cast<DynamicArrayType*>(node.array->type.get())->elementType), gep);
+    } else {
+        auto* arrayType = llvm::cast<llvm::ArrayType>(llvm::cast<llvm::AllocaInst>(array)->getAllocatedType());
+        auto* gep = builder->CreateGEP(arrayType, array, {builder->getInt32(0), index});
+        return builder->CreateLoad(arrayType->getElementType(), gep);
+    }
 }

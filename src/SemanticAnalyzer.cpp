@@ -118,8 +118,16 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
         declaredType = typeResolver.resolve(*node.type);
     }
 
-    if (declaredType && initType && declaredType->toString() != initType->toString()) {
-        throw std::runtime_error("Type mismatch for variable '" + node.varName + "'. Expected " + declaredType->toString() + " but got " + initType->toString());
+    if (declaredType && initType) {
+        if (declaredType->isDynamicArray() && initType->isArray()) {
+            auto* dynamicArrayType = static_cast<DynamicArrayType*>(declaredType.get());
+            auto* staticArrayType = static_cast<ArrayType*>(initType.get());
+            if (dynamicArrayType->elementType->toString() != staticArrayType->elementType->toString()) {
+                throw std::runtime_error("Type mismatch for variable '" + node.varName + "'. Expected dynamic array of " + dynamicArrayType->elementType->toString() + " but got static array of " + staticArrayType->elementType->toString());
+            }
+        } else if (declaredType->toString() != initType->toString()) {
+            throw std::runtime_error("Type mismatch for variable '" + node.varName + "'. Expected " + declaredType->toString() + " but got " + initType->toString());
+        }
     }
 
     auto varType = declaredType ? declaredType : initType;
@@ -611,13 +619,15 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayLiteralExprAST& node) {
         }
     }
 
+    // This is a bit of a hack. We'll create a static array type for now, and the
+    // variable declaration will convert it to a dynamic array type if needed.
     node.type = std::make_shared<ArrayType>(firstElementType, node.elements.size());
     return node.type;
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayIndexExprAST& node) {
     auto arrayType = visit(*node.array);
-    if (!arrayType->isArray()) {
+    if (!arrayType->isArray() && !arrayType->isDynamicArray()) {
         throw std::runtime_error("Cannot index into a non-array type.");
     }
 
@@ -626,6 +636,10 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayIndexExprAST& node) {
         throw std::runtime_error("Array index must be an integer.");
     }
 
-    node.type = static_cast<ArrayType*>(arrayType.get())->elementType;
+    if (arrayType->isArray()) {
+        node.type = static_cast<ArrayType*>(arrayType.get())->elementType;
+    } else {
+        node.type = static_cast<DynamicArrayType*>(arrayType.get())->elementType;
+    }
     return node.type;
 }

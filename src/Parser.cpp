@@ -497,7 +497,10 @@ std::unique_ptr<TypeNameAST> Parser::parse_type() {
     auto base_type = std::make_unique<TypeNameAST>(advance().value);
     if (peek().type == TokenType::LEFT_BRACKET) {
         advance(); // consume '['
-        auto size = parse_expression();
+        std::unique_ptr<ExprAST> size = nullptr;
+        if (peek().type != TokenType::RIGHT_BRACKET) {
+            size = parse_expression();
+        }
         if (peek().type != TokenType::RIGHT_BRACKET) {
             throw std::runtime_error("Expected ']' after array size");
         }

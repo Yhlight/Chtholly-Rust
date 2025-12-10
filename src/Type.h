@@ -19,7 +19,8 @@ public:
         TK_Class,
         TK_Struct,
         TK_Reference,
-        TK_Array
+        TK_Array,
+        TK_DynamicArray
     };
 
     TypeKind kind;
@@ -37,6 +38,7 @@ public:
 
     virtual bool isCopy() const { return false; }
     virtual bool isArray() const { return false; }
+    virtual bool isDynamicArray() const { return false; }
 
     virtual std::string toString() const = 0;
 };
@@ -183,7 +185,20 @@ public:
     std::string toString() const override {
         return elementType->toString() + "[" + std::to_string(size) + "]";
     }
-    bool isArray() const { return true; }
+    bool isArray() const override { return true; }
+};
+
+class DynamicArrayType : public Type {
+public:
+    std::shared_ptr<Type> elementType;
+
+    DynamicArrayType(std::shared_ptr<Type> elementType)
+        : Type(TK_DynamicArray), elementType(std::move(elementType)) {}
+
+    std::string toString() const override {
+        return elementType->toString() + "[]";
+    }
+    bool isDynamicArray() const override { return true; }
 };
 
 // ... other type classes can be added here ...
