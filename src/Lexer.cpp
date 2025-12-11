@@ -30,6 +30,7 @@ Token Lexer::getNextToken() {
         if (m_identifier == "mut") return Token::Mut;
         if (m_identifier == "if") return Token::If;
         if (m_identifier == "else") return Token::Else;
+        if (m_identifier == "struct") return Token::Struct;
         if (m_identifier == "i32") return Token::I32;
         if (m_identifier == "f64") return Token::F64;
         if (m_identifier == "bool") return Token::Bool;
@@ -86,6 +87,7 @@ Token Lexer::getNextToken() {
         case '{': return Token::LBrace;
         case '}': return Token::RBrace;
         case ':': return Token::Colon;
+        case '.': return Token::Dot;
         case ';': return Token::Semicolon;
         case '=': return Token::Assign;
         case ',': return Token::Comma;

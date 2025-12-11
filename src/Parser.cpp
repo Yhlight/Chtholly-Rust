@@ -15,9 +15,11 @@ static int GetTokPrecedence(Token tok) {
     case '+':
     case '-':
         return 20;
+    case '.':
+        return 50; // highest
     case '*':
     case '/':
-        return 40; // highest
+        return 40;
     default:
         return -1;
     }
@@ -85,6 +87,28 @@ std::unique_ptr<ExprAST> Parser::parseParenExpr() {
 std::unique_ptr<ExprAST> Parser::parseIdentifierExpr() {
     std::string idName = m_lexer.getIdentifier();
     getNextToken(); // eat identifier.
+
+    if (m_currentToken == Token::LBrace) {
+        getNextToken(); // eat {.
+        std::vector<std::unique_ptr<ExprAST>> args;
+        if (m_currentToken != Token::RBrace) {
+            while (true) {
+                if (auto arg = parseExpression())
+                    args.push_back(std::move(arg));
+                else
+                    return nullptr;
+
+                if (m_currentToken == Token::RBrace)
+                    break;
+
+                if (m_currentToken != Token::Comma)
+                    return logError("Expected '}' or ',' in argument list");
+                getNextToken();
+            }
+        }
+        getNextToken(); // eat }.
+        return std::make_unique<StructInitExprAST>(idName, std::move(args));
+    }
 
     // Simple variable ref.
     return std::make_unique<VariableExprAST>(idName);
@@ -180,6 +204,43 @@ std::unique_ptr<ExprAST> Parser::parseIfExpr() {
     return std::make_unique<IfExprAST>(std::move(cond), std::move(thenBody), std::move(elseBody));
 }
 
+std::unique_ptr<ExprAST> Parser::parseStructDef() {
+    getNextToken(); // eat struct.
+
+    if (m_currentToken != Token::Identifier)
+        return logError("expected identifier after struct");
+    std::string name = m_lexer.getIdentifier();
+    getNextToken();
+
+    if (m_currentToken != Token::LBrace)
+        return logError("expected '{' in struct definition");
+    getNextToken(); // eat {.
+
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> members;
+    while (m_currentToken != Token::RBrace) {
+        if (m_currentToken != Token::Identifier)
+            return logError("expected identifier in struct member");
+        std::string memberName = m_lexer.getIdentifier();
+        getNextToken();
+
+        if (m_currentToken != Token::Colon)
+            return logError("expected ':' in struct member");
+        getNextToken(); // eat :.
+
+        auto type = parseType();
+        if (!type)
+            return nullptr;
+        members.push_back(std::make_pair(memberName, std::move(type)));
+
+        if (m_currentToken != Token::Semicolon)
+            return logError("expected ';' after struct member");
+        getNextToken(); // eat ;.
+    }
+    getNextToken(); // eat }.
+
+    return std::make_unique<StructDefAST>(name, std::move(members));
+}
+
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
     switch (m_currentToken) {
     default:
@@ -194,6 +255,8 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
         return parseIfExpr();
     case Token::Let:
         return parseLetExpr();
+    case Token::Struct:
+        return parseStructDef();
     }
 }
 
@@ -218,8 +281,16 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int exprPrec,
         return nullptr;
     }
 
-    lhs = std::make_unique<BinaryExprAST>(binOp, std::move(lhs),
-                                           std::move(rhs));
+    if (binOp == '.') {
+        if (auto* vr = dynamic_cast<VariableExprAST*>(rhs.get())) {
+            lhs = std::make_unique<MemberAccessExprAST>(std::move(lhs), vr->getName());
+        } else {
+            return logError("expected identifier after '.'");
+        }
+    } else {
+        lhs = std::make_unique<BinaryExprAST>(binOp, std::move(lhs),
+                                               std::move(rhs));
+    }
   }
 }
 

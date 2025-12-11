@@ -16,6 +16,7 @@ enum class Token {
     Mut,     // mut
     If,      // if
     Else,    // else
+    Struct,  // struct
 
     // Primary
     Identifier,
@@ -35,6 +36,7 @@ enum class Token {
     RBrace,   // }
     Colon,    // :
     Semicolon,// ;
+    Dot,      // .
     Assign,   // =
     Comma,    // ,
 

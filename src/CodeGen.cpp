@@ -160,6 +160,80 @@ llvm::Value* IfExprAST::codegen(CodeGen& context) {
     return llvm::Constant::getNullValue(llvm::Type::getVoidTy(context.getContext()));
 }
 
+llvm::Value* StructDefAST::codegen(CodeGen& context) {
+    std::vector<llvm::Type*> memberTypes;
+    for (const auto& member : m_members) {
+        memberTypes.push_back(member.second->getLLVMType(context));
+    }
+
+    llvm::StructType* structType = llvm::StructType::create(context.getContext(), memberTypes, m_name);
+    context.m_structTypes[m_name] = structType;
+    context.m_structDefs[m_name] = this;
+
+    // Struct definitions don't generate a value.
+    return nullptr;
+}
+
+llvm::Value* StructInitExprAST::codegen(CodeGen& context) {
+    llvm::StructType* structType = context.m_structTypes[m_structName];
+    if (!structType) {
+        return logErrorV("Unknown struct type");
+    }
+
+    llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(structType, nullptr, m_structName.c_str());
+
+    for (int i = 0; i < m_args.size(); ++i) {
+        llvm::Value* argVal = m_args[i]->codegen(context);
+        if (!argVal)
+            return nullptr;
+
+        llvm::Value* memberPtr = context.getBuilder().CreateStructGEP(structType, alloca, i);
+        context.getBuilder().CreateStore(argVal, memberPtr);
+    }
+
+    return alloca;
+}
+
+llvm::Value* MemberAccessExprAST::codegen(CodeGen& context) {
+    llvm::Value* structVal = m_structExpr->codegen(context);
+    if (!structVal)
+        return nullptr;
+
+    llvm::Type* structType = structVal->getType();
+    if (auto* ptrType = llvm::dyn_cast<llvm::PointerType>(structType)) {
+        structType = ptrType->getElementType();
+    } else {
+        return logErrorV("Expression is not a struct");
+    }
+
+    llvm::StructType* sType = llvm::dyn_cast<llvm::StructType>(structType);
+    if (!sType) {
+        return logErrorV("Expression is not a struct");
+    }
+
+    auto it = context.m_structDefs.find(std::string(sType->getName()));
+    if (it == context.m_structDefs.end()) {
+        return logErrorV("Unknown struct type");
+    }
+
+    StructDefAST* structDef = it->second;
+    int memberIndex = -1;
+    for (int i = 0; i < structDef->getMembers().size(); ++i) {
+        if (structDef->getMembers()[i].first == m_memberName) {
+            memberIndex = i;
+            break;
+        }
+    }
+
+    if (memberIndex == -1) {
+        return logErrorV("Unknown member");
+    }
+
+    llvm::Value* memberPtr = context.getBuilder().CreateStructGEP(sType, structVal, memberIndex, m_memberName.c_str());
+    return context.getBuilder().CreateLoad(sType->getElementType(memberIndex), memberPtr, m_memberName.c_str());
+}
+
+
 llvm::Function* PrototypeAST::codegen(CodeGen& context) {
     std::vector<llvm::Type*> argTypes;
     for (const auto& arg : m_args) {

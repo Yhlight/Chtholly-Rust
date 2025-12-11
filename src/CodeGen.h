@@ -32,6 +32,12 @@ public:
     // Symbol table for variables.
     std::map<std::string, llvm::Value*> m_namedValues;
 
+    // Type table for structs.
+    std::map<std::string, llvm::StructType*> m_structTypes;
+
+    // Struct definition table.
+    std::map<std::string, StructDefAST*> m_structDefs;
+
 private:
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_builder;

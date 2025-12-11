@@ -60,7 +60,7 @@ This document outlines the planned development milestones for the Chtholly progr
 
 *Goal: Introduce user-defined data structures that integrate with the ownership system.*
 
-- **[ ] `struct`:** Implement C-style structs for aggregating data.
+- **[X] `struct`:** Implement C-style structs for aggregating data.
 - **[ ] `class`:** Implement classes with:
     - **[ ] Member variables** (`let` and `let mut`).
     - **[ ] Constructors** and initialization syntax.

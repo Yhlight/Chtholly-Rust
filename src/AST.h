@@ -80,6 +80,34 @@ public:
     llvm::Value* codegen(CodeGen& context) override;
 };
 
+class StructDefAST : public ExprAST {
+    std::string m_name;
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> m_members;
+public:
+    StructDefAST(const std::string& name, std::vector<std::pair<std::string, std::unique_ptr<Type>>> members)
+        : m_name(name), m_members(std::move(members)) {}
+    const std::vector<std::pair<std::string, std::unique_ptr<Type>>>& getMembers() const { return m_members; }
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
+class StructInitExprAST : public ExprAST {
+    std::string m_structName;
+    std::vector<std::unique_ptr<ExprAST>> m_args;
+public:
+    StructInitExprAST(const std::string& structName, std::vector<std::unique_ptr<ExprAST>> args)
+        : m_structName(structName), m_args(std::move(args)) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
+class MemberAccessExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> m_structExpr;
+    std::string m_memberName;
+public:
+    MemberAccessExprAST(std::unique_ptr<ExprAST> structExpr, const std::string& memberName)
+        : m_structExpr(std::move(structExpr)), m_memberName(memberName) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
 class LetExprAST : public ExprAST {
     std::string m_varName;
     bool m_isMutable;
