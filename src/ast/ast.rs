@@ -20,6 +20,11 @@ pub enum Expression {
         operator: String,
         right: Box<Expression>,
     },
+    InfixExpression {
+        left: Box<Expression>,
+        operator: String,
+        right: Box<Expression>,
+    },
     // ... other expressions
 }
 

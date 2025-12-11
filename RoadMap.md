@@ -20,7 +20,7 @@ This milestone focuses on setting up the basic infrastructure of the compiler.
         - [x] Booleans
     - [ ] Operators
         - [x] Prefix Operators (`!`, `-`)
-        - [ ] Infix Operators
+        - [x] Infix Operators
     - [ ] Punctuation
 - [x] **Parser:** Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
     - [x] Basic AST structure
@@ -39,10 +39,10 @@ This milestone focuses on setting up the basic infrastructure of the compiler.
 
 ## Milestone 2: Expressions and Operators
 
-- [ ] **Arithmetic Operators:** `+`, `-`, `*`, `/`, `%`
-- [ ] **Comparison Operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`
+- [x] **Arithmetic Operators:** `+`, `-`, `*`, `/`, `%`
+- [x] **Comparison Operators:** `==`, `!=`, `<`, `>`, `<=`, `>=`
 - [ ] **Logical Operators:** `&&`, `||`, `!`
-- [ ] **Operator Precedence and Associativity:** Ensure expressions are evaluated correctly.
+- [x] **Operator Precedence and Associativity:** Ensure expressions are evaluated correctly.
 - [ ] **Type Checking:** Basic type checking for expressions.
 
 ---
