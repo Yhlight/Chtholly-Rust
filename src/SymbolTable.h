@@ -16,6 +16,8 @@ struct Symbol {
     int immutableBorrows = 0;
     bool mutableBorrow = false;
     bool borrowedInScope = false;
+    size_t scopeLevel;
+    size_t lifetimeScopeLevel;
 };
 
 // A single scope, mapping names to symbols

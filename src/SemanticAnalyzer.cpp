@@ -145,6 +145,16 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     if (!symbolTable.addSymbol(node.varName, varType, node.isMutable)) {
         throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
     }
+
+    if (initType && initType->kind == Type::TK_Reference) {
+        if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
+            Symbol* rhsSymbol = symbolTable.findSymbol(varExpr->name);
+            Symbol* lhsSymbol = symbolTable.findSymbol(node.varName);
+            if (rhsSymbol && lhsSymbol) {
+                lhsSymbol->lifetimeScopeLevel = rhsSymbol->lifetimeScopeLevel;
+            }
+        }
+    }
     return nullptr; // Statements don't have a type
 }
 
@@ -506,6 +516,21 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
         auto expectedType = typeResolver.resolve(*currentFunction->returnType);
         if (returnType->toString() != expectedType->toString()) {
             throw std::runtime_error("Return type mismatch: expected " + expectedType->toString() + ", got " + returnType->toString());
+        }
+
+        if (returnType->kind == Type::TK_Reference) {
+            Symbol* symbol = nullptr;
+            if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.returnValue.get())) {
+                symbol = symbolTable.findSymbol(varExpr->name);
+            } else if (auto* borrowExpr = dynamic_cast<BorrowExprAST*>(node.returnValue.get())) {
+                if (auto* varExpr = dynamic_cast<VariableExprAST*>(borrowExpr->expression.get())) {
+                    symbol = symbolTable.findSymbol(varExpr->name);
+                }
+            }
+
+            if (symbol && symbol->lifetimeScopeLevel > 1) { // 0 is global, 1 is function parameters
+                throw std::runtime_error("Cannot return a reference to data owned by the current function.");
+            }
         }
     } else {
         auto expectedType = typeResolver.resolve(*currentFunction->returnType);

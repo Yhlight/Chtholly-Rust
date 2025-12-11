@@ -1,0 +1,10 @@
+fn dangle(): &i32 {
+    let x = 10;
+    let y = &x;
+    return y;
+}
+
+fn main(): i32 {
+    let r = dangle();
+    return 0;
+}

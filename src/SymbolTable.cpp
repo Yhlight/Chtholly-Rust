@@ -23,7 +23,17 @@ bool SymbolTable::addSymbol(const std::string& name, std::shared_ptr<Type> type,
     if (scopeStack.back().count(name)) {
         return false;
     }
-    scopeStack.back()[name] = {name, std::move(type), isMutable};
+    Symbol newSymbol;
+    newSymbol.name = name;
+    newSymbol.type = std::move(type);
+    newSymbol.isMutable = isMutable;
+    newSymbol.isMoved = false;
+    newSymbol.immutableBorrows = 0;
+    newSymbol.mutableBorrow = false;
+    newSymbol.borrowedInScope = false;
+    newSymbol.scopeLevel = scopeStack.size() - 1;
+    newSymbol.lifetimeScopeLevel = scopeStack.size() - 1;
+    scopeStack.back()[name] = newSymbol;
     return true;
 }
 
