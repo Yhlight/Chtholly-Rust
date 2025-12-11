@@ -10,7 +10,7 @@ TEST(LexerTest, TokenizeLetStatement)
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 5);
+    ASSERT_EQ(tokens.size(), 6);
 
     EXPECT_EQ(tokens[0].GetType(), TokenType::Let);
     EXPECT_EQ(tokens[0].GetValue(), "let");

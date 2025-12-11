@@ -30,6 +30,7 @@ namespace Chtholly
             ScanToken();
         }
 
+        m_tokens.emplace_back(TokenType::Eof, "");
         return m_tokens;
     }
 

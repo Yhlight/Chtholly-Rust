@@ -15,15 +15,27 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 add_library(common INTERFACE)
 target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/common)
 
+# AST library
+add_library(ast)
+target_sources(ast PRIVATE src/ast/ASTPrinter.cpp)
+target_include_directories(ast PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/ast)
+target_link_libraries(ast PUBLIC common)
+
 # Lexer library
 add_library(lexer)
 target_sources(lexer PRIVATE src/lexer/Lexer.cpp)
 target_include_directories(lexer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/lexer)
 target_link_libraries(lexer PUBLIC common)
 
+# Parser library
+add_library(parser)
+target_sources(parser PRIVATE src/parser/Parser.cpp)
+target_include_directories(parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/parser)
+target_link_libraries(parser PUBLIC lexer ast)
+
 # Main executable
 add_executable(chtholly src/driver/main.cpp)
-target_link_libraries(chtholly PRIVATE lexer)
+target_link_libraries(chtholly PRIVATE parser)
 
 llvm_map_components_to_libnames(LLVM_LIBS core support)
 
@@ -42,7 +54,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-add_executable(chtholly_tests tests/LexerTest.cpp tests/LexerFeaturesTest.cpp)
-target_link_libraries(chtholly_tests PRIVATE lexer gtest_main)
+add_executable(chtholly_tests tests/LexerTest.cpp tests/LexerFeaturesTest.cpp tests/ParserTest.cpp)
+target_link_libraries(chtholly_tests PRIVATE parser gtest_main)
 
-add_test(NAME LexerTest COMMAND chtholly_tests)
+add_test(NAME LexerTests COMMAND chtholly_tests)

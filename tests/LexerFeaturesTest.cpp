@@ -16,7 +16,7 @@ let b = 20;
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 10);
+    ASSERT_EQ(tokens.size(), 11);
 
     EXPECT_EQ(tokens[0].GetType(), TokenType::Let);
     EXPECT_EQ(tokens[1].GetType(), TokenType::Identifier);
@@ -37,7 +37,7 @@ TEST(LexerFeaturesTest, TokenizeOperators)
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 10);
+    ASSERT_EQ(tokens.size(), 11);
     EXPECT_EQ(tokens[0].GetType(), TokenType::DoubleEqual);
     EXPECT_EQ(tokens[1].GetType(), TokenType::BangEqual);
     EXPECT_EQ(tokens[2].GetType(), TokenType::LessEqual);
@@ -56,7 +56,7 @@ TEST(LexerFeaturesTest, TokenizeLiterals)
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 2);
+    ASSERT_EQ(tokens.size(), 3);
 
     EXPECT_EQ(tokens[0].GetType(), TokenType::String);
     EXPECT_EQ(tokens[0].GetValue(), "hello");
@@ -71,7 +71,7 @@ TEST(LexerFeaturesTest, TokenizeValidCharLiteral)
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 1);
+    ASSERT_EQ(tokens.size(), 2);
     EXPECT_EQ(tokens[0].GetType(), TokenType::Char);
     EXPECT_EQ(tokens[0].GetValue(), "c");
 }
@@ -82,7 +82,7 @@ TEST(LexerFeaturesTest, TokenizeEmptyCharLiteral)
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 1);
+    ASSERT_EQ(tokens.size(), 2);
     EXPECT_EQ(tokens[0].GetType(), TokenType::Unknown);
 }
 
@@ -92,7 +92,7 @@ TEST(LexerFeaturesTest, TokenizeMultiCharLiteral)
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 1);
+    ASSERT_EQ(tokens.size(), 2);
     EXPECT_EQ(tokens[0].GetType(), TokenType::Unknown);
 }
 
@@ -102,6 +102,6 @@ TEST(LexerFeaturesTest, TokenizeUnterminatedCharLiteral)
     Lexer lexer(source);
     std::vector<Token> tokens = lexer.Tokenize();
 
-    ASSERT_EQ(tokens.size(), 1);
+    ASSERT_EQ(tokens.size(), 2);
     EXPECT_EQ(tokens[0].GetType(), TokenType::Unknown);
 }
