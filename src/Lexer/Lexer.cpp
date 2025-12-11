@@ -40,7 +40,8 @@ Token Lexer::identifier() {
     static const std::map<std::string, TokenType> keywords = {
         {"fn", TokenType::Fn},
         {"let", TokenType::Let},
-        {"mut", TokenType::Mut}
+        {"mut", TokenType::Mut},
+        {"i32", TokenType::Identifier} // Treat i32 as a type identifier
     };
 
     if (keywords.count(value)) {
@@ -72,6 +73,7 @@ Token Lexer::nextToken() {
         case ')': return {TokenType::RParen, ")"};
         case '{': return {TokenType::LBrace, "{"};
         case '}': return {TokenType::RBrace, "}"};
+        case ':': return {TokenType::Colon, ":"};
         case '\0': return {TokenType::Eof, ""};
         default: return {TokenType::Unknown, std::string(1, ch)};
     }

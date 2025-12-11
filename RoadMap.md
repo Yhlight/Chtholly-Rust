@@ -27,7 +27,7 @@ This milestone will focus on the static analysis of the code to enforce language
 *   [x] **Symbol Table:**
     *   [x] Implement a symbol table to store information about variables, functions, and types.
 *   [ ] **Type Checking:**
-    *   [ ] Implement type checking for primitive types.
+    *   [x] Implement parsing of type annotations for primitive types.
     *   [ ] Enforce type compatibility rules for expressions and assignments.
 *   [ ] **Variable Scopes:**
     *   [ ] Implement scoping rules for variables (`let` and `let mut`).

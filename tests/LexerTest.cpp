@@ -3,12 +3,14 @@
 #include <vector>
 
 TEST(LexerTest, SimpleTokenization) {
-    std::string source = "let x = 5;";
+    std::string source = "let x: i32 = 5;";
     Lexer lexer(source);
 
     std::vector<Token> expected_tokens = {
         {TokenType::Let, "let"},
         {TokenType::Identifier, "x"},
+        {TokenType::Colon, ":"},
+        {TokenType::Identifier, "i32"},
         {TokenType::Assign, "="},
         {TokenType::Integer, "5"},
         {TokenType::Semicolon, ";"},

@@ -5,6 +5,7 @@
 #include "../AST/ASTNode.h"
 #include "../AST/StmtAST.h"
 #include "../AST/ProgramAST.h"
+#include "../Type/Type.h"
 #include <memory>
 #include <vector>
 
@@ -20,6 +21,7 @@ private:
     void eat(TokenType type);
     std::unique_ptr<StmtAST> parseStatement();
     std::unique_ptr<StmtAST> parseLetStatement();
+    Type parseType();
 };
 
 #endif //CHTHOLLY_PARSER_H

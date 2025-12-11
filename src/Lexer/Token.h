@@ -11,7 +11,7 @@ enum class TokenType {
     // Operators
     Plus, Assign, Semicolon,
     // Delimiters
-    LParen, RParen, LBrace, RBrace,
+    LParen, RParen, LBrace, RBrace, Colon,
     // Other
     Unknown, Eof
 };

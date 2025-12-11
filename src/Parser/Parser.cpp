@@ -32,15 +32,25 @@ std::unique_ptr<StmtAST> Parser::parseStatement() {
     }
 }
 
+Type Parser::parseType() {
+    if (currentToken.value == "i32") {
+        eat(TokenType::Identifier);
+        return Type(BuiltinType::I32);
+    }
+    throw std::runtime_error("Unknown type");
+}
+
 std::unique_ptr<StmtAST> Parser::parseLetStatement() {
     eat(TokenType::Let);
     std::string variableName = currentToken.value;
     eat(TokenType::Identifier);
+    eat(TokenType::Colon);
+    Type varType = parseType();
     eat(TokenType::Assign);
     int value = std::stoi(currentToken.value);
     eat(TokenType::Integer);
     eat(TokenType::Semicolon);
 
     auto numberExpr = std::make_unique<NumberExprAST>(value);
-    return std::make_unique<LetStmtAST>(variableName, std::move(numberExpr));
+    return std::make_unique<LetStmtAST>(variableName, varType, std::move(numberExpr));
 }
