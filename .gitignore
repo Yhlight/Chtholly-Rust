@@ -1,0 +1,31 @@
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+CMakeLists.txt.user
+CTestTestfile.cmake
+Makefile
+install_manifest.txt
+
+# Build output
+build/
+bin/
+lib/
+*.out
+*.so
+*.a
+*.dll
+*.exe
+*.o
+*.obj
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
