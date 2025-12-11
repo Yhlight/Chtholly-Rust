@@ -13,10 +13,20 @@ enum class Token {
     // Commands
     Fn,      // fn
     Let,     // let
+    Mut,     // mut
+    If,      // if
+    Else,    // else
 
     // Primary
     Identifier,
     Number,
+
+    // Types
+    I32,      // i32
+    F64,      // f64
+    Bool,     // bool
+    Char,     // char
+    Void,     // void
 
     // Punctuation
     LParen,   // (

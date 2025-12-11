@@ -27,6 +27,14 @@ Token Lexer::getNextToken() {
 
         if (m_identifier == "fn") return Token::Fn;
         if (m_identifier == "let") return Token::Let;
+        if (m_identifier == "mut") return Token::Mut;
+        if (m_identifier == "if") return Token::If;
+        if (m_identifier == "else") return Token::Else;
+        if (m_identifier == "i32") return Token::I32;
+        if (m_identifier == "f64") return Token::F64;
+        if (m_identifier == "bool") return Token::Bool;
+        if (m_identifier == "char") return Token::Char;
+        if (m_identifier == "void") return Token::Void;
         return Token::Identifier;
     }
 

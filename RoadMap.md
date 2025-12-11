@@ -21,16 +21,16 @@ This document outlines the planned development milestones for the Chtholly progr
 
 *Goal: Implement fundamental language features and a static type system.*
 
-- **[ ] Primitive Types:** Implement built-in types (`i32`, `f64`, `bool`, `char`, `void`).
-- **[ ] Variables:**
+- **[X] Primitive Types:** Implement built-in types (`i32`, `f64`, `bool`, `char`, `void`).
+- **[X] Variables:**
 - **[X] `let` bindings:** Implement immutable variable declarations.
-    - **[ ] `let mut` bindings:** Implement mutable variable declarations.
+    - **[X] `let mut` bindings:** Implement mutable variable declarations.
 - **[ ] Type Checking:**
-    - **[ ] Type Inference:** Implement basic type inference for variables.
-    - **[ ] Type Annotations:** Support explicit type annotations (`let x: i32`).
+    - **[X] Type Inference:** Implement basic type inference for variables.
+    - **[X] Type Annotations:** Support explicit type annotations (`let x: i32`).
 - **[X] Operators:** Implement basic arithmetic, logical, and comparison operators.
-- **[ ] Functions:** Support function definitions with parameters and return types.
-- **[ ] Control Flow:** Implement `if`/`else` expressions.
+- **[X] Functions:** Support function definitions with parameters and return types.
+- **[X] Control Flow:** Implement `if`/`else` expressions.
 
 ---
 

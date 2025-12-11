@@ -5,8 +5,41 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "llvm/IR/Type.h"
 
 namespace chtholly {
+
+class Type {
+public:
+    virtual ~Type() = default;
+    virtual llvm::Type* getLLVMType(CodeGen& context) = 0;
+};
+
+class I32Type : public Type {
+public:
+    llvm::Type* getLLVMType(CodeGen& context) override;
+};
+
+class F64Type : public Type {
+public:
+    llvm::Type* getLLVMType(CodeGen& context) override;
+};
+
+class BoolType : public Type {
+public:
+    llvm::Type* getLLVMType(CodeGen& context) override;
+};
+
+class CharType : public Type {
+public:
+    llvm::Type* getLLVMType(CodeGen& context) override;
+};
+
+class VoidType : public Type {
+public:
+    llvm::Type* getLLVMType(CodeGen& context) override;
+};
+
 
 class ExprAST {
 public:
@@ -37,12 +70,24 @@ public:
     llvm::Value* codegen(CodeGen& context) override;
 };
 
+class IfExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> m_cond;
+    std::vector<std::unique_ptr<ExprAST>> m_then;
+    std::vector<std::unique_ptr<ExprAST>> m_else;
+public:
+    IfExprAST(std::unique_ptr<ExprAST> cond, std::vector<std::unique_ptr<ExprAST>> then, std::vector<std::unique_ptr<ExprAST>> elseBody)
+        : m_cond(std::move(cond)), m_then(std::move(then)), m_else(std::move(elseBody)) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
 class LetExprAST : public ExprAST {
     std::string m_varName;
+    bool m_isMutable;
+    std::unique_ptr<Type> m_type;
     std::unique_ptr<ExprAST> m_init;
 public:
-    LetExprAST(const std::string& varName, std::unique_ptr<ExprAST> init)
-        : m_varName(varName), m_init(std::move(init)) {}
+    LetExprAST(const std::string& varName, bool isMutable, std::unique_ptr<Type> type, std::unique_ptr<ExprAST> init)
+        : m_varName(varName), m_isMutable(isMutable), m_type(std::move(type)), m_init(std::move(init)) {}
     llvm::Value* codegen(CodeGen& context) override;
 };
 
@@ -57,10 +102,13 @@ public:
 
 class PrototypeAST {
     std::string m_name;
-    std::vector<std::string> m_args;
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> m_args;
+    std::unique_ptr<Type> m_returnType;
 public:
-    PrototypeAST(const std::string& name, std::vector<std::string> args)
-        : m_name(name), m_args(std::move(args)) {}
+    PrototypeAST(const std::string& name,
+                 std::vector<std::pair<std::string, std::unique_ptr<Type>>> args,
+                 std::unique_ptr<Type> returnType)
+        : m_name(name), m_args(std::move(args)), m_returnType(std::move(returnType)) {}
 
     const std::string& getName() const { return m_name; }
     llvm::Function* codegen(CodeGen& context);

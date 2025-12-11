@@ -42,6 +42,26 @@ std::unique_ptr<PrototypeAST> Parser::logErrorP(const char* str) {
     return nullptr;
 }
 
+std::unique_ptr<Type> Parser::parseType() {
+    Token typeToken = m_currentToken;
+    getNextToken(); // consume type token
+    switch (typeToken) {
+    case Token::I32:
+        return std::make_unique<I32Type>();
+    case Token::F64:
+        return std::make_unique<F64Type>();
+    case Token::Bool:
+        return std::make_unique<BoolType>();
+    case Token::Char:
+        return std::make_unique<CharType>();
+    case Token::Void:
+        return std::make_unique<VoidType>();
+    default:
+        logError("unknown type when expecting a type");
+        return nullptr;
+    }
+}
+
 std::unique_ptr<ExprAST> Parser::parseNumberExpr() {
     auto result = std::make_unique<NumberExprAST>(m_lexer.getNumber());
     getNextToken(); // consume the number
@@ -73,11 +93,26 @@ std::unique_ptr<ExprAST> Parser::parseIdentifierExpr() {
 std::unique_ptr<ExprAST> Parser::parseLetExpr() {
     getNextToken(); // eat let.
 
+    bool isMutable = false;
+    if (m_currentToken == Token::Mut) {
+        isMutable = true;
+        getNextToken(); // eat mut.
+    }
+
     if (m_currentToken != Token::Identifier)
         return logError("expected identifier after let");
 
     std::string idName = m_lexer.getIdentifier();
     getNextToken(); // eat identifier.
+
+    std::unique_ptr<Type> type;
+    if (m_currentToken == Token::Colon) {
+        getNextToken(); // eat :.
+        type = parseType();
+        if (!type) {
+            return nullptr;
+        }
+    }
 
     if (m_currentToken != Token::Assign)
         return logError("expected '=' after identifier");
@@ -87,7 +122,62 @@ std::unique_ptr<ExprAST> Parser::parseLetExpr() {
     if (!init)
         return nullptr;
 
-    return std::make_unique<LetExprAST>(idName, std::move(init));
+    return std::make_unique<LetExprAST>(idName, isMutable, std::move(type), std::move(init));
+}
+
+std::unique_ptr<ExprAST> Parser::parseIfExpr() {
+    getNextToken(); // eat if.
+
+    if (m_currentToken != Token::LParen)
+        return logError("expected '(' after if");
+
+    auto cond = parseExpression();
+    if (!cond)
+        return nullptr;
+
+    if (m_currentToken != Token::LBrace)
+        return logError("expected '{' after if condition");
+    getNextToken(); // eat {.
+
+    std::vector<std::unique_ptr<ExprAST>> thenBody;
+    while (m_currentToken != Token::RBrace) {
+        auto expr = parseExpression();
+        if (!expr)
+            return nullptr;
+        thenBody.push_back(std::move(expr));
+
+        if (m_currentToken != Token::Semicolon) {
+            logError("Expected ';' after expression in if body");
+            return nullptr;
+        }
+        getNextToken(); // eat ;
+    }
+    getNextToken(); // eat }.
+
+    std::vector<std::unique_ptr<ExprAST>> elseBody;
+    if (m_currentToken == Token::Else) {
+        getNextToken(); // eat else.
+
+        if (m_currentToken != Token::LBrace)
+            return logError("expected '{' after else");
+        getNextToken(); // eat {.
+
+        while (m_currentToken != Token::RBrace) {
+            auto expr = parseExpression();
+            if (!expr)
+                return nullptr;
+            elseBody.push_back(std::move(expr));
+
+            if (m_currentToken != Token::Semicolon) {
+                logError("Expected ';' after expression in else body");
+                return nullptr;
+            }
+            getNextToken(); // eat ;
+        }
+        getNextToken(); // eat }.
+    }
+
+    return std::make_unique<IfExprAST>(std::move(cond), std::move(thenBody), std::move(elseBody));
 }
 
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
@@ -100,6 +190,8 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
         return parseNumberExpr();
     case Token::LParen:
         return parseParenExpr();
+    case Token::If:
+        return parseIfExpr();
     case Token::Let:
         return parseLetExpr();
     }
@@ -152,14 +244,24 @@ std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
     }
     getNextToken(); // eat '('.
 
-    std::vector<std::string> argNames;
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> args;
     if (m_currentToken != Token::RParen) { // if there are any arguments
         // Parse the first argument
         if (m_currentToken != Token::Identifier) {
             return logErrorP("Expected identifier in prototype");
         }
-        argNames.push_back(m_lexer.getIdentifier());
+        std::string argName = m_lexer.getIdentifier();
         getNextToken();
+
+        if (m_currentToken != Token::Colon) {
+            return logErrorP("Expected ':' in prototype");
+        }
+        getNextToken(); // eat :.
+        auto type = parseType();
+        if (!type) {
+            return nullptr;
+        }
+        args.push_back(std::make_pair(argName, std::move(type)));
 
         // Parse the rest of the arguments
         while (m_currentToken == Token::Comma) {
@@ -167,18 +269,39 @@ std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
             if (m_currentToken != Token::Identifier) {
                 return logErrorP("Expected identifier after ',' in prototype");
             }
-            argNames.push_back(m_lexer.getIdentifier());
+            argName = m_lexer.getIdentifier();
             getNextToken();
+
+            if (m_currentToken != Token::Colon) {
+                return logErrorP("Expected ':' in prototype");
+            }
+            getNextToken(); // eat :.
+            type = parseType();
+            if (!type) {
+                return nullptr;
+            }
+            args.push_back(std::make_pair(argName, std::move(type)));
         }
     }
 
     if (m_currentToken != Token::RParen) {
         return logErrorP("Expected ')' in prototype");
     }
-
     getNextToken(); // eat ')'.
 
-    return std::make_unique<PrototypeAST>(fnName, std::move(argNames));
+    std::unique_ptr<Type> returnType;
+    if (m_currentToken == Token::Colon) {
+        getNextToken(); // eat :.
+        returnType = parseType();
+        if (!returnType) {
+            return nullptr;
+        }
+    } else {
+        // Default to void return type if not specified
+        returnType = std::make_unique<VoidType>();
+    }
+
+    return std::make_unique<PrototypeAST>(fnName, std::move(args), std::move(returnType));
 }
 
 std::unique_ptr<FunctionAST> Parser::parseDefinition() {

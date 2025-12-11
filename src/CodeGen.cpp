@@ -4,6 +4,26 @@
 
 namespace chtholly {
 
+llvm::Type* I32Type::getLLVMType(CodeGen& context) {
+    return llvm::Type::getInt32Ty(context.getContext());
+}
+
+llvm::Type* F64Type::getLLVMType(CodeGen& context) {
+    return llvm::Type::getDoubleTy(context.getContext());
+}
+
+llvm::Type* BoolType::getLLVMType(CodeGen& context) {
+    return llvm::Type::getInt1Ty(context.getContext());
+}
+
+llvm::Type* CharType::getLLVMType(CodeGen& context) {
+    return llvm::Type::getInt8Ty(context.getContext());
+}
+
+llvm::Type* VoidType::getLLVMType(CodeGen& context) {
+    return llvm::Type::getVoidTy(context.getContext());
+}
+
 CodeGen::CodeGen() : m_builder(m_context) {
     m_module = std::make_unique<llvm::Module>("ChthollyJIT", m_context);
 }
@@ -26,7 +46,14 @@ llvm::Value* VariableExprAST::codegen(CodeGen& context) {
     if (!v) {
         return logErrorV("Unknown variable name");
     }
-    return context.getBuilder().CreateLoad(llvm::Type::getDoubleTy(context.getContext()), v, m_name.c_str());
+
+    // If the value is an alloca, it's a mutable variable, so we load from it.
+    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(v)) {
+        return context.getBuilder().CreateLoad(alloca->getAllocatedType(), v, m_name.c_str());
+    } else {
+        // Otherwise, it's an immutable value, so we can just return it.
+        return v;
+    }
 }
 
 llvm::Value* BinaryExprAST::codegen(CodeGen& context) {
@@ -54,23 +81,99 @@ llvm::Value* LetExprAST::codegen(CodeGen& context) {
     if (!initVal)
         return nullptr;
 
-    llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(llvm::Type::getDoubleTy(context.getContext()), 0, m_varName.c_str());
-    context.getBuilder().CreateStore(initVal, alloca);
+    llvm::Type* type = nullptr;
+    if (m_type) {
+        type = m_type->getLLVMType(context);
+    } else {
+        // If type is not specified, infer it from the initializer.
+        type = initVal->getType();
+    }
 
-    // Add the variable to the symbol table.
-    context.m_namedValues[m_varName] = alloca;
+    if (m_isMutable) {
+        // For mutable variables, allocate memory on the stack.
+        llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(type, nullptr, m_varName.c_str());
+        context.getBuilder().CreateStore(initVal, alloca);
+        context.m_namedValues[m_varName] = alloca;
+    } else {
+        // For immutable variables, just keep the value in the symbol table.
+        context.m_namedValues[m_varName] = initVal;
+    }
 
     return initVal;
 }
 
+llvm::Value* IfExprAST::codegen(CodeGen& context) {
+    llvm::Value* condV = m_cond->codegen(context);
+    if (!condV)
+        return nullptr;
+
+    // Convert condition to a bool by comparing non-equal to 0.
+    if (condV->getType()->isFloatingPointTy()) {
+        condV = context.getBuilder().CreateFCmpONE(condV, llvm::ConstantFP::get(context.getContext(), llvm::APFloat(0.0)), "ifcond");
+    } else {
+        condV = context.getBuilder().CreateICmpNE(condV, llvm::ConstantInt::get(condV->getType(), 0), "ifcond");
+    }
+
+    llvm::Function* theFunction = context.getBuilder().GetInsertBlock()->getParent();
+
+    // Create blocks for the then and else cases.
+    llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(context.getContext(), "then", theFunction);
+    llvm::BasicBlock* elseBB = llvm::BasicBlock::Create(context.getContext(), "else");
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(context.getContext(), "ifcont");
+
+    context.getBuilder().CreateCondBr(condV, thenBB, elseBB);
+
+    // Emit then value.
+    context.getBuilder().SetInsertPoint(thenBB);
+    llvm::Value* thenV = nullptr;
+    for (auto& expr : m_then) {
+        thenV = expr->codegen(context);
+    }
+    context.getBuilder().CreateBr(mergeBB);
+    thenBB = context.getBuilder().GetInsertBlock();
+
+    // Emit else block.
+    theFunction->getBasicBlockList().push_back(elseBB);
+    context.getBuilder().SetInsertPoint(elseBB);
+    llvm::Value* elseV = nullptr;
+    for (auto& expr : m_else) {
+        elseV = expr->codegen(context);
+    }
+    context.getBuilder().CreateBr(mergeBB);
+    elseBB = context.getBuilder().GetInsertBlock();
+
+    // Emit merge block.
+    theFunction->getBasicBlockList().push_back(mergeBB);
+    context.getBuilder().SetInsertPoint(mergeBB);
+
+    if (thenV && elseV) {
+        if (thenV->getType() != elseV->getType()) {
+            return logErrorV("if expression must have same type for then and else blocks");
+        }
+        llvm::PHINode* pn = context.getBuilder().CreatePHI(thenV->getType(), 2, "iftmp");
+        pn->addIncoming(thenV, thenBB);
+        pn->addIncoming(elseV, elseBB);
+        return pn;
+    }
+
+    // For now, if expressions return void if one of the blocks is empty.
+    return llvm::Constant::getNullValue(llvm::Type::getVoidTy(context.getContext()));
+}
+
 llvm::Function* PrototypeAST::codegen(CodeGen& context) {
-    std::vector<llvm::Type*> doubles(m_args.size(), llvm::Type::getDoubleTy(context.getContext()));
-    llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getDoubleTy(context.getContext()), doubles, false);
+    std::vector<llvm::Type*> argTypes;
+    for (const auto& arg : m_args) {
+        argTypes.push_back(arg.second->getLLVMType(context));
+    }
+
+    llvm::Type* returnType = m_returnType->getLLVMType(context);
+
+    llvm::FunctionType* ft = llvm::FunctionType::get(returnType, argTypes, false);
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, m_name, context.getModule());
 
     unsigned idx = 0;
     for (auto& arg : f->args()) {
-        arg.setName(m_args[idx++]);
+        arg.setName(m_args[idx++].first);
     }
     return f;
 }

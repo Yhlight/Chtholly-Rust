@@ -28,10 +28,12 @@ private:
     std::unique_ptr<PrototypeAST> logErrorP(const char* str);
 
     // Parsing routines
+    std::unique_ptr<Type> parseType();
     std::unique_ptr<ExprAST> parseExpression();
     std::unique_ptr<ExprAST> parseNumberExpr();
     std::unique_ptr<ExprAST> parseParenExpr();
     std::unique_ptr<ExprAST> parseIdentifierExpr();
+    std::unique_ptr<ExprAST> parseIfExpr();
     std::unique_ptr<ExprAST> parseLetExpr();
     std::unique_ptr<ExprAST> parsePrimary();
     std::unique_ptr<ExprAST> parseBinOpRHS(int exprPrec, std::unique_ptr<ExprAST> lhs);
