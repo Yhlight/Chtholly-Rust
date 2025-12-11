@@ -27,6 +27,11 @@ SemanticAnalyzer::SemanticAnalyzer() {
     // Pre-populate with built-in functions
     auto printlnType = std::make_shared<FunctionType>(); // This is a simplification
     symbolTable.addSymbol("println", printlnType, false, lifetimeManager.get_current_lifetime());
+
+    std::vector<std::pair<std::string, std::shared_ptr<Type>>> members;
+    members.emplace_back("length", std::make_shared<IntegerType>(32, true));
+    auto stringType = std::make_shared<StructType>("string", members);
+    symbolTable.add_type("string", stringType);
 }
 
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
@@ -41,9 +46,13 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
         } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             auto funcType = std::make_shared<FunctionType>();
             funcType->returnType = typeResolver->resolve(*funcDecl->returnType);
+            if (dynamic_cast<ReferenceTypeAST*>(funcDecl->returnType.get())) {
+                funcType->is_return_ref = true;
+            }
             for (auto& arg : funcDecl->args) {
                 arg.resolvedType = typeResolver->resolve(*arg.type);
-                funcType->argTypes.push_back(arg.resolvedType);
+                bool is_ref = dynamic_cast<ReferenceTypeAST*>(arg.type.get()) != nullptr;
+                funcType->argTypes.push_back({arg.resolvedType, is_ref});
             }
 
             if (!symbolTable.addSymbol(funcDecl->name, funcType, false, lifetimeManager.get_current_lifetime())) {
@@ -194,9 +203,13 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ClassDeclAST& node) {
     for (const auto& method : node.methods) {
         auto funcType = std::make_shared<FunctionType>();
         funcType->returnType = typeResolver->resolve(*method->returnType);
+        if (dynamic_cast<ReferenceTypeAST*>(method->returnType.get())) {
+            funcType->is_return_ref = true;
+        }
         for (auto& arg : method->args) {
             arg.resolvedType = typeResolver->resolve(*arg.type);
-            funcType->argTypes.push_back(arg.resolvedType);
+            bool is_ref = dynamic_cast<ReferenceTypeAST*>(arg.type.get()) != nullptr;
+            funcType->argTypes.push_back({arg.resolvedType, is_ref});
         }
         methods[method->name] = funcType;
     }
@@ -238,6 +251,22 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
 
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
+    auto* funcSymbol = symbolTable.findSymbol(node.name);
+    auto* funcType = static_cast<FunctionType*>(funcSymbol->type.get());
+
+    if (funcType->is_return_ref && !funcType->argTypes.empty()) {
+        bool has_ref_arg = false;
+        for (const auto& arg : funcType->argTypes) {
+            if (arg.is_ref) {
+                has_ref_arg = true;
+                break;
+            }
+        }
+        if (!has_ref_arg) {
+            throw std::runtime_error("Function with reference return type must have at least one reference argument.");
+        }
+    }
+
     auto returnType = typeResolver->resolve(*node.returnType);
     currentFunction = &node;
     symbolTable.enterScope();
@@ -253,6 +282,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
         if(node.body && !node.body->statements.empty()) {
             if(dynamic_cast<ReturnStmtAST*>(node.body->statements.back().get())) {
                 hasReturn = true;
+            } else if (auto* ifStmt = dynamic_cast<IfStmtAST*>(node.body->statements.back().get())) {
+                bool thenHasReturn = !ifStmt->thenBranch->statements.empty() && dynamic_cast<ReturnStmtAST*>(ifStmt->thenBranch->statements.back().get());
+                bool elseHasReturn = ifStmt->elseBranch && !static_cast<BlockStmtAST*>(ifStmt->elseBranch.get())->statements.empty() && dynamic_cast<ReturnStmtAST*>(static_cast<BlockStmtAST*>(ifStmt->elseBranch.get())->statements.back().get());
+                if (thenHasReturn && elseHasReturn) {
+                    hasReturn = true;
+                }
             }
         }
 
@@ -314,6 +349,13 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
         if (lhsSymbol->type->toString() != rhsType->toString()) {
             throw std::runtime_error("Type mismatch in assignment to variable '" + lhsVar->name + "'.");
         }
+
+        if (auto* refType = dynamic_cast<ReferenceType*>(rhsType.get())) {
+            if (lhsSymbol->lifetime.isLongerThan(refType->lifetime)) {
+                throw std::runtime_error("`" + lhsVar->name + "` is assigned a value that does not live long enough.");
+            }
+        }
+
         node.type = lhsSymbol->type;
         return node.type;
     }
@@ -321,6 +363,13 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
 
     auto lhsType = visit(*node.lhs);
     auto rhsType = visit(*node.rhs);
+
+    if (auto* refType = dynamic_cast<ReferenceType*>(lhsType.get())) {
+        lhsType = refType->referencedType;
+    }
+    if (auto* refType = dynamic_cast<ReferenceType*>(rhsType.get())) {
+        rhsType = refType->referencedType;
+    }
 
     if (!lhsType || !rhsType) {
         throw std::runtime_error("Could not resolve type for one or both operands in binary expression.");
@@ -412,7 +461,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(EnumVariantExprAST& node) {
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(StringExprAST& node) {
-    node.type = std::make_shared<StringType>();
+    node.type = symbolTable.find_type("string");
     return node.type;
 }
 
@@ -462,6 +511,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructInitializerExprAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(MemberAccessExprAST& node) {
     auto objectType = visit(*node.object);
+
+    if (auto* refType = dynamic_cast<ReferenceType*>(objectType.get())) {
+        objectType = refType->referencedType;
+    }
+
     if (auto* structType = dynamic_cast<StructType*>(objectType.get())) {
         for (const auto& member : structType->members) {
             if (member.first == node.memberName) {
@@ -552,6 +606,34 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
         if (returnType->toString() != expectedType->toString()) {
             throw std::runtime_error("Return type mismatch: expected " + expectedType->toString() + ", got " + returnType->toString());
         }
+
+        if (dynamic_cast<ReferenceType*>(expectedType.get())) {
+            if (auto* borrowExpr = dynamic_cast<BorrowExprAST*>(node.returnValue.get())) {
+                if (auto* varExpr = dynamic_cast<VariableExprAST*>(borrowExpr->expression.get())) {
+                    bool is_arg = false;
+                    for (const auto& arg : currentFunction->args) {
+                        if (arg.name == varExpr->name) {
+                            is_arg = true;
+                            break;
+                        }
+                    }
+                    if (!is_arg) {
+                        throw std::runtime_error("Cannot return a reference to a local variable.");
+                    }
+                }
+            } else if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.returnValue.get())) {
+                bool is_arg = false;
+                for (const auto& arg : currentFunction->args) {
+                    if (arg.name == varExpr->name) {
+                        is_arg = true;
+                        break;
+                    }
+                }
+                if (!is_arg) {
+                    throw std::runtime_error("Cannot return a reference to a local variable.");
+                }
+            }
+        }
     } else {
         auto expectedType = typeResolver->resolve(*currentFunction->returnType);
         if (expectedType->toString() != "void") {
@@ -578,7 +660,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(IfStmtAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(SwitchStmtAST& node) {
     auto conditionType = visit(*node.condition);
-    if (!conditionType->isInteger() && !conditionType->isString()) {
+    if (!conditionType->isInteger() && !(conditionType->isStruct() && conditionType->toString() == "string")) {
         throw std::runtime_error("Switch condition must be an integer or a string.");
     }
 

@@ -6,8 +6,8 @@
 #include "SymbolTable.h"
 
 
-CodeGenerator::CodeGenerator(SymbolTable& symbolTable, LifetimeManager& lifetimeManager)
-    : typeResolver(symbolTable, lifetimeManager), isMemberAccess(false) {
+CodeGenerator::CodeGenerator(SymbolTable& symbolTable)
+    : isMemberAccess(false) {
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>("ChthollyModule", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
@@ -162,9 +162,6 @@ llvm::Type* CodeGenerator::resolveType(const Type& type) {
     if (auto* floatType = dynamic_cast<const FloatType*>(&type)) {
         return builder->getDoubleTy();
     }
-    if (auto* stringType = dynamic_cast<const StringType*>(&type)) {
-        return builder->getInt8Ty()->getPointerTo();
-    }
     if (auto* boolType = dynamic_cast<const BoolType*>(&type)) {
         return builder->getInt1Ty();
     }
@@ -271,8 +268,6 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<ArrayIndexExprAST*>(&node)) {
         return visit(*p);
-    } else if (auto* p = dynamic_cast<EnumDeclAST*>(&node)) {
-        return visit(*p);
     } else if (auto* p = dynamic_cast<EnumVariantExprAST*>(&node)) {
         return visit(*p);
     }
@@ -280,7 +275,7 @@ llvm::Value* CodeGenerator::visit(ASTNode& node) {
 }
 
 llvm::Value* CodeGenerator::visit(SwitchStmtAST& node) {
-    if (node.condition->type->isString()) {
+    if (node.condition->type->isStruct() && node.condition->type->toString() == "string") {
         createStringSwitch(node);
         return nullptr;
     }
@@ -497,7 +492,7 @@ llvm::Value* CodeGenerator::visit(VarDeclStmtAST& node) {
     }
     namedValues[node.varName] = alloca;
 
-    if (node.initExpr->type->isString() || node.initExpr->type->isDynamicArray()) {
+    if ((node.initExpr->type->isStruct() && node.initExpr->type->toString() == "string") || node.initExpr->type->isDynamicArray()) {
         if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
             // Find the moved variable in ownedValues and remove it
             llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
@@ -529,7 +524,7 @@ llvm::Value* CodeGenerator::visit(FunctionDeclAST& node) {
         llvm::AllocaInst* alloca = builder->CreateAlloca(arg.getType(), nullptr, node.args[i].name);
         builder->CreateStore(&arg, alloca);
         namedValues[node.args[i].name] = alloca;
-        if (node.args[i].resolvedType->isString()) {
+        if (node.args[i].resolvedType->isStruct() && node.args[i].resolvedType->toString() == "string") {
             ownedValues.push_back(alloca);
         }
         i++;
@@ -578,7 +573,7 @@ llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
 
         llvm::Value* rhs = visit(*node.rhs);
 
-        if (node.rhs->type->isString()) {
+        if (node.rhs->type->isStruct() && node.rhs->type->toString() == "string") {
             llvm::Function* freeFunc = module->getFunction("free");
             llvm::Value* oldVal = builder->CreateLoad(lhs->getAllocatedType(), lhs);
             builder->CreateCall(freeFunc, {oldVal});
@@ -590,7 +585,7 @@ llvm::Value* CodeGenerator::visit(BinaryExprAST& node) {
             builder->CreateStore(rhs, lhs);
         }
 
-        if (node.rhs->type->isString()) {
+        if (node.rhs->type->isStruct() && node.rhs->type->toString() == "string") {
              if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
                 // Find the moved variable in ownedValues and remove it
                 llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
@@ -723,7 +718,7 @@ llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
     std::vector<llvm::Value*> argValues;
     for (auto& arg : node.args) {
         argValues.push_back(visit(*arg));
-        if (arg->type->isString()) {
+        if (arg->type->isStruct() && arg->type->toString() == "string") {
             if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
                 // Find the moved variable in ownedValues and remove it
                 llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
@@ -919,12 +914,6 @@ llvm::Value* CodeGenerator::visit(ArrayIndexExprAST& node) {
         auto* gep = builder->CreateGEP(arrayType, array, {builder->getInt32(0), index});
         return builder->CreateLoad(arrayType->getElementType(), gep);
     }
-}
-
-llvm::Value* CodeGenerator::visit(EnumDeclAST& node) {
-    auto type = typeResolver.resolve(node);
-    resolveType(*type);
-    return nullptr;
 }
 
 llvm::Value* CodeGenerator::visit(EnumVariantExprAST& node) {

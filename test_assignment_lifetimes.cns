@@ -1,0 +1,9 @@
+fn main(): i32 {
+    let mut r: &i32;
+    {
+        let x = 5;
+        r = &x; // error: `r` is assigned a value that does not live long enough
+    }
+    println(r);
+    return 0;
+}

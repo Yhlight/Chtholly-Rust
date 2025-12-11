@@ -28,7 +28,6 @@ public:
     enum TypeKind {
         TK_Integer,
         TK_Float,
-        TK_String,
         TK_Char,
         TK_Bool,
         TK_Void,
@@ -48,7 +47,6 @@ public:
 
     bool isInteger() const { return kind == TK_Integer; }
     bool isFloat() const { return kind == TK_Float; }
-    bool isString() const { return kind == TK_String; }
     bool isBool() const { return kind == TK_Bool; }
     bool isStruct() const { return kind == TK_Struct; }
     bool isClass() const { return kind == TK_Class; }
@@ -88,15 +86,6 @@ public:
     }
 
     bool isCopy() const override { return true; }
-};
-
-class StringType : public Type {
-public:
-    StringType() : Type(TK_String) {}
-
-    std::string toString() const override {
-        return "string";
-    }
 };
 
 class BoolType : public Type {
@@ -146,12 +135,18 @@ public:
     std::string toString() const override { return name; }
 };
 
+struct ArgType {
+    std::shared_ptr<Type> type;
+    bool is_ref;
+};
+
 class FunctionType : public Type {
 public:
     std::shared_ptr<Type> returnType;
-    std::vector<std::shared_ptr<Type>> argTypes;
+    bool is_return_ref;
+    std::vector<ArgType> argTypes;
 
-    FunctionType() : Type(TK_Function) {}
+    FunctionType() : Type(TK_Function), is_return_ref(false) {}
 
     std::string toString() const override {
         return "function";
@@ -164,6 +159,7 @@ public:
     MethodType(std::shared_ptr<ClassType> parentClass, std::shared_ptr<FunctionType> funcType)
         : parentClass(std::move(parentClass)) {
         returnType = funcType->returnType;
+        is_return_ref = funcType->is_return_ref;
         argTypes = funcType->argTypes;
     }
 };

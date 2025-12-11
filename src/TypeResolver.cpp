@@ -29,9 +29,6 @@ std::shared_ptr<Type> TypeResolver::resolve(const TypeNameAST& typeName) {
     if (typeName.name == "f64") {
         return std::make_shared<FloatType>(64);
     }
-    if (typeName.name == "string") {
-        return std::make_shared<StringType>();
-    }
     if (typeName.name == "void") {
         return std::make_shared<VoidType>();
     }

@@ -703,6 +703,8 @@ std::unique_ptr<ExprAST> Parser::parse_call_expression(std::unique_ptr<ExprAST> 
 
 int Parser::get_token_precedence() {
     switch (peek().type) {
+        case TokenType::DOT:
+            return 30;
         case TokenType::EQUAL:
             return 2;
         case TokenType::PLUS:
