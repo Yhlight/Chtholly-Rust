@@ -1,24 +1,111 @@
-cmake_minimum_required(VERSION 3.16)
-project(Chtholly)
+cmake_minimum_required(VERSION 3.20)
+project(Chtholly CXX)
 
+# Set C++ standard to C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find LLVM and the components we need
-find_package(LLVM REQUIRED CONFIG)
+# Set a default build type if none was specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+# Find LLVM and the required components
+find_package(LLVM 18.1 REQUIRED CONFIG COMPONENTS
+    Core
+    IR
+    Support
+    CodeGen
+    MC
+    Linker
+    Target
+    Analysis
+    AsmParser
+    AsmPrinter
+    ExecutionEngine
+    OrcJIT
+    TransformUtils
+    ScalarOpts
+)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
-message(STATUS "LLVM_LIBRARIES: ${LLVM_LIBRARIES}")
-message(STATUS "LLVM_LIBRARY_DIRS: ${LLVM_LIBRARY_DIRS}")
 
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
+# Define the executable for the Chtholly compiler
+add_executable(chtholly
+    src/main.cpp
+    src/Lexer.cpp
+    src/Parser.cpp
+)
 
-add_executable(chtholly src/main.cpp)
+# Add LLVM include directories to our target
+target_include_directories(chtholly PRIVATE ${LLVM_INCLUDE_DIRS})
 
-# Get the list of libraries for the specified components
-llvm_map_components_to_libnames(llvm_libs support)
+# Add LLVM definitions
+target_compile_definitions(chtholly PRIVATE ${LLVM_DEFINITIONS})
 
-# Link the libraries
-target_link_libraries(chtholly PRIVATE ${llvm_libs})
+# Link the required LLVM libraries to our executable
+target_link_libraries(chtholly PRIVATE
+    LLVMOrcJIT
+    LLVMPasses
+    LLVMIRPrinter
+    LLVMHipStdPar
+    LLVMCoroutines
+    LLVMipo
+    LLVMInstrumentation
+    LLVMVectorize
+    LLVMLinker
+    LLVMFrontendOpenMP
+    LLVMFrontendOffloading
+    LLVMCFGuard
+    LLVMWindowsDriver
+    LLVMJITLink
+    LLVMOption
+    LLVMExecutionEngine
+    LLVMRuntimeDyld
+    LLVMOrcTargetProcess
+    LLVMOrcShared
+    LLVMAsmPrinter
+    LLVMCodeGen
+    LLVMTarget
+    LLVMScalarOpts
+    LLVMInstCombine
+    LLVMAggressiveInstCombine
+    LLVMObjCARCOpts
+    LLVMTransformUtils
+    LLVMCodeGenTypes
+    LLVMBitWriter
+    LLVMAnalysis
+    LLVMProfileData
+    LLVMSymbolize
+    LLVMDebugInfoBTF
+    LLVMDebugInfoPDB
+    LLVMDebugInfoMSF
+    LLVMDebugInfoDWARF
+    LLVMObject
+    LLVMTextAPI
+    LLVMMCParser
+    LLVMIRReader
+    LLVMAsmParser
+    LLVMMC
+    LLVMDebugInfoCodeView
+    LLVMBitReader
+    LLVMCore
+    LLVMRemarks
+    LLVMBitstreamReader
+    LLVMBinaryFormat
+    LLVMTargetParser
+    LLVMSupport
+    LLVMDemangle
+)
+
+# Enable warnings
+target_compile_options(chtholly PRIVATE -Wall -Wextra -pedantic)
+
+# Disable RTTI if LLVM has it disabled
+if (NOT LLVM_ENABLE_RTTI)
+  message(STATUS "RTTI is disabled in LLVM, disabling for Chtholly as well.")
+  target_compile_options(chtholly PRIVATE -fno-rtti)
+endif()
