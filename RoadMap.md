@@ -13,7 +13,7 @@ This phase focuses on implementing the fundamental building blocks of the langua
     *   [x] Create a simple "Hello, World!" entry point.
 
 2.  **Lexer and Parser**
-    *   [ ] Implement a lexer to tokenize the source code.
+    *   [x] Implement a lexer to tokenize the source code.
     *   [ ] Implement a parser to build an Abstract Syntax Tree (AST).
     *   [ ] Support for basic syntax: comments, identifiers, literals.
 
