@@ -8,10 +8,10 @@ This document outlines the planned development milestones for the Chtholly progr
 
 *Goal: Establish the basic infrastructure for the compiler and parse a simple "Hello, World!" program.*
 
-- **[ ] Build System:** Configure CMake for the project, including LLVM integration.
-- **[ ] Lexer:** Implement a lexical analyzer to tokenize the source code (keywords, identifiers, literals, operators).
-- **[ ] Parser:** Build a parser for the most basic syntax, including `fn main`, variable declarations, and function calls.
-- **[ ] Abstract Syntax Tree (AST):** Define and construct the AST for the parsed code.
+- **[X] Build System:** Configure CMake for the project, including LLVM integration.
+- **[X] Lexer:** Implement a lexical analyzer to tokenize the source code (keywords, identifiers, literals, operators).
+- **[X] Parser:** Build a parser for the most basic syntax, including `fn main`, variable declarations, and function calls.
+- **[X] Abstract Syntax Tree (AST):** Define and construct the AST for the parsed code.
 - **[ ] Code Generation (LLVM):** Implement a basic code generator that can traverse the AST and produce LLVM IR for a simple program that prints "Hello, World!".
 - **[ ] Testing Framework:** Set up the initial testing infrastructure for TDD.
 
