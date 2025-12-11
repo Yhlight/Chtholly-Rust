@@ -8,16 +8,16 @@ This document outlines the development plan for the Chtholly programming languag
 - **Zero-Cost Abstractions:** Ensure that high-level language features do not introduce runtime overhead.
 - **Compile-Time Programming:** Allow for complex computations and code generation to be performed at compile time.
 
-## Milestone 1: Foundational Infrastructure (In Progress)
+## Milestone 1: Foundational Infrastructure (Completed)
 
 This milestone focuses on setting up the basic project structure and build system.
 
-- [ ] **Project Structure:** Create the `src`, `tests`, and `cmake` directories.
-- [ ] **Build System:** Create a root `CMakeLists.txt` file to define the project and its dependencies.
-- [ ] **Entry Point:** Create a `main.cpp` file to serve as the entry point for the Chtholly compiler.
-- [ ] **Version Control:** Create a `.gitignore` file to exclude build artifacts.
+- [x] **Project Structure:** Create the `src`, `tests`, and `cmake` directories.
+- [x] **Build System:** Create a root `CMakeLists.txt` file to define the project and its dependencies.
+- [x] **Entry Point:** Create a `main.cpp` file to serve as the entry point for the Chtholly compiler.
+- [x] **Version Control:** Create a `.gitignore` file to exclude build artifacts.
 
-## Milestone 2: Lexer and Parser
+## Milestone 2: Lexer and Parser (In Progress)
 
 This milestone focuses on implementing the front-end of the compiler, which is responsible for parsing Chtholly source code.
 

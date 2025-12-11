@@ -11,7 +11,9 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_CMAKE_DIR}")
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
-add_executable(chtholly src/main.cpp)
+add_executable(chtholly src/main.cpp src/Lexer.cpp)
+
+target_include_directories(chtholly PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 llvm_map_components_to_libnames(CHTHOLLY_LLVM_LIBS
     core
@@ -20,3 +22,6 @@ llvm_map_components_to_libnames(CHTHOLLY_LLVM_LIBS
 )
 
 target_link_libraries(chtholly PRIVATE ${CHTHOLLY_LLVM_LIBS})
+
+enable_testing()
+add_subdirectory(tests)
