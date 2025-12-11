@@ -42,7 +42,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-add_executable(chtholly_tests tests/LexerTest.cpp)
+add_executable(chtholly_tests tests/LexerTest.cpp tests/LexerFeaturesTest.cpp)
 target_link_libraries(chtholly_tests PRIVATE lexer gtest_main)
 
 add_test(NAME LexerTest COMMAND chtholly_tests)

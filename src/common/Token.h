@@ -41,6 +41,12 @@ namespace Chtholly
         LessEqual,
         Greater,
         GreaterEqual,
+        PlusEqual,
+        MinusEqual,
+        AsteriskEqual,
+        SlashEqual,
+        DoubleAmpersand,
+        DoublePipe,
 
         // Delimiters
         LParen,

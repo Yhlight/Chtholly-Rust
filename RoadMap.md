@@ -15,7 +15,7 @@ This phase focuses on implementing the fundamental building blocks of the langua
 2.  **Lexer and Parser**
     *   [x] Implement a lexer to tokenize the source code.
     *   [ ] Implement a parser to build an Abstract Syntax Tree (AST).
-    *   [ ] Support for basic syntax: comments, identifiers, literals.
+    *   [x] Support for basic syntax: comments, identifiers, literals.
 
 3.  **Variables and Data Types**
     *   [ ] Implement `let` and `let mut` for variable declarations.

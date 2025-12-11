@@ -15,8 +15,22 @@ namespace Chtholly
         std::vector<Token> Tokenize();
 
     private:
+        void ScanToken();
+        void Identifier();
+        void Number();
+        void String();
+        void Char();
+
+        char Peek();
+        char PeekNext();
+        bool IsAtEnd();
+        char Advance();
+        void AddToken(TokenType type);
+        bool Match(char expected);
+
         std::string m_source;
         std::vector<Token> m_tokens;
+        int m_start = 0;
         int m_current = 0;
     };
 }
