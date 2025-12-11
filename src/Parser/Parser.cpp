@@ -37,7 +37,28 @@ Type Parser::parseType() {
         eat(TokenType::Identifier);
         return Type(BuiltinType::I32);
     }
+    if (currentToken.value == "f64") {
+        eat(TokenType::Identifier);
+        return Type(BuiltinType::F64);
+    }
     throw std::runtime_error("Unknown type");
+}
+
+std::unique_ptr<ExprAST> Parser::parseExpression() {
+    switch (currentToken.type) {
+        case TokenType::Integer: {
+            int value = std::stoi(currentToken.value);
+            eat(TokenType::Integer);
+            return std::make_unique<NumberExprAST>(value);
+        }
+        case TokenType::Float: {
+            double value = std::stod(currentToken.value);
+            eat(TokenType::Float);
+            return std::make_unique<FloatExprAST>(value);
+        }
+        default:
+            throw std::runtime_error("Unknown expression");
+    }
 }
 
 std::unique_ptr<StmtAST> Parser::parseLetStatement() {
@@ -47,10 +68,8 @@ std::unique_ptr<StmtAST> Parser::parseLetStatement() {
     eat(TokenType::Colon);
     Type varType = parseType();
     eat(TokenType::Assign);
-    int value = std::stoi(currentToken.value);
-    eat(TokenType::Integer);
+    auto value = parseExpression();
     eat(TokenType::Semicolon);
 
-    auto numberExpr = std::make_unique<NumberExprAST>(value);
-    return std::make_unique<LetStmtAST>(variableName, varType, std::move(numberExpr));
+    return std::make_unique<LetStmtAST>(variableName, varType, std::move(value));
 }

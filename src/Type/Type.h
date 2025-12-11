@@ -5,6 +5,7 @@
 
 enum class BuiltinType {
     I32,
+    F64,
     Unknown
 };
 
@@ -13,6 +14,10 @@ public:
     Type(BuiltinType type) : type(type) {}
 
     BuiltinType getBuiltinType() const { return type; }
+
+    bool operator==(const Type& other) const {
+        return type == other.type;
+    }
 
 private:
     BuiltinType type;

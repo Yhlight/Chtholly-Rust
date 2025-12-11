@@ -7,7 +7,7 @@ enum class TokenType {
     // Keywords
     Fn, Let, Mut,
     // Identifiers and literals
-    Identifier, Integer,
+    Identifier, Integer, Float,
     // Operators
     Plus, Assign, Semicolon,
     // Delimiters

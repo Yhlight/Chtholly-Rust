@@ -22,6 +22,7 @@ private:
     std::unique_ptr<StmtAST> parseStatement();
     std::unique_ptr<StmtAST> parseLetStatement();
     Type parseType();
+    std::unique_ptr<ExprAST> parseExpression();
 };
 
 #endif //CHTHOLLY_PARSER_H

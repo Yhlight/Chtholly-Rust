@@ -30,6 +30,24 @@ Token Lexer::integer() {
     return {TokenType::Integer, value};
 }
 
+Token Lexer::floatingPoint() {
+    std::string value;
+    while (isdigit(currentChar())) {
+        value += currentChar();
+        advance();
+    }
+    if (currentChar() == '.') {
+        value += '.';
+        advance();
+        while (isdigit(currentChar())) {
+            value += currentChar();
+            advance();
+        }
+    }
+    return {TokenType::Float, value};
+}
+
+
 Token Lexer::identifier() {
     std::string value;
     while (isalnum(currentChar()) || currentChar() == '_') {
@@ -41,7 +59,8 @@ Token Lexer::identifier() {
         {"fn", TokenType::Fn},
         {"let", TokenType::Let},
         {"mut", TokenType::Mut},
-        {"i32", TokenType::Identifier} // Treat i32 as a type identifier
+        {"i32", TokenType::Identifier},
+        {"f64", TokenType::Identifier}
     };
 
     if (keywords.count(value)) {
@@ -57,6 +76,14 @@ Token Lexer::nextToken() {
     char ch = currentChar();
 
     if (isdigit(ch)) {
+        // Check for floating point
+        size_t next_pos = position;
+        while (next_pos < source.length() && isdigit(source[next_pos])) {
+            next_pos++;
+        }
+        if (next_pos < source.length() && source[next_pos] == '.') {
+            return floatingPoint();
+        }
         return integer();
     }
     if (isalpha(ch) || ch == '_') {

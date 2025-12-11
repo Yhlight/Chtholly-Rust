@@ -17,6 +17,7 @@ private:
     void advance();
     void skipWhitespace();
     Token integer();
+    Token floatingPoint();
     Token identifier();
 };
 
