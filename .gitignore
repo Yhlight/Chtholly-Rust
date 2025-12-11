@@ -1,0 +1,35 @@
+# CMake
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+CMakeLists.txt.user
+CTestTestfile.cmake
+install_manifest.txt
+compile_commands.json
+
+# Build output
+[Bb]uild/
+[Bb]in/
+[Ll]ib/
+*.o
+*.so
+*.a
+*.dll
+*.exe
+*.out
+
+# C++
+*.gch
+*.pch
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# User-specific files
+.DS_Store
+*.swp
+*.swo
+*~
