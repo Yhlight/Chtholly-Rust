@@ -1,0 +1,15 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# Cmake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
