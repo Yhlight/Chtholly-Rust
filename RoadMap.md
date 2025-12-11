@@ -21,7 +21,7 @@ This milestone focuses on setting up the basic project structure and build syste
 
 This milestone focuses on implementing the front-end of the compiler, which is responsible for parsing Chtholly source code.
 
-- [ ] **Lexer:** Implement a lexer to tokenize the Chtholly source code.
+- [x] **Lexer:** Implement a lexer to tokenize the Chtholly source code.
 - [ ] **Parser:** Implement a parser to build an Abstract Syntax Tree (AST) from the tokens.
 - [ ] **AST:** Define the AST nodes for all the language constructs specified in `Chtholly.md`.
 - [ ] **Testing:** Write unit tests for the lexer and parser.

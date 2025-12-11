@@ -11,7 +11,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_CMAKE_DIR}")
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
-add_executable(chtholly src/main.cpp src/Lexer.cpp)
+add_executable(chtholly src/main.cpp src/Lexer.cpp src/Parser.cpp)
 
 target_include_directories(chtholly PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
