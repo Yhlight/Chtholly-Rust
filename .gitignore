@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+bin/
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# C++ files
+*.o
+*.a
+*.so
+*.dylib
+
+# Other
+.DS_Store
