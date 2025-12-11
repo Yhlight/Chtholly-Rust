@@ -12,7 +12,7 @@ This document outlines the planned development milestones for the Chtholly progr
 - **[X] Lexer:** Implement a lexical analyzer to tokenize the source code (keywords, identifiers, literals, operators).
 - **[X] Parser:** Build a parser for the most basic syntax, including `fn main`, variable declarations, and function calls.
 - **[X] Abstract Syntax Tree (AST):** Define and construct the AST for the parsed code.
-- **[ ] Code Generation (LLVM):** Implement a basic code generator that can traverse the AST and produce LLVM IR for a simple program that prints "Hello, World!".
+- **[X] Code Generation (LLVM):** Implement a basic code generator that can traverse the AST and produce LLVM IR for a simple program that prints "Hello, World!".
 - **[ ] Testing Framework:** Set up the initial testing infrastructure for TDD.
 
 ---

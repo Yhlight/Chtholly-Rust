@@ -13,8 +13,8 @@ public:
     Parser(Lexer& lexer);
 
     // Main parsing loop
-    void handleDefinition();
-    void handleTopLevelExpression(); // For testing simple expressions
+    std::unique_ptr<FunctionAST> handleDefinition();
+    std::unique_ptr<FunctionAST> handleTopLevelExpression(); // For testing simple expressions
 
 private:
     Lexer& m_lexer;

@@ -144,13 +144,13 @@ std::unique_ptr<FunctionAST> Parser::parseDefinition() {
     return std::make_unique<FunctionAST>(std::move(proto), std::move(body));
 }
 
-void Parser::handleDefinition() {
-    if (parseDefinition()) {
-        fprintf(stderr, "Parsed a function definition.\n");
-    } else {
-        // Skip token for error recovery.
-        getNextToken();
+std::unique_ptr<FunctionAST> Parser::handleDefinition() {
+    if (auto f = parseDefinition()) {
+        return f;
     }
+    // Skip token for error recovery.
+    getNextToken();
+    return nullptr;
 }
 
 std::unique_ptr<FunctionAST> Parser::parseTopLevelExpr() {
@@ -158,14 +158,14 @@ std::unique_ptr<FunctionAST> Parser::parseTopLevelExpr() {
     return std::make_unique<FunctionAST>(std::move(proto), parseExpression());
 }
 
-void Parser::handleTopLevelExpression() {
+std::unique_ptr<FunctionAST> Parser::handleTopLevelExpression() {
     // Evaluate a top-level expression into an anonymous function.
-    if (parseTopLevelExpr()) {
-        fprintf(stderr, "Parsed a top-level expression.\\n");
-    } else {
-        // Skip token for error recovery.
-        getNextToken();
+    if (auto f = parseTopLevelExpr()) {
+        return f;
     }
+    // Skip token for error recovery.
+    getNextToken();
+    return nullptr;
 }
 
 } // namespace chtholly

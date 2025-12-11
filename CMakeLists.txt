@@ -20,7 +20,6 @@ find_package(LLVM 18.1 REQUIRED CONFIG COMPONENTS
     Support
     CodeGen
     MC
-    Linker
     Target
     Analysis
     AsmParser
@@ -38,6 +37,7 @@ add_executable(chtholly
     src/main.cpp
     src/Lexer.cpp
     src/Parser.cpp
+    src/CodeGen.cpp
 )
 
 # Add LLVM include directories to our target
