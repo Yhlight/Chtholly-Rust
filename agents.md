@@ -4,7 +4,7 @@
 
 ### 安装 LLVM 18
 
-标准的 Ubuntu 仓库可能没有最新版本的 LLVM，或者可能存在链接问题。推荐使用 LLVM 官方提供的 APT 仓库进行安装。编译 `inkwell` crate 时需要额外的开发库 (`libpolly-18-dev`, `libzstd-dev`) 以避免链接器错误。
+标准的 Ubuntu 仓库可能没有最新版本的 LLVM，或者可能存在链接问题。推荐使用 LLVM 官方提供的 APT 仓库进行安装。
 
 ```bash
 #!/bin/bash
@@ -35,6 +35,12 @@ sudo apt-get install -y \
     libpolly-18-dev \
     libzstd-dev
 ```
+
+### 环境变量的配置
+
+除此之外，你需要设置环境变量LLVM_DIR，尽管CMake能够自动查找LLVM所在的位置。
+
+但我们推荐还是手动指定LLVM的CMake文件的位置。
 
 ## 项目要求
 
