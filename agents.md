@@ -2,7 +2,7 @@
 
 为了方便 Chtholly 语言的开发，请遵循以下步骤来设置您的开发环境。这些说明主要针对基于 Debian/Ubuntu 的系统。
 
-### 1. 安装 Rust 和 Cargo
+### 1. 安装 Rust 和 Cargo(不存在Rust环境时再使用)
 
 ```bash
 # 下载并运行官方的 rustup 安装脚本
@@ -50,7 +50,7 @@ sudo apt-get install -y \
 `inkwell` (via `llvm-sys`) 需要知道在哪里找到 LLVM。您可以通过设置以下环境变量来指定 LLVM 的安装路径：
 
 ```bash
-export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 ```
 
 将此行添加到您的 `.bashrc` 或 `.zshrc` 文件中，以使其在新的 shell 会- 话中永久生效。
@@ -69,7 +69,7 @@ inkwell = { git = "https://github.com/TheDan64/inkwell.git", rev = "b9c53276e309
 
 2. 项目使用 `.gitignore` 进行版本控制，不要提交构建产物与二进制文件。
 
-3. Scrum + TDD 驱动，以稳定项目为主，增量实现，避免回归。
+3. TDD 驱动，以稳定项目为主，增量实现，避免回归。
 
 4. 每一个计划的推进前，都需要重新阅读 `Chtholly.md` 中相关语法规范。
 
