@@ -20,7 +20,9 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 # Add executable
-add_executable(chtholly src/main.cpp src/Lexer/Lexer.cpp)
+add_executable(chtholly src/main.cpp
+                        src/Lexer/Lexer.cpp
+                        src/Parser/Parser.cpp)
 
 # Add LLVM include directories and definitions
 target_include_directories(chtholly PRIVATE ${LLVM_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)

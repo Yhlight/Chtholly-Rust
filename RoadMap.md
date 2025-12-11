@@ -13,9 +13,9 @@ This milestone focuses on setting up the basic infrastructure of the compiler.
 *   [x] **Lexer:**
     *   [x] Implement the lexer to tokenize the Chtholly source code.
     *   [x] Support for all keywords, operators, and literals defined in `Chtholly.md`.
-*   [ ] **Parser:**
-    *   [ ] Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
-    *   [ ] Define the AST nodes for all language constructs.
+*   [x] **Parser:**
+    *   [x] Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
+    *   [x] Define the AST nodes for all language constructs.
 *   [ ] **Basic Command-Line Interface:**
     *   [ ] Create a simple command-line tool to invoke the compiler.
     *   [ ] Add options for input files and output files.
