@@ -20,9 +20,9 @@ The goal of this phase is to establish the foundational infrastructure for the c
     *   The CLI will eventually support different flags (e.g., for emitting LLVM IR, object files).
 
 4.  **Lexer and Parser:**
-    *   Implement a lexer to tokenize the Chtholly source code.
-    *   Implement a parser to build an Abstract Syntax Tree (AST) from the tokens.
-    *   Define the AST node structures.
+    *   Implement a lexer to tokenize the Chtholly source code. **(Complete)**
+    *   Implement a parser to build an Abstract Syntax Tree (AST) from the tokens. **(Complete)**
+    *   Define the AST node structures. **(Complete)**
 
 ## Phase 2: Fundamental Language Features
 
