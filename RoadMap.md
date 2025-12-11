@@ -6,8 +6,8 @@ This document outlines the development plan for the Chtholly programming languag
 
 - [x] Comments
 - [x] Main function
-- [ ] Immutable and mutable variables
-- [ ] Data types
+- [x] Immutable and mutable variables
+- [x] Data types
 - [ ] Type casting
 - [ ] Operators
 - [ ] Functions

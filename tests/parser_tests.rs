@@ -3,7 +3,8 @@
 
 // Note that we are in a different crate, so we need to use `app` to refer
 // to the library crate.
-use app::parser::{parse_comment, parse_main_function};
+use app::ast::{Expression, LiteralValue, Statement, Type};
+use app::parser::{parse_comment, parse_let_statement, parse_literal, parse_main_function, parse_type};
 
 #[test]
 fn test_parse_single_line_comment() {
@@ -31,4 +32,65 @@ fn test_parse_main_function() {
     let (remaining, body) = result.unwrap();
     assert_eq!(remaining.trim(), "");
     assert_eq!(body.trim(), "// some code");
+}
+
+#[test]
+fn test_parse_type() {
+    assert_eq!(parse_type("i32"), Ok(("", Type::I32)));
+    assert_eq!(parse_type("bool"), Ok(("", Type::Bool)));
+    assert!(parse_type("string").is_err());
+}
+
+#[test]
+fn test_parse_literal() {
+    assert_eq!(
+        parse_literal("123"),
+        Ok((
+            "",
+            Expression::Literal(LiteralValue::Integer(123))
+        ))
+    );
+    assert_eq!(
+        parse_literal("true"),
+        Ok((
+            "",
+            Expression::Literal(LiteralValue::Boolean(true))
+        ))
+    );
+}
+
+#[test]
+fn test_parse_let_statement_immutable() {
+    let input = "let x: i32 = 10;";
+    let expected = Statement::Let {
+        name: "x".to_string(),
+        is_mutable: false,
+        type_annotation: Some(Type::I32),
+        value: Expression::Literal(LiteralValue::Integer(10)),
+    };
+    assert_eq!(parse_let_statement(input), Ok(("", expected)));
+}
+
+#[test]
+fn test_parse_let_statement_mutable() {
+    let input = "let mut y: bool = false;";
+    let expected = Statement::Let {
+        name: "y".to_string(),
+        is_mutable: true,
+        type_annotation: Some(Type::Bool),
+        value: Expression::Literal(LiteralValue::Boolean(false)),
+    };
+    assert_eq!(parse_let_statement(input), Ok(("", expected)));
+}
+
+#[test]
+fn test_parse_let_statement_no_type_annotation() {
+    let input = "let z = 100;";
+    let expected = Statement::Let {
+        name: "z".to_string(),
+        is_mutable: false,
+        type_annotation: None,
+        value: Expression::Literal(LiteralValue::Integer(100)),
+    };
+    assert_eq!(parse_let_statement(input), Ok(("", expected)));
 }
