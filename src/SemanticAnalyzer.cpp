@@ -3,11 +3,30 @@
 #include <stdexcept>
 #include <utility>
 #include "Type.h"
+#include "TypeResolver.h"
 
-SemanticAnalyzer::SemanticAnalyzer() : typeResolver(symbolTable) {
+LifetimeManager::LifetimeManager() {
+    enter_scope(); // Global scope
+}
+
+void LifetimeManager::enter_scope() {
+    lifetime_stack.push(Lifetime(next_lifetime_id++));
+}
+
+void LifetimeManager::leave_scope() {
+    lifetime_stack.pop();
+}
+
+Lifetime LifetimeManager::get_current_lifetime() {
+    return lifetime_stack.top();
+}
+
+
+SemanticAnalyzer::SemanticAnalyzer() {
+    typeResolver = std::make_unique<TypeResolver>(symbolTable, lifetimeManager);
     // Pre-populate with built-in functions
     auto printlnType = std::make_shared<FunctionType>(); // This is a simplification
-    symbolTable.addSymbol("println", printlnType, false);
+    symbolTable.addSymbol("println", printlnType, false, lifetimeManager.get_current_lifetime());
 }
 
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
@@ -21,13 +40,13 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
             visit(*enumDecl);
         } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             auto funcType = std::make_shared<FunctionType>();
-            funcType->returnType = typeResolver.resolve(*funcDecl->returnType);
+            funcType->returnType = typeResolver->resolve(*funcDecl->returnType);
             for (auto& arg : funcDecl->args) {
-                arg.resolvedType = typeResolver.resolve(*arg.type);
+                arg.resolvedType = typeResolver->resolve(*arg.type);
                 funcType->argTypes.push_back(arg.resolvedType);
             }
 
-            if (!symbolTable.addSymbol(funcDecl->name, funcType, false)) {
+            if (!symbolTable.addSymbol(funcDecl->name, funcType, false, lifetimeManager.get_current_lifetime())) {
                 throw std::runtime_error("Function '" + funcDecl->name + "' already declared in this scope.");
             }
         }
@@ -104,6 +123,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
         return visit(*p);
     } else if (auto* p = dynamic_cast<EnumVariantExprAST*>(&node)) {
         return visit(*p);
+    } else if (auto* p = dynamic_cast<BlockExprAST*>(&node)) {
+        return visit(*p);
     }
     return nullptr;
 }
@@ -122,7 +143,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
 
     std::shared_ptr<Type> declaredType = nullptr;
     if (node.type) {
-        declaredType = typeResolver.resolve(*node.type);
+        declaredType = typeResolver->resolve(*node.type);
     }
 
     if (declaredType && initType) {
@@ -142,7 +163,15 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
         throw std::runtime_error("Variable '" + node.varName + "' must have a type annotation or an initializer.");
     }
 
-    if (!symbolTable.addSymbol(node.varName, varType, node.isMutable)) {
+    if (initType) {
+        if (auto* refType = dynamic_cast<ReferenceType*>(initType.get())) {
+            if (lifetimeManager.get_current_lifetime().isLongerThan(refType->lifetime)) {
+                throw std::runtime_error("`" + node.varName + "` borrows a value that does not live long enough.");
+            }
+        }
+    }
+
+    if (!symbolTable.addSymbol(node.varName, varType, node.isMutable, lifetimeManager.get_current_lifetime())) {
         throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
     }
     return nullptr; // Statements don't have a type
@@ -151,7 +180,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(ClassDeclAST& node) {
     std::vector<std::pair<std::string, std::shared_ptr<Type>>> members;
     for (const auto& member : node.members) {
-        auto memberType = typeResolver.resolve(*member->type);
+        auto memberType = typeResolver->resolve(*member->type);
         if (member->defaultValue) {
             auto defaultType = visit(*member->defaultValue);
             if (memberType->toString() != defaultType->toString()) {
@@ -164,9 +193,9 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ClassDeclAST& node) {
     std::unordered_map<std::string, std::shared_ptr<FunctionType>> methods;
     for (const auto& method : node.methods) {
         auto funcType = std::make_shared<FunctionType>();
-        funcType->returnType = typeResolver.resolve(*method->returnType);
+        funcType->returnType = typeResolver->resolve(*method->returnType);
         for (auto& arg : method->args) {
-            arg.resolvedType = typeResolver.resolve(*arg.type);
+            arg.resolvedType = typeResolver->resolve(*arg.type);
             funcType->argTypes.push_back(arg.resolvedType);
         }
         methods[method->name] = funcType;
@@ -191,7 +220,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ClassDeclAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
     std::vector<std::pair<std::string, std::shared_ptr<Type>>> members;
     for (const auto& member : node.members) {
-        auto memberType = typeResolver.resolve(*member->type);
+        auto memberType = typeResolver->resolve(*member->type);
         if (member->defaultValue) {
             auto defaultType = visit(*member->defaultValue);
             if (memberType->toString() != defaultType->toString()) {
@@ -209,11 +238,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
 
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
-    auto returnType = typeResolver.resolve(*node.returnType);
+    auto returnType = typeResolver->resolve(*node.returnType);
     currentFunction = &node;
     symbolTable.enterScope();
     for (auto& arg : node.args) {
-        if(!symbolTable.addSymbol(arg.name, arg.resolvedType, false)) {
+        if(!symbolTable.addSymbol(arg.name, arg.resolvedType, false, lifetimeManager.get_current_lifetime())) {
              throw std::runtime_error("Argument '" + arg.name + "' already declared in this scope.");
         }
     }
@@ -240,6 +269,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
     symbolTable.enterScope();
+    lifetimeManager.enter_scope();
     for (auto& stmt : node.statements) {
         if(stmt) visit(*stmt);
     }
@@ -254,6 +284,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
     }
 
     symbolTable.leaveScope();
+    lifetimeManager.leave_scope();
     return nullptr; // Statements don't have a type
 }
 
@@ -327,12 +358,26 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(NumberExprAST& node) {
     return node.type;
 }
 
+std::shared_ptr<Type> SemanticAnalyzer::visit(BlockExprAST& node) {
+    visit(*node.block);
+    if (node.block->statements.empty()) {
+        node.type = std::make_shared<VoidType>();
+    } else {
+        if (auto* lastStmt = dynamic_cast<ExprStmtAST*>(node.block->statements.back().get())) {
+            node.type = lastStmt->expr->type;
+        } else {
+            node.type = std::make_shared<VoidType>();
+        }
+    }
+    return node.type;
+}
+
 std::shared_ptr<Type> SemanticAnalyzer::visit(EnumDeclAST& node) {
     std::unordered_map<std::string, std::vector<std::shared_ptr<Type>>> variants;
     for (const auto& variant : node.variants) {
         std::vector<std::shared_ptr<Type>> types;
         for (const auto& type : variant->types) {
-            types.push_back(typeResolver.resolve(*type));
+            types.push_back(typeResolver->resolve(*type));
         }
         variants[variant->name] = types;
     }
@@ -503,12 +548,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
     }
     if (node.returnValue) {
         auto returnType = visit(*node.returnValue);
-        auto expectedType = typeResolver.resolve(*currentFunction->returnType);
+        auto expectedType = typeResolver->resolve(*currentFunction->returnType);
         if (returnType->toString() != expectedType->toString()) {
             throw std::runtime_error("Return type mismatch: expected " + expectedType->toString() + ", got " + returnType->toString());
         }
     } else {
-        auto expectedType = typeResolver.resolve(*currentFunction->returnType);
+        auto expectedType = typeResolver->resolve(*currentFunction->returnType);
         if (expectedType->toString() != "void") {
             throw std::runtime_error("Non-void function must return a value.");
         }
@@ -642,14 +687,15 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
             symbol->immutableBorrows++;
             symbol->borrowedInScope = true;
         }
+
     }
-    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable);
+    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable, lifetimeManager.get_current_lifetime());
     return node.type;
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ReferenceTypeAST& node) {
-    auto referencedType = typeResolver.resolve(*node.referencedType);
-    return std::make_shared<ReferenceType>(referencedType, node.isMutable);
+    auto referencedType = typeResolver->resolve(*node.referencedType);
+    return std::make_shared<ReferenceType>(referencedType, node.isMutable, lifetimeManager.get_current_lifetime());
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayLiteralExprAST& node) {

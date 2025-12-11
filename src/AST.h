@@ -235,6 +235,16 @@ public:
     }
 };
 
+class BlockExprAST : public ExprAST {
+public:
+    std::unique_ptr<BlockStmtAST> block;
+
+    BlockExprAST(std::unique_ptr<BlockStmtAST> block)
+        : block(std::move(block)) {}
+
+    void print(int level = 0) const override;
+};
+
 class EnumVariantExprAST : public ExprAST {
 public:
     std::string enumName;
@@ -601,5 +611,9 @@ inline void ArrayTypeAST::print(int level) const {
     }
 }
 
+inline void BlockExprAST::print(int level) const {
+    std::cout << indent(level) << "BlockExprAST:" << std::endl;
+    block->print(level + 1);
+}
 
 #endif // CHTHOLLY_AST_H

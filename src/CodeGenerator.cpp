@@ -6,7 +6,8 @@
 #include "SymbolTable.h"
 
 
-CodeGenerator::CodeGenerator(SymbolTable& symbolTable) : typeResolver(symbolTable), isMemberAccess(false) {
+CodeGenerator::CodeGenerator(SymbolTable& symbolTable, LifetimeManager& lifetimeManager)
+    : typeResolver(symbolTable, lifetimeManager), isMemberAccess(false) {
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>("ChthollyModule", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);

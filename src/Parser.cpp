@@ -665,6 +665,9 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
             advance(); // consume ']'
             return std::make_unique<ArrayLiteralExprAST>(std::move(elements));
         }
+        if (peek().type == TokenType::LEFT_BRACE) {
+            return std::make_unique<BlockExprAST>(parse_block());
+        }
         return nullptr;
     }();
 

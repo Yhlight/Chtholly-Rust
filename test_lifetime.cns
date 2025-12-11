@@ -1,0 +1,18 @@
+fn main(): i32 {
+    let a = 10;
+    let b = &a; // ok
+
+    let c = &a; // ok
+
+    {
+        let d = 20;
+        let e = &d; // ok
+    }
+
+    let f = {
+        let g = 30;
+        &g // error: `g` does not live long enough
+    };
+
+    return 0;
+}

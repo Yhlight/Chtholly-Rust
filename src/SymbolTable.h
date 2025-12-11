@@ -11,6 +11,7 @@
 struct Symbol {
     std::string name;
     std::shared_ptr<Type> type;
+    Lifetime lifetime;
     bool isMutable;
     bool isMoved = false;
     int immutableBorrows = 0;
@@ -31,7 +32,7 @@ public:
 
     // Tries to add a symbol to the current scope.
     // Returns true on success, false if the symbol already exists in the current scope.
-    bool addSymbol(const std::string& name, std::shared_ptr<Type> type, bool isMutable);
+    bool addSymbol(const std::string& name, std::shared_ptr<Type> type, bool isMutable, Lifetime lifetime);
 
     // Finds a symbol by searching from the innermost scope outwards.
     // Returns a pointer to the Symbol if found, otherwise nullptr.

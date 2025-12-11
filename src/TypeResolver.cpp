@@ -3,11 +3,12 @@
 #include "AST.h"
 #include "SymbolTable.h"
 
-TypeResolver::TypeResolver(SymbolTable& symbolTable) : symbolTable(symbolTable) {}
+TypeResolver::TypeResolver(SymbolTable& symbolTable, LifetimeManager& lifetimeManager)
+    : symbolTable(symbolTable), lifetimeManager(lifetimeManager) {}
 
 std::shared_ptr<Type> TypeResolver::resolve(const TypeNameAST& typeName) {
     if (auto* refType = dynamic_cast<const ReferenceTypeAST*>(&typeName)) {
-        return std::make_shared<ReferenceType>(resolve(*refType->referencedType), refType->isMutable);
+        return std::make_shared<ReferenceType>(resolve(*refType->referencedType), refType->isMutable, lifetimeManager.get_current_lifetime());
     }
 
     if (auto* arrayType = dynamic_cast<const ArrayTypeAST*>(&typeName)) {

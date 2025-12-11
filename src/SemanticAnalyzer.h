@@ -3,18 +3,34 @@
 
 #include "AST.h"
 #include "SymbolTable.h"
-#include "TypeResolver.h"
+#include "Type.h"
 #include <memory>
+class TypeResolver;
+#include <stack>
+
+class LifetimeManager {
+private:
+    int next_lifetime_id = 0;
+    std::stack<Lifetime> lifetime_stack;
+
+public:
+    LifetimeManager();
+    void enter_scope();
+    void leave_scope();
+    Lifetime get_current_lifetime();
+};
 
 class SemanticAnalyzer {
 public:
     SemanticAnalyzer();
     void analyze(BlockStmtAST& ast);
     SymbolTable& getSymbolTable() { return symbolTable; }
+    LifetimeManager& getLifetimeManager() { return lifetimeManager; }
 
 private:
     SymbolTable symbolTable;
-    TypeResolver typeResolver;
+    std::unique_ptr<TypeResolver> typeResolver;
+    LifetimeManager lifetimeManager;
     FunctionDeclAST* currentFunction = nullptr;
     bool inSwitch = false;
 
@@ -49,6 +65,7 @@ private:
     std::shared_ptr<Type> visit(ArrayIndexExprAST& node);
     std::shared_ptr<Type> visit(EnumDeclAST& node);
     std::shared_ptr<Type> visit(EnumVariantExprAST& node);
+    std::shared_ptr<Type> visit(BlockExprAST& node);
 };
 
 #endif // CHTHOLLY_SEMANTICANALYZER_H

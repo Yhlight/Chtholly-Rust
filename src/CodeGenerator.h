@@ -3,16 +3,18 @@
 
 #include "AST.h"
 #include "TypeResolver.h"
+#include "SemanticAnalyzer.h"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
 #include <map>
 
 class SymbolTable;
+class LifetimeManager;
 
 class CodeGenerator {
 public:
-    CodeGenerator(SymbolTable& symbolTable);
+    CodeGenerator(SymbolTable& symbolTable, LifetimeManager& lifetimeManager);
     void generate(BlockStmtAST& ast);
     void dump() const;
 

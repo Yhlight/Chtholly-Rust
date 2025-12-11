@@ -15,7 +15,7 @@ void SymbolTable::leaveScope() {
     }
 }
 
-bool SymbolTable::addSymbol(const std::string& name, std::shared_ptr<Type> type, bool isMutable) {
+bool SymbolTable::addSymbol(const std::string& name, std::shared_ptr<Type> type, bool isMutable, Lifetime lifetime) {
     if (scopeStack.empty()) {
         return false; // Should not happen
     }
@@ -23,7 +23,7 @@ bool SymbolTable::addSymbol(const std::string& name, std::shared_ptr<Type> type,
     if (scopeStack.back().count(name)) {
         return false;
     }
-    scopeStack.back()[name] = {name, std::move(type), isMutable};
+    scopeStack.back()[name] = {name, std::move(type), lifetime, isMutable};
     return true;
 }
 

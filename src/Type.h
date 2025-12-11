@@ -2,6 +2,23 @@
 #define CHTHOLLY_TYPE_H
 
 #include <string>
+
+class Lifetime {
+public:
+    int id;
+    Lifetime() : id(-1) {} // Default constructor
+    explicit Lifetime(int id) : id(id) {}
+
+    // A lifetime 'a is longer than 'b if 'a contains 'b.
+    // In our simple scope-based model, a longer lifetime will have a smaller ID.
+    bool isLongerThan(const Lifetime& other) const {
+        return id < other.id;
+    }
+
+    bool operator==(const Lifetime& other) const {
+        return id == other.id;
+    }
+};
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -164,9 +181,10 @@ class ReferenceType : public Type {
 public:
     std::shared_ptr<Type> referencedType;
     bool isMutable;
+    Lifetime lifetime;
 
-    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable)
-        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable) {}
+    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable, Lifetime lifetime)
+        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable), lifetime(lifetime) {}
 
     std::string toString() const override {
         return std::string("&") + (isMutable ? "mut " : "") + referencedType->toString();
