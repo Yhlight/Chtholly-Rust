@@ -12,8 +12,11 @@ std::unique_ptr<BlockStmtAST> Parser::parse() {
     return block;
 }
 
-Token& Parser::peek() {
-    return tokens[current_token_idx];
+Token& Parser::peek(int offset) {
+    if (current_token_idx + offset >= tokens.size()) {
+        return tokens.back(); // Return EOF token
+    }
+    return tokens[current_token_idx + offset];
 }
 
 Token& Parser::advance() {
@@ -311,6 +314,11 @@ std::unique_ptr<StmtAST> Parser::parse_function_definition() {
     }
     std::string func_name = advance().value;
 
+    std::vector<std::unique_ptr<GenericParamAST>> generic_params;
+    if (peek().type == TokenType::LESS) {
+        generic_params = parse_generic_parameters();
+    }
+
     if (peek().type != TokenType::LEFT_PAREN) {
         throw std::runtime_error("Expected '(' after function name");
     }
@@ -346,7 +354,7 @@ std::unique_ptr<StmtAST> Parser::parse_function_definition() {
 
     auto body = parse_block();
 
-    return std::make_unique<FunctionDeclAST>(func_name, std::move(args), std::move(return_type), std::move(body));
+    return std::make_unique<FunctionDeclAST>(func_name, std::move(generic_params), std::move(args), std::move(return_type), std::move(body));
 }
 
 std::unique_ptr<StmtAST> Parser::parse_struct_definition() {
@@ -569,6 +577,39 @@ std::unique_ptr<ExprAST> Parser::parse_expression() {
     return parse_binary_expression(0, std::move(lhs));
 }
 
+std::vector<std::unique_ptr<GenericParamAST>> Parser::parse_generic_parameters() {
+    advance(); // consume '<'
+    std::vector<std::unique_ptr<GenericParamAST>> params;
+    while (peek().type != TokenType::GREATER) {
+        if (peek().type != TokenType::IDENTIFIER) {
+            throw std::runtime_error("Expected identifier for generic parameter");
+        }
+        params.push_back(std::make_unique<GenericParamAST>(advance().value));
+        if (peek().type == TokenType::COMMA) {
+            advance();
+        } else if (peek().type != TokenType::GREATER) {
+            throw std::runtime_error("Expected ',' or '>' after generic parameter");
+        }
+    }
+    advance(); // consume '>'
+    return params;
+}
+
+std::vector<std::unique_ptr<TypeNameAST>> Parser::parse_generic_arguments() {
+    advance(); // consume '<'
+    std::vector<std::unique_ptr<TypeNameAST>> args;
+    while (peek().type != TokenType::GREATER) {
+        args.push_back(parse_type());
+        if (peek().type == TokenType::COMMA) {
+            advance();
+        } else if (peek().type != TokenType::GREATER) {
+            throw std::runtime_error("Expected ',' or '>' after generic argument");
+        }
+    }
+    advance(); // consume '>'
+    return args;
+}
+
 std::unique_ptr<ExprAST> Parser::parse_primary() {
     auto expr = [this]() -> std::unique_ptr<ExprAST> {
         if (peek().type == TokenType::AMPERSAND) {
@@ -620,6 +661,13 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
             }
 
             auto var = std::make_unique<VariableExprAST>(name);
+
+            if (peek().type == TokenType::LESS && peek(1).type != TokenType::LESS) {
+                 // Generic function call
+                auto genericArgs = parse_generic_arguments();
+                return parse_call_expression(std::move(var), std::move(genericArgs));
+            }
+
             if (peek().type == TokenType::LEFT_BRACE) {
                 advance(); // consume '{'
                 std::vector<std::unique_ptr<MemberInitializerAST>> members;
@@ -669,12 +717,12 @@ std::unique_ptr<ExprAST> Parser::parse_primary() {
     }();
 
     if (expr && peek().type == TokenType::LEFT_PAREN) {
-        return parse_call_expression(std::move(expr));
+        return parse_call_expression(std::move(expr), {});
     }
     return expr;
 }
 
-std::unique_ptr<ExprAST> Parser::parse_call_expression(std::unique_ptr<ExprAST> callee) {
+std::unique_ptr<ExprAST> Parser::parse_call_expression(std::unique_ptr<ExprAST> callee, std::vector<std::unique_ptr<TypeNameAST>> genericArgs) {
     std::vector<std::unique_ptr<ExprAST>> args;
     advance(); // consume '('
     while (peek().type != TokenType::RIGHT_PAREN) {
@@ -687,14 +735,8 @@ std::unique_ptr<ExprAST> Parser::parse_call_expression(std::unique_ptr<ExprAST> 
     }
     advance(); // consume ')'
 
-    if (auto* var = dynamic_cast<VariableExprAST*>(callee.get())) {
-        return std::make_unique<FunctionCallExprAST>(var->name, std::move(args));
-    }
-    if (auto* memberAccess = dynamic_cast<MemberAccessExprAST*>(callee.get())) {
-        return std::make_unique<FunctionCallExprAST>(std::move(callee), std::move(args));
-    }
 
-    throw std::runtime_error("Expected a variable name or member access for a function call");
+    return std::make_unique<FunctionCallExprAST>(std::move(callee), std::move(genericArgs), std::move(args));
 }
 
 

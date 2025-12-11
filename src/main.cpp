@@ -56,7 +56,8 @@ int main(int argc, char** argv) {
     }
 
     if (ast) {
-        SemanticAnalyzer analyzer;
+        SymbolTable symbolTable;
+        SemanticAnalyzer analyzer(symbolTable);
         try {
             analyzer.analyze(*ast);
         } catch (const std::exception& e) {
@@ -64,7 +65,7 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        CodeGenerator generator(analyzer.getSymbolTable());
+        CodeGenerator generator(symbolTable);
         try {
             generator.generate(*ast);
             generator.dump();

@@ -15,11 +15,13 @@ private:
     std::vector<Token> tokens;
     int current_token_idx = 0;
 
-    Token& peek();
+    Token& peek(int offset = 0);
     Token& advance();
     bool is_at_end();
 
     // Parsing methods
+    std::vector<std::unique_ptr<GenericParamAST>> parse_generic_parameters();
+    std::vector<std::unique_ptr<TypeNameAST>> parse_generic_arguments();
     std::unique_ptr<StmtAST> parse_statement();
     std::unique_ptr<VarDeclStmtAST> parse_variable_declaration(bool consume_semicolon = true);
     std::unique_ptr<StmtAST> parse_struct_definition();
@@ -40,7 +42,7 @@ private:
     std::unique_ptr<ExprAST> parse_expression();
     std::unique_ptr<ExprAST> parse_primary();
     std::unique_ptr<ExprAST> parse_binary_expression(int min_precedence, std::unique_ptr<ExprAST> lhs);
-    std::unique_ptr<ExprAST> parse_call_expression(std::unique_ptr<ExprAST> callee);
+    std::unique_ptr<ExprAST> parse_call_expression(std::unique_ptr<ExprAST> callee, std::vector<std::unique_ptr<TypeNameAST>> genericArgs);
     int get_token_precedence();
 };
 

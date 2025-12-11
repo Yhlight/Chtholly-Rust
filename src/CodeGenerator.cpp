@@ -5,8 +5,16 @@
 #include <llvm/Support/Casting.h>
 #include "SymbolTable.h"
 
+std::string mangleGenericFunctionName(const std::string& baseName, const std::vector<std::shared_ptr<Type>>& genericArgs) {
+    std::string mangledName = "_Z" + std::to_string(baseName.length()) + baseName;
+    for (const auto& arg : genericArgs) {
+        mangledName += "I" + std::to_string(arg->toString().length()) + arg->toString() + "E";
+    }
+    return mangledName;
+}
 
-CodeGenerator::CodeGenerator(SymbolTable& symbolTable) : typeResolver(symbolTable), isMemberAccess(false) {
+
+CodeGenerator::CodeGenerator(SymbolTable& symbolTable) : symbolTable(symbolTable), typeResolver(symbolTable), isMemberAccess(false) {
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>("ChthollyModule", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
@@ -26,20 +34,26 @@ void CodeGenerator::generate(BlockStmtAST& ast) {
         } else if (auto* enumDecl = dynamic_cast<EnumDeclAST*>(stmt.get())) {
             visit(*enumDecl);
         } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
-            llvm::Type* returnType = resolveType(*funcDecl->returnType);
-            std::vector<llvm::Type*> argTypes;
-            for (const auto& arg : funcDecl->args) {
-                argTypes.push_back(resolveType(*arg.type));
+            if (funcDecl->genericParams.empty()) {
+                llvm::Type* returnType = resolveType(*funcDecl->returnType);
+                std::vector<llvm::Type*> argTypes;
+                for (const auto& arg : funcDecl->args) {
+                    argTypes.push_back(resolveType(*arg.type));
+                }
+                llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argTypes, false);
+                llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, funcDecl->name, module.get());
             }
-            llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argTypes, false);
-            llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, funcDecl->name, module.get());
         }
     }
 
     // Second pass: generate code for all statements
     for (auto& stmt : ast.statements) {
-        if (!dynamic_cast<StructDeclAST*>(stmt.get()) && !dynamic_cast<ClassDeclAST*>(stmt.get())) {
+        if (!dynamic_cast<StructDeclAST*>(stmt.get()) && !dynamic_cast<ClassDeclAST*>(stmt.get()) && !dynamic_cast<FunctionDeclAST*>(stmt.get())) {
             visit(*stmt);
+        } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
+            if (funcDecl->genericParams.empty()) {
+                visit(*funcDecl);
+            }
         }
     }
 }
@@ -133,6 +147,10 @@ void CodeGenerator::createStringSwitch(SwitchStmtAST& node) {
 llvm::Type* CodeGenerator::resolveType(const TypeNameAST& typeName) {
     if (auto* refType = dynamic_cast<const ReferenceTypeAST*>(&typeName)) {
         return resolveType(*refType->referencedType)->getPointerTo();
+    }
+
+    if (currentGenericContext.count(typeName.name)) {
+        return currentGenericContext[typeName.name];
     }
 
     if (typeName.name == "i32") {
@@ -671,6 +689,78 @@ llvm::Value* CodeGenerator::visit(VariableExprAST& node) {
 }
 
 llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
+    if (auto* var = dynamic_cast<VariableExprAST*>(node.callee.get())) {
+        if (var->name == "println") {
+            llvm::Function* callee = module->getFunction("printf");
+            if (!callee) throw std::runtime_error("Could not find printf function");
+            std::vector<llvm::Value*> argValues;
+            for (auto& arg : node.args) {
+                argValues.push_back(visit(*arg));
+            }
+            return builder->CreateCall(callee, argValues, "calltmp");
+        }
+
+        Symbol* symbol = symbolTable.findSymbol(var->name);
+        if (symbol && symbol->genericFuncDecl) {
+            std::vector<std::shared_ptr<Type>> genericArgTypes;
+            for (const auto& arg : node.genericArgs) {
+                genericArgTypes.push_back(typeResolver.resolve(*arg));
+            }
+
+            std::string mangledName = mangleGenericFunctionName(var->name, genericArgTypes);
+
+            llvm::Function* function = module->getFunction(mangledName);
+            if (!function) {
+                // Instantiate the function
+                FunctionDeclAST* funcDecl = symbol->genericFuncDecl;
+                auto oldContext = currentGenericContext;
+                for (size_t i = 0; i < funcDecl->genericParams.size(); ++i) {
+                    currentGenericContext[funcDecl->genericParams[i]->name] = resolveType(*genericArgTypes[i]);
+                }
+
+                llvm::Type* returnType = resolveType(*funcDecl->returnType);
+                std::vector<llvm::Type*> argTypes;
+                for (const auto& arg : funcDecl->args) {
+                    argTypes.push_back(resolveType(*arg.type));
+                }
+                llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argTypes, false);
+                function = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, mangledName, module.get());
+
+                // Save old state
+                auto oldNamedValues = namedValues;
+                auto oldOwnedValues = ownedValues;
+                auto oldInsertBlock = builder->GetInsertBlock();
+
+                llvm::BasicBlock* basicBlock = llvm::BasicBlock::Create(*context, "entry", function);
+                builder->SetInsertPoint(basicBlock);
+
+                namedValues.clear();
+                unsigned i = 0;
+                for (auto& arg : function->args()) {
+                    llvm::AllocaInst* alloca = builder->CreateAlloca(arg.getType(), nullptr, funcDecl->args[i].name);
+                    builder->CreateStore(&arg, alloca);
+                    namedValues[funcDecl->args[i].name] = alloca;
+                    i++;
+                }
+
+                visit(*funcDecl->body);
+
+                // Restore old state
+                namedValues = oldNamedValues;
+                ownedValues = oldOwnedValues;
+                currentGenericContext = oldContext;
+                builder->SetInsertPoint(oldInsertBlock);
+            }
+
+            std::vector<llvm::Value*> argValues;
+            for (auto& arg : node.args) {
+                argValues.push_back(visit(*arg));
+            }
+
+            return builder->CreateCall(function, argValues, "calltmp");
+        }
+    }
+
     if (auto* memberAccess = dynamic_cast<MemberAccessExprAST*>(node.callee.get())) {
         auto* methodType = dynamic_cast<MethodType*>(memberAccess->type.get());
         std::string mangledName = "_ZN" + std::to_string(methodType->parentClass->name.length()) + methodType->parentClass->name + std::to_string(memberAccess->memberName.length()) + memberAccess->memberName + "Ev";
@@ -680,7 +770,7 @@ llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
         }
 
         std::vector<llvm::Value*> argValues;
-        argValues.push_back(visit(*memberAccess)); // self
+        argValues.push_back(visit(*memberAccess->object));
         for (auto& arg : node.args) {
             argValues.push_back(visit(*arg));
         }
@@ -688,54 +778,16 @@ llvm::Value* CodeGenerator::visit(FunctionCallExprAST& node) {
         return builder->CreateCall(callee, argValues, "calltmp");
     }
 
-    llvm::Function* callee = nullptr;
-    if (auto* var = dynamic_cast<VariableExprAST*>(node.callee.get())) {
-        callee = module->getFunction(var->name);
-        if (!callee) {
-            // A temporary hack to support printf
-            if (var->name == "println") {
-                callee = module->getFunction("printf");
-                if (!callee) throw std::runtime_error("Could not find printf function");
-            } else {
-                throw std::runtime_error("Unknown function referenced: " + var->name);
-            }
-        }
-    } else if (auto* memberAccess = dynamic_cast<MemberAccessExprAST*>(node.callee.get())) {
-        auto* methodType = dynamic_cast<MethodType*>(memberAccess->type.get());
-        std::string mangledName = "_ZN" + std::to_string(methodType->parentClass->name.length()) + methodType->parentClass->name + std::to_string(memberAccess->memberName.length()) + memberAccess->memberName + "Ev";
-        callee = module->getFunction(mangledName);
-        if (!callee) {
-            throw std::runtime_error("Unknown method referenced: " + memberAccess->memberName);
-        }
-    } else {
-        throw std::runtime_error("Invalid callee expression.");
+    // Fallback to existing logic for non-generic functions
+    auto* var = dynamic_cast<VariableExprAST*>(node.callee.get());
+    llvm::Function* callee = module->getFunction(var->name);
+    if (!callee) {
+        throw std::runtime_error("Unknown function referenced: " + var->name);
     }
-
-    if (callee->arg_size() != node.args.size() && callee->isVarArg() == false) {
-        if (auto* var = dynamic_cast<VariableExprAST*>(node.callee.get())) {
-            throw std::runtime_error("Incorrect number of arguments passed to function " + var->name);
-        } else {
-            throw std::runtime_error("Incorrect number of arguments passed to function");
-        }
-    }
-
     std::vector<llvm::Value*> argValues;
     for (auto& arg : node.args) {
         argValues.push_back(visit(*arg));
-        if (arg->type->isString()) {
-            if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
-                // Find the moved variable in ownedValues and remove it
-                llvm::AllocaInst* movedAlloca = namedValues[varExpr->name];
-                for (auto it = ownedValues.begin(); it != ownedValues.end(); ++it) {
-                    if (*it == movedAlloca) {
-                        ownedValues.erase(it);
-                        break;
-                    }
-                }
-            }
-        }
     }
-
     return builder->CreateCall(callee, argValues, "calltmp");
 }
 

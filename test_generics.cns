@@ -1,0 +1,9 @@
+fn add<T>(a: T, b: T): T {
+    return a + b;
+}
+
+fn main(): i32 {
+    let x: i32 = add<i32>(1, 2);
+    let y: f64 = add<f64>(3.0, 4.0);
+    return 0;
+}

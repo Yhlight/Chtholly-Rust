@@ -21,7 +21,8 @@ public:
         TK_Reference,
         TK_Array,
         TK_DynamicArray,
-        TK_Enum
+        TK_Enum,
+        TK_GenericFunction
     };
 
     TypeKind kind;
@@ -41,6 +42,7 @@ public:
     virtual bool isArray() const { return false; }
     virtual bool isDynamicArray() const { return false; }
     virtual bool isEnum() const { return false; }
+    virtual bool isGenericFunction() const { return false; }
 
     virtual std::string toString() const = 0;
 };
@@ -201,6 +203,17 @@ public:
         return elementType->toString() + "[]";
     }
     bool isDynamicArray() const override { return true; }
+};
+
+class GenericFunctionType : public Type {
+public:
+    GenericFunctionType() : Type(TK_GenericFunction) {}
+
+    std::string toString() const override {
+        return "generic function";
+    }
+
+    bool isGenericFunction() const override { return true; }
 };
 
 class EnumType : public Type {

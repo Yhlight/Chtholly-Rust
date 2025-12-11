@@ -4,11 +4,27 @@
 #include <utility>
 #include "Type.h"
 
-SemanticAnalyzer::SemanticAnalyzer() : typeResolver(symbolTable) {
+// Helper function to clone a FunctionDeclAST
+std::unique_ptr<FunctionDeclAST> cloneFunctionDecl(const FunctionDeclAST& funcDecl) {
+    auto newBody = std::make_unique<BlockStmtAST>();
+    // This is a deep copy, which is complex. For now, we'll just re-analyze the original body.
+    // A proper implementation would clone the AST.
+    return std::make_unique<FunctionDeclAST>(
+        funcDecl.name,
+        std::vector<std::unique_ptr<GenericParamAST>>{}, // Cloned function is not generic
+        std::vector<FunctionArg>{}, // We'll populate this later
+        nullptr, // We'll populate this later
+        nullptr  // We will re-use the body for analysis, not for modification
+    );
+}
+
+SemanticAnalyzer::SemanticAnalyzer() : symbolTable(*new SymbolTable()), typeResolver(symbolTable) {
     // Pre-populate with built-in functions
     auto printlnType = std::make_shared<FunctionType>(); // This is a simplification
     symbolTable.addSymbol("println", printlnType, false);
 }
+
+SemanticAnalyzer::SemanticAnalyzer(SymbolTable& symbolTable) : symbolTable(symbolTable), typeResolver(symbolTable) {}
 
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
     // First pass: register all type and function declarations
@@ -20,15 +36,25 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
         } else if (auto* enumDecl = dynamic_cast<EnumDeclAST*>(stmt.get())) {
             visit(*enumDecl);
         } else if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
-            auto funcType = std::make_shared<FunctionType>();
-            funcType->returnType = typeResolver.resolve(*funcDecl->returnType);
-            for (auto& arg : funcDecl->args) {
-                arg.resolvedType = typeResolver.resolve(*arg.type);
-                funcType->argTypes.push_back(arg.resolvedType);
-            }
+            if (!funcDecl->genericParams.empty()) {
+                // It's a generic function template, just register it
+                if (!symbolTable.addSymbol(funcDecl->name, std::make_shared<GenericFunctionType>(), false)) {
+                    throw std::runtime_error("Function '" + funcDecl->name + "' already declared in this scope.");
+                }
+                Symbol* symbol = symbolTable.findSymbol(funcDecl->name);
+                symbol->genericFuncDecl = funcDecl;
+            } else {
+                // It's a regular function
+                auto funcType = std::make_shared<FunctionType>();
+                funcType->returnType = typeResolver.resolve(*funcDecl->returnType);
+                for (auto& arg : funcDecl->args) {
+                    arg.resolvedType = typeResolver.resolve(*arg.type);
+                    funcType->argTypes.push_back(arg.resolvedType);
+                }
 
-            if (!symbolTable.addSymbol(funcDecl->name, funcType, false)) {
-                throw std::runtime_error("Function '" + funcDecl->name + "' already declared in this scope.");
+                if (!symbolTable.addSymbol(funcDecl->name, funcType, false)) {
+                    throw std::runtime_error("Function '" + funcDecl->name + "' already declared in this scope.");
+                }
             }
         }
     }
@@ -219,6 +245,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
 
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
+    // Generic function declarations are analyzed at instantiation time.
+    if (!node.genericParams.empty()) {
+        return nullptr;
+    }
+
     auto returnType = typeResolver.resolve(*node.returnType);
     currentFunction = &node;
     symbolTable.enterScope();
@@ -475,6 +506,42 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(MemberAccessExprAST& node) {
 }
 
 
+std::shared_ptr<Type> SemanticAnalyzer::instantiate_generic_function(FunctionDeclAST* funcDecl, const std::vector<std::shared_ptr<Type>>& genericArgs) {
+    if (funcDecl->genericParams.size() != genericArgs.size()) {
+        throw std::runtime_error("Incorrect number of generic arguments for function '" + funcDecl->name + "'.");
+    }
+
+    // Create a temporary symbol table for instantiation
+    SymbolTable tempSymbolTable;
+    for (const auto& pair : symbolTable.getAllSymbols()) {
+        tempSymbolTable.addSymbol(pair.first, pair.second.type, pair.second.isMutable);
+    }
+    for (size_t i = 0; i < funcDecl->genericParams.size(); ++i) {
+        tempSymbolTable.add_type(funcDecl->genericParams[i]->name, genericArgs[i]);
+    }
+
+    TypeResolver tempTypeResolver(tempSymbolTable);
+
+    auto funcType = std::make_shared<FunctionType>();
+    funcType->returnType = tempTypeResolver.resolve(*funcDecl->returnType);
+    for (const auto& arg : funcDecl->args) {
+        funcType->argTypes.push_back(tempTypeResolver.resolve(*arg.type));
+    }
+
+    // Analyze the function body with the instantiated types
+    SemanticAnalyzer tempAnalyzer(tempSymbolTable);
+    tempAnalyzer.currentFunction = funcDecl;
+    tempAnalyzer.symbolTable.enterScope();
+    for (size_t i = 0; i < funcDecl->args.size(); ++i) {
+        tempAnalyzer.symbolTable.addSymbol(funcDecl->args[i].name, funcType->argTypes[i], false);
+    }
+    tempAnalyzer.visit(*funcDecl->body);
+    tempAnalyzer.symbolTable.leaveScope();
+
+    return funcType;
+}
+
+
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
     // Handle println separately
     if (auto* var = dynamic_cast<VariableExprAST*>(node.callee.get())) {
@@ -491,6 +558,42 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
             }
             return std::make_shared<VoidType>();
         }
+    }
+
+    Symbol* calleeSymbol = nullptr;
+    if (auto* var = dynamic_cast<VariableExprAST*>(node.callee.get())) {
+        calleeSymbol = symbolTable.findSymbol(var->name);
+    }
+
+    if (calleeSymbol && calleeSymbol->type->isGenericFunction()) {
+        std::vector<std::shared_ptr<Type>> genericArgs;
+        for (const auto& arg : node.genericArgs) {
+            genericArgs.push_back(typeResolver.resolve(*arg));
+        }
+        auto instantiatedType = std::dynamic_pointer_cast<FunctionType>(instantiate_generic_function(calleeSymbol->genericFuncDecl, genericArgs));
+
+        // Check arguments
+        if (node.args.size() != instantiatedType->argTypes.size()) {
+            throw std::runtime_error("Incorrect number of arguments for function call.");
+        }
+        for (size_t i = 0; i < node.args.size(); ++i) {
+            auto argType = visit(*node.args[i]);
+            if (auto* numExpr = dynamic_cast<NumberExprAST*>(node.args[i].get())) {
+                if (instantiatedType->argTypes[i]->isInteger()) {
+                    numExpr->type = std::make_shared<IntegerType>(32, true);
+                    argType = numExpr->type;
+                } else if (instantiatedType->argTypes[i]->isFloat()) {
+                    numExpr->type = std::make_shared<FloatType>(64);
+                    argType = numExpr->type;
+                }
+            }
+            if (argType->toString() != instantiatedType->argTypes[i]->toString()) {
+                throw std::runtime_error("Type mismatch for argument " + std::to_string(i) + ".");
+            }
+        }
+
+        node.type = instantiatedType->returnType;
+        return instantiatedType->returnType;
     }
 
     // Resolve the callee type

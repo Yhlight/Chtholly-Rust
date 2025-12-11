@@ -17,10 +17,12 @@ public:
     void dump() const;
 
 private:
+    SymbolTable& symbolTable;
     std::unique_ptr<llvm::LLVMContext> context;
     std::unique_ptr<llvm::Module> module;
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::map<std::string, llvm::AllocaInst*> namedValues;
+    std::map<std::string, llvm::Type*> currentGenericContext;
     std::vector<llvm::AllocaInst*> ownedValues; // Track owned values
     llvm::BasicBlock* currentSwitchExit = nullptr;
     TypeResolver typeResolver;

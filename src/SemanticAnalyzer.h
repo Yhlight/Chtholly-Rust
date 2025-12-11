@@ -9,15 +9,17 @@
 class SemanticAnalyzer {
 public:
     SemanticAnalyzer();
+    SemanticAnalyzer(SymbolTable& symbolTable);
     void analyze(BlockStmtAST& ast);
     SymbolTable& getSymbolTable() { return symbolTable; }
 
 private:
-    SymbolTable symbolTable;
+    SymbolTable& symbolTable;
     TypeResolver typeResolver;
     FunctionDeclAST* currentFunction = nullptr;
     bool inSwitch = false;
 
+    std::shared_ptr<Type> instantiate_generic_function(FunctionDeclAST* funcDecl, const std::vector<std::shared_ptr<Type>>& genericArgs);
     std::shared_ptr<Type> visit(ASTNode& node);
     std::shared_ptr<Type> visit(VarDeclStmtAST& node);
     std::shared_ptr<Type> visit(StructDeclAST& node);

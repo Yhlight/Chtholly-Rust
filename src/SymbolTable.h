@@ -7,6 +7,8 @@
 #include <memory>
 #include "Type.h"
 
+class FunctionDeclAST;
+
 // Information about a declared symbol
 struct Symbol {
     std::string name;
@@ -18,6 +20,7 @@ struct Symbol {
     bool borrowedInScope = false;
     size_t scopeLevel;
     size_t lifetimeScopeLevel;
+    FunctionDeclAST* genericFuncDecl = nullptr;
 };
 
 // A single scope, mapping names to symbols

@@ -32,6 +32,15 @@ public:
     }
 };
 
+class GenericParamAST : public ASTNode {
+public:
+    std::string name;
+    GenericParamAST(std::string name) : name(std::move(name)) {}
+    void print(int level = 0) const override {
+        std::cout << indent(level) << "GenericParam: " << name << std::endl;
+    }
+};
+
 class ReferenceTypeAST : public TypeNameAST {
 public:
     std::unique_ptr<TypeNameAST> referencedType;
@@ -121,17 +130,24 @@ public:
 class FunctionCallExprAST : public ExprAST {
 public:
     std::unique_ptr<ExprAST> callee;
+    std::vector<std::unique_ptr<TypeNameAST>> genericArgs;
     std::vector<std::unique_ptr<ExprAST>> args;
-    FunctionCallExprAST(std::unique_ptr<ExprAST> callee, std::vector<std::unique_ptr<ExprAST>> args)
-        : callee(std::move(callee)), args(std::move(args)) {}
+    FunctionCallExprAST(std::unique_ptr<ExprAST> callee, std::vector<std::unique_ptr<TypeNameAST>> genericArgs, std::vector<std::unique_ptr<ExprAST>> args)
+        : callee(std::move(callee)), genericArgs(std::move(genericArgs)), args(std::move(args)) {}
+
     FunctionCallExprAST(const std::string& callee_name, std::vector<std::unique_ptr<ExprAST>> args)
         : callee(std::make_unique<VariableExprAST>(callee_name)), args(std::move(args)) {}
 
     void print(int level = 0) const override {
         std::cout << indent(level) << "FunctionCallExprAST: [Type: " << (type ? type->toString() : "unresolved") << "]" << std::endl;
         callee->print(level + 1);
+        std::cout << indent(level + 1) << "Generic Args:" << std::endl;
+        for (const auto& arg : genericArgs) {
+            arg->print(level + 2);
+        }
+        std::cout << indent(level + 1) << "Args:" << std::endl;
         for (const auto& arg : args) {
-            arg->print(level + 1);
+            arg->print(level + 2);
         }
     }
 };
@@ -415,11 +431,12 @@ struct FunctionArg {
 class FunctionDeclAST : public StmtAST {
 public:
     std::string name;
+    std::vector<std::unique_ptr<GenericParamAST>> genericParams;
     std::vector<FunctionArg> args;
     std::unique_ptr<TypeNameAST> returnType;
     std::unique_ptr<BlockStmtAST> body;
-    FunctionDeclAST(std::string name, std::vector<FunctionArg> args, std::unique_ptr<TypeNameAST> returnType, std::unique_ptr<BlockStmtAST> body)
-        : name(std::move(name)), args(std::move(args)), returnType(std::move(returnType)), body(std::move(body)) {}
+    FunctionDeclAST(std::string name, std::vector<std::unique_ptr<GenericParamAST>> genericParams, std::vector<FunctionArg> args, std::unique_ptr<TypeNameAST> returnType, std::unique_ptr<BlockStmtAST> body)
+        : name(std::move(name)), genericParams(std::move(genericParams)), args(std::move(args)), returnType(std::move(returnType)), body(std::move(body)) {}
 
     void print(int level = 0) const override;
 };
@@ -533,6 +550,10 @@ public:
 
 inline void FunctionDeclAST::print(int level) const {
     std::cout << indent(level) << "FunctionDecl: " << name << std::endl;
+    std::cout << indent(level + 1) << "Generic Params:" << std::endl;
+    for (const auto& param : genericParams) {
+        param->print(level + 2);
+    }
     std::cout << indent(level + 1) << "Args:" << std::endl;
     for (const auto& arg : args) {
         std::cout << indent(level + 2) << arg.name << ":" << std::endl;
