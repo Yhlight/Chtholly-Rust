@@ -49,6 +49,9 @@ void CodeGenerator::visit(BinaryExpr& expr) {
         case TokenType::STAR:
             lastValue = builder->CreateMul(L, R, "multmp");
             break;
+        case TokenType::GREATER:
+            lastValue = builder->CreateICmpSGT(L, R, "cmptmp");
+            break;
         default:
             throw std::runtime_error("Invalid binary operator");
     }
@@ -105,4 +108,40 @@ void CodeGenerator::visit(FnDecl& stmt) {
 
 void CodeGenerator::visit(ExpressionStmt& stmt) {
     stmt.expression->accept(*this);
+}
+
+void CodeGenerator::visit(IfStmt& stmt) {
+    stmt.condition->accept(*this);
+    llvm::Value* condValue = lastValue;
+
+    llvm::Function* function = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(*context, "then", function);
+    llvm::BasicBlock* elseBB = llvm::BasicBlock::Create(*context, "else");
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(*context, "ifcont");
+
+    builder->CreateCondBr(condValue, thenBB, elseBB);
+
+    builder->SetInsertPoint(thenBB);
+    stmt.thenBranch->accept(*this);
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
+    }
+
+    function->insert(function->end(), elseBB);
+    builder->SetInsertPoint(elseBB);
+    if (stmt.elseBranch) {
+        stmt.elseBranch->accept(*this);
+    }
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
+    }
+
+    function->insert(function->end(), mergeBB);
+    builder->SetInsertPoint(mergeBB);
+}
+
+void CodeGenerator::visit(BlockStmt& stmt) {
+    for (const auto& statement : stmt.statements) {
+        statement->accept(*this);
+    }
 }

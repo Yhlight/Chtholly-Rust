@@ -26,6 +26,8 @@
     *   [x] Generate LLVM IR for basic language constructs.
     *   [x] Compile a simple "Hello, World!" program.
     *   [x] Unit tests for code generation.
+*   **1.6 Control Flow:**
+    *   [x] Implement `if-else` statements.
 
 ## Phase 2: Ownership, Borrowing, and Lifetime Management
 

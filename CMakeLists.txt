@@ -24,3 +24,8 @@ add_executable(test_code_generator tests/test_code_generator.cpp src/Lexer.cpp s
 target_include_directories(test_code_generator PRIVATE ${LLVM_INCLUDE_DIRS})
 target_compile_definitions(test_code_generator PRIVATE ${LLVM_DEFINITIONS})
 target_link_libraries(test_code_generator PRIVATE ${llvm_libs})
+
+add_executable(test_if_else tests/test_if_else.cpp src/Lexer.cpp src/Parser.cpp src/SymbolTable.cpp src/SemanticAnalyzer.cpp src/CodeGenerator.cpp)
+target_include_directories(test_if_else PRIVATE ${LLVM_INCLUDE_DIRS})
+target_compile_definitions(test_if_else PRIVATE ${LLVM_DEFINITIONS})
+target_link_libraries(test_if_else PRIVATE ${llvm_libs})

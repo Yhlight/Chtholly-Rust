@@ -13,6 +13,8 @@ class LetStmt;
 class ReturnStmt;
 class FnDecl;
 class ExpressionStmt;
+class IfStmt;
+class BlockStmt;
 
 class Visitor {
 public:
@@ -24,6 +26,8 @@ public:
     virtual void visit(ReturnStmt& stmt) = 0;
     virtual void visit(FnDecl& stmt) = 0;
     virtual void visit(ExpressionStmt& stmt) = 0;
+    virtual void visit(IfStmt& stmt) = 0;
+    virtual void visit(BlockStmt& stmt) = 0;
 };
 
 class ASTNode {
@@ -93,6 +97,24 @@ public:
     std::unique_ptr<Expr> expression;
     explicit ExpressionStmt(std::unique_ptr<Expr> expression)
         : expression(std::move(expression)) {}
+    void accept(Visitor& visitor) override { visitor.visit(*this); }
+};
+
+class BlockStmt : public Stmt {
+public:
+    std::vector<std::unique_ptr<Stmt>> statements;
+    explicit BlockStmt(std::vector<std::unique_ptr<Stmt>> statements)
+        : statements(std::move(statements)) {}
+    void accept(Visitor& visitor) override { visitor.visit(*this); }
+};
+
+class IfStmt : public Stmt {
+public:
+    std::unique_ptr<Expr> condition;
+    std::unique_ptr<Stmt> thenBranch;
+    std::unique_ptr<Stmt> elseBranch;
+    IfStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> thenBranch, std::unique_ptr<Stmt> elseBranch)
+        : condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {}
     void accept(Visitor& visitor) override { visitor.visit(*this); }
 };
 

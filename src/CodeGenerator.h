@@ -22,6 +22,8 @@ public:
     void visit(ReturnStmt& stmt) override;
     void visit(FnDecl& stmt) override;
     void visit(ExpressionStmt& stmt) override;
+    void visit(IfStmt& stmt) override;
+    void visit(BlockStmt& stmt) override;
 
 private:
     std::unique_ptr<llvm::LLVMContext> context;

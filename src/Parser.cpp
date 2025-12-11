@@ -56,11 +56,17 @@ std::unique_ptr<Stmt> Parser::declaration() {
 }
 
 std::unique_ptr<Stmt> Parser::statement() {
+    if (match({TokenType::IF})) {
+        return ifStatement();
+    }
     if (match({TokenType::LET})) {
         return letDeclaration();
     }
     if (match({TokenType::RETURN})) {
         return returnStatement();
+    }
+    if (match({TokenType::LBRACE})) {
+        return block();
     }
     auto expr = expression();
     consume(TokenType::SEMICOLON, "Expect ';' after expression.");
@@ -85,6 +91,29 @@ std::unique_ptr<Stmt> Parser::returnStatement() {
     }
     consume(TokenType::SEMICOLON, "Expect ';' after return value.");
     return std::make_unique<ReturnStmt>(keyword, std::move(value));
+}
+
+std::unique_ptr<Stmt> Parser::ifStatement() {
+    consume(TokenType::LPAREN, "Expect '(' after 'if'.");
+    auto condition = expression();
+    consume(TokenType::RPAREN, "Expect ')' after if condition.");
+
+    auto thenBranch = statement();
+    std::unique_ptr<Stmt> elseBranch = nullptr;
+    if (match({TokenType::ELSE})) {
+        elseBranch = statement();
+    }
+
+    return std::make_unique<IfStmt>(std::move(condition), std::move(thenBranch), std::move(elseBranch));
+}
+
+std::unique_ptr<Stmt> Parser::block() {
+    std::vector<std::unique_ptr<Stmt>> statements;
+    while (!check(TokenType::RBRACE) && !isAtEnd()) {
+        statements.push_back(declaration());
+    }
+    consume(TokenType::RBRACE, "Expect '}' after block.");
+    return std::make_unique<BlockStmt>(std::move(statements));
 }
 
 

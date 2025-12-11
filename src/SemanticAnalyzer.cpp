@@ -59,3 +59,20 @@ void SemanticAnalyzer::visit(FnDecl& stmt) {
 void SemanticAnalyzer::visit(ExpressionStmt& stmt) {
     stmt.expression->accept(*this);
 }
+
+void SemanticAnalyzer::visit(IfStmt& stmt) {
+    stmt.condition->accept(*this);
+    stmt.thenBranch->accept(*this);
+    if (stmt.elseBranch) {
+        stmt.elseBranch->accept(*this);
+    }
+}
+
+void SemanticAnalyzer::visit(BlockStmt& stmt) {
+    auto previousScope = currentScope;
+    currentScope = std::make_shared<SymbolTable>(previousScope);
+    for (const auto& statement : stmt.statements) {
+        statement->accept(*this);
+    }
+    currentScope = previousScope;
+}

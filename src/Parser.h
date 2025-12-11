@@ -28,6 +28,8 @@ private:
     std::unique_ptr<Stmt> letDeclaration();
     std::unique_ptr<Stmt> returnStatement();
     std::unique_ptr<FnDecl> fnDeclaration();
+    std::unique_ptr<Stmt> ifStatement();
+    std::unique_ptr<Stmt> block();
     std::unique_ptr<Expr> expression();
     std::unique_ptr<Expr> equality();
     std::unique_ptr<Expr> comparison();
