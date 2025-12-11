@@ -15,6 +15,11 @@ pub enum Statement {
 pub enum Expression {
     Identifier(Identifier),
     IntegerLiteral(i64),
+    BooleanLiteral(bool),
+    PrefixExpression {
+        operator: String,
+        right: Box<Expression>,
+    },
     // ... other expressions
 }
 

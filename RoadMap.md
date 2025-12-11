@@ -12,8 +12,15 @@ This milestone focuses on setting up the basic infrastructure of the compiler.
     - [ ] Comments (`//`, `/* */`)
     - [ ] Keywords (`fn`, `let`, `mut`, `if`, etc.)
     - [ ] Identifiers
-    - [ ] Literals (integers, floats, strings, chars)
+    - [ ] Literals
+        - [x] Integers
+        - [ ] Floats
+        - [ ] Strings
+        - [ ] Chars
+        - [x] Booleans
     - [ ] Operators
+        - [x] Prefix Operators (`!`, `-`)
+        - [ ] Infix Operators
     - [ ] Punctuation
 - [x] **Parser:** Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
     - [x] Basic AST structure

@@ -18,6 +18,8 @@ pub enum Token {
     Public,  // public
     Private, // private
     Const,   // const
+    True,    // true
+    False,   // false
 
     // Identifiers and Literals
     Identifier(String),

@@ -34,6 +34,10 @@ impl Parser {
             prefix_parse_fns: HashMap::new(),
         };
         parser.register_prefix(Token::Integer(0), Parser::parse_integer_literal);
+        parser.register_prefix(Token::True, Parser::parse_boolean_literal);
+        parser.register_prefix(Token::False, Parser::parse_boolean_literal);
+        parser.register_prefix(Token::Bang, Parser::parse_prefix_expression);
+        parser.register_prefix(Token::Minus, Parser::parse_prefix_expression);
 
         parser.next_token();
         parser.next_token();
@@ -127,6 +131,38 @@ impl Parser {
         } else {
             None
         }
+    }
+
+    fn parse_boolean_literal(&mut self) -> Option<Expression> {
+        match self.current_token {
+            Token::True => Some(Expression::BooleanLiteral(true)),
+            Token::False => Some(Expression::BooleanLiteral(false)),
+            _ => None,
+        }
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<Expression> {
+        let operator = match self.current_token {
+            Token::Bang => "!".to_string(),
+            Token::Minus => "-".to_string(),
+            _ => return None,
+        };
+
+        self.next_token();
+
+        let right = match self.parse_expression(Precedence::Prefix) {
+            Some(expr) => expr,
+            None => {
+                let msg = format!("expected expression, got nothing");
+                self.errors.push(msg);
+                return None;
+            }
+        };
+
+        Some(Expression::PrefixExpression {
+            operator,
+            right: Box::new(right),
+        })
     }
 
     fn parse_integer_literal(&mut self) -> Option<Expression> {
@@ -242,5 +278,78 @@ mod tests {
             "parser has wrong number of errors. got={}",
             parser.errors.len()
         );
+    }
+
+    #[test]
+    fn test_boolean_literal_expression() {
+        let input = "let x = true;";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert_eq!(program.statements.len(), 1);
+
+        let stmt = &program.statements[0];
+        if let Statement::Let(let_stmt) = stmt {
+            if let Expression::BooleanLiteral(val) = let_stmt.value {
+                assert_eq!(val, true);
+            } else {
+                panic!("not a boolean literal");
+            }
+        } else {
+            panic!("not a let statement");
+        }
+    }
+
+    #[test]
+    fn test_prefix_expressions() {
+        enum ExpectedRhs {
+            Integer(i64),
+            Boolean(bool),
+        }
+
+        let prefix_tests = vec![
+            ("let x = !5;", "!", ExpectedRhs::Integer(5)),
+            ("let x = -15;", "-", ExpectedRhs::Integer(15)),
+            ("let x = !true;", "!", ExpectedRhs::Boolean(true)),
+            ("let x = !false;", "!", ExpectedRhs::Boolean(false)),
+        ];
+
+        for (input, operator, expected_rhs) in prefix_tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            assert_eq!(program.statements.len(), 1);
+
+            let stmt = &program.statements[0];
+            if let Statement::Let(let_stmt) = stmt {
+                if let Expression::PrefixExpression {
+                    operator: op,
+                    right,
+                } = &let_stmt.value
+                {
+                    assert_eq!(op, operator);
+                    match expected_rhs {
+                        ExpectedRhs::Integer(val) => {
+                            if let Expression::IntegerLiteral(int_val) = **right {
+                                assert_eq!(int_val, val);
+                            } else {
+                                panic!("expected integer literal");
+                            }
+                        }
+                        ExpectedRhs::Boolean(val) => {
+                            if let Expression::BooleanLiteral(bool_val) = **right {
+                                assert_eq!(bool_val, val);
+                            } else {
+                                panic!("expected boolean literal");
+                            }
+                        }
+                    }
+                } else {
+                    panic!("not a prefix expression");
+                }
+            } else {
+                panic!("not a let statement");
+            }
+        }
     }
 }
