@@ -6,13 +6,13 @@ This document outlines the development plan for the Chtholly programming languag
 
 This milestone focuses on setting up the basic infrastructure of the compiler.
 
-*   [ ] **Project Setup:**
-    *   [ ] Create the basic directory structure (`src`, `tests`, `cmake`).
-    *   [ ] Set up the initial CMake build system.
-    *   [ ] Configure LLVM dependencies.
-*   [ ] **Lexer:**
-    *   [ ] Implement the lexer to tokenize the Chtholly source code.
-    *   [ ] Support for all keywords, operators, and literals defined in `Chtholly.md`.
+*   [x] **Project Setup:**
+    *   [x] Create the basic directory structure (`src`, `tests`, `cmake`).
+    *   [x] Set up the initial CMake build system.
+    *   [x] Configure LLVM dependencies.
+*   [x] **Lexer:**
+    *   [x] Implement the lexer to tokenize the Chtholly source code.
+    *   [x] Support for all keywords, operators, and literals defined in `Chtholly.md`.
 *   [ ] **Parser:**
     *   [ ] Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
     *   [ ] Define the AST nodes for all language constructs.

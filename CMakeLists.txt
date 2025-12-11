@@ -4,6 +4,15 @@ project(Chtholly)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# --- GTest ---
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+)
+FetchContent_MakeAvailable(googletest)
+
+
 # Find LLVM
 find_package(LLVM 18.1 REQUIRED CONFIG)
 
@@ -11,10 +20,10 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 # Add executable
-add_executable(chtholly src/main.cpp)
+add_executable(chtholly src/main.cpp src/Lexer/Lexer.cpp)
 
 # Add LLVM include directories and definitions
-target_include_directories(chtholly PRIVATE ${LLVM_INCLUDE_DIRS})
+target_include_directories(chtholly PRIVATE ${LLVM_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_definitions(chtholly PRIVATE ${LLVM_DEFINITIONS})
 
 # Link against LLVM libraries

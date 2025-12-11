@@ -1,6 +1,13 @@
-# This file is currently a placeholder for the testing framework.
-# We will add more complex tests as the project progresses.
+# Add the test executable
+add_executable(lexer_tests LexerTest.cpp)
 
-# Add a simple test to demonstrate the testing setup.
-# This test will be expanded upon in future milestones.
-add_test(NAME DummyTest COMMAND ${CMAKE_COMMAND} -E echo "Dummy test passed")
+# Link the test executable against GTest and the main project source
+target_link_libraries(lexer_tests PRIVATE GTest::gtest GTest::gtest_main)
+target_include_directories(lexer_tests PRIVATE ../src)
+
+# Add the lexer source files to the test target
+target_sources(lexer_tests PRIVATE ../src/Lexer/Lexer.cpp)
+
+# Add the test to CTest
+include(GoogleTest)
+gtest_add_tests(TARGET lexer_tests)
