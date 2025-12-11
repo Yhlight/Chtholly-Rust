@@ -3,6 +3,7 @@
 #include <sstream>
 #include "Lexer/Lexer.h"
 #include "Parser/Parser.h"
+#include "Semantic/SemanticAnalyzer.h"
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -23,8 +24,12 @@ int main(int argc, char** argv) {
     try {
         Lexer lexer(source);
         Parser parser(lexer);
-        parser.parse();
-        std::cout << "Parsing successful!" << std::endl;
+        std::unique_ptr<ProgramAST> ast = parser.parse();
+
+        SemanticAnalyzer analyzer;
+        analyzer.visit(*ast);
+
+        std::cout << "Parsing and semantic analysis successful!" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

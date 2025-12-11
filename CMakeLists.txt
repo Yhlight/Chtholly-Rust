@@ -19,17 +19,23 @@ find_package(LLVM 18.1 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+# Create a static library for the compiler
+add_library(chtholly_lib STATIC
+    src/Lexer/Lexer.cpp
+    src/Parser/Parser.cpp
+    src/Semantic/SemanticAnalyzer.cpp
+    src/Semantic/SymbolTable.cpp
+)
+
+# Publicly expose the include directory for the library
+target_include_directories(chtholly_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+
 # Add executable
-add_executable(chtholly src/main.cpp
-                        src/Lexer/Lexer.cpp
-                        src/Parser/Parser.cpp)
+add_executable(chtholly src/main.cpp)
 
-# Add LLVM include directories and definitions
-target_include_directories(chtholly PRIVATE ${LLVM_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_compile_definitions(chtholly PRIVATE ${LLVM_DEFINITIONS})
-
-# Link against LLVM libraries
-target_link_libraries(chtholly PRIVATE
+# Link the executable against our library and LLVM
+target_link_libraries(chtholly PRIVATE chtholly_lib
   LLVMSupport
   LLVMCore
   LLVMIRReader
@@ -38,6 +44,7 @@ target_link_libraries(chtholly PRIVATE
   LLVMMCParser
   LLVMAsmParser
 )
+
 
 # --- Testing ---
 enable_testing()
