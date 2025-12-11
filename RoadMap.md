@@ -50,6 +50,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 - [x] Implement lifetime analysis to prevent dangling references.
 - [x] Ensure that no reference can outlive the data it points to.
 - [ ] Implement lifetime elision rules to automatically infer lifetimes in common scenarios, minimizing the need for explicit annotations.
+- [x] Prevent returning references to data owned by the current function.
 
 ## Phase 3: Advanced Language Features
 

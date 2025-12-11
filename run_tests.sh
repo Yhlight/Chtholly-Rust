@@ -7,6 +7,7 @@ declare -a failing_tests=(
     "./test_lifetime_scope.cns"
     "./test_move.cns"
     "./test_ownership.cns"
+    "./test_lifetime_dangle_3.cns"
 )
 
 # Function to check if a test is in the failing_tests array

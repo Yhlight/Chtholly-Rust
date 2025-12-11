@@ -145,6 +145,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     if (!symbolTable.addSymbol(node.varName, varType, node.isMutable)) {
         throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
     }
+    node.type = std::make_unique<TypeNameAST>(varType->toString());
 
     if (initType && initType->kind == Type::TK_Reference) {
         if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.initExpr.get())) {
@@ -550,7 +551,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
                 }
             }
 
-            if (symbol && symbol->lifetimeScopeLevel > 1) { // 0 is global, 1 is function parameters
+            if (symbol && symbol->scopeLevel > 1) { // 0 is global, 1 is function parameters
                 throw std::runtime_error("Cannot return a reference to data owned by the current function.");
             }
         }
