@@ -14,6 +14,7 @@ pub enum Statement {
 #[derive(Debug)]
 pub enum Expression {
     Identifier(Identifier),
+    IntegerLiteral(i64),
     // ... other expressions
 }
 
@@ -22,6 +23,7 @@ pub enum Expression {
 pub struct LetStatement {
     pub name: Identifier,
     pub value: Expression,
+    pub is_mutable: bool,
 }
 
 // Represents an identifier

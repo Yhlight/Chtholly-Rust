@@ -1,12 +1,27 @@
-use crate::ast::ast::{LetStatement, Program, Statement};
+use crate::ast::ast::{Expression, LetStatement, Program, Statement};
 use crate::lexer::lexer::Lexer;
 use crate::lexer::token::Token;
+use std::collections::HashMap;
+
+#[derive(PartialEq, PartialOrd)]
+enum Precedence {
+    Lowest,
+    Equals,      // ==
+    LessGreater, // > or <
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
+    Call,        // myFunction(X)
+}
+
+type PrefixParseFn = fn(&mut Parser) -> Option<Expression>;
 
 pub struct Parser {
     lexer: Lexer,
     current_token: Token,
     peek_token: Token,
     errors: Vec<String>,
+    prefix_parse_fns: HashMap<std::mem::Discriminant<Token>, PrefixParseFn>,
 }
 
 impl Parser {
@@ -16,10 +31,18 @@ impl Parser {
             current_token: Token::Illegal,
             peek_token: Token::Illegal,
             errors: Vec::new(),
+            prefix_parse_fns: HashMap::new(),
         };
+        parser.register_prefix(Token::Integer(0), Parser::parse_integer_literal);
+
         parser.next_token();
         parser.next_token();
         parser
+    }
+
+    fn register_prefix(&mut self, token: Token, function: PrefixParseFn) {
+        self.prefix_parse_fns
+            .insert(std::mem::discriminant(&token), function);
     }
 
     fn next_token(&mut self) {
@@ -51,6 +74,13 @@ impl Parser {
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {
+        let is_mutable = if self.peek_token == Token::Mut {
+            self.next_token();
+            true
+        } else {
+            false
+        };
+
         if !self.expect_peek(Token::Identifier("".to_string())) {
             return None;
         }
@@ -68,19 +98,43 @@ impl Parser {
             return None;
         }
 
-        // TODO: We're skipping the expression parsing for now
-        while self.current_token != Token::Semicolon {
+        self.next_token();
+
+        let value = match self.parse_expression(Precedence::Lowest) {
+            Some(expr) => expr,
+            None => {
+                let msg = format!("expected expression, got nothing");
+                self.errors.push(msg);
+                return None;
+            }
+        };
+
+        if self.peek_token == Token::Semicolon {
             self.next_token();
         }
 
         Some(Statement::Let(LetStatement {
             name: crate::ast::ast::Identifier { value: name },
-            value: crate::ast::ast::Expression::Identifier(
-                crate::ast::ast::Identifier {
-                    value: "dummy".to_string(),
-                },
-            ),
+            value,
+            is_mutable,
         }))
+    }
+
+    fn parse_expression(&mut self, _precedence: Precedence) -> Option<Expression> {
+        let discriminant = std::mem::discriminant(&self.current_token);
+        if let Some(prefix_fn) = self.prefix_parse_fns.get(&discriminant) {
+            prefix_fn(self)
+        } else {
+            None
+        }
+    }
+
+    fn parse_integer_literal(&mut self) -> Option<Expression> {
+        if let Token::Integer(value) = self.current_token {
+            Some(Expression::IntegerLiteral(value))
+        } else {
+            None
+        }
     }
 
     fn expect_peek(&mut self, token: Token) -> bool {
@@ -109,14 +163,14 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::ast::{Node, Statement};
+    use crate::ast::ast::Statement;
     use crate::lexer::lexer::Lexer;
 
     #[test]
     fn test_let_statements() {
         let input = r#"
             let x = 5;
-            let y = 10;
+            let mut y = 10;
             let foobar = 838383;
         "#;
 
@@ -131,9 +185,14 @@ mod tests {
             program.statements.len()
         );
 
-        let expected_identifiers = vec!["x", "y", "foobar"];
+        let tests = vec![
+            ("x", 5, false),
+            ("y", 10, true),
+            ("foobar", 838383, false),
+        ];
 
-        for (i, expected_identifier) in expected_identifiers.iter().enumerate() {
+        for (i, (expected_identifier, expected_value, expected_mutable)) in tests.iter().enumerate()
+        {
             let statement = &program.statements[i];
             if let Statement::Let(let_statement) = statement {
                 assert_eq!(
@@ -141,9 +200,47 @@ mod tests {
                     "let_statement.name.value not '{}'. got={}",
                     expected_identifier, let_statement.name.value
                 );
+
+                assert_eq!(
+                    let_statement.is_mutable, *expected_mutable,
+                    "let_statement.is_mutable not {}. got={}",
+                    expected_mutable, let_statement.is_mutable
+                );
+
+                if let Expression::IntegerLiteral(value) = let_statement.value {
+                    assert_eq!(
+                        value, *expected_value,
+                        "let_statement.value not {}. got={}",
+                        expected_value, value
+                    );
+                } else {
+                    panic!(
+                        "let_statement.value not an IntegerLiteral. got={:?}",
+                        let_statement.value
+                    );
+                }
             } else {
                 panic!("statement not a LetStatement. got={:?}", statement);
             }
         }
+    }
+
+    #[test]
+    fn test_let_statement_errors() {
+        let input = r#"
+            let x = ;
+            let = 10;
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            2,
+            "parser has wrong number of errors. got={}",
+            parser.errors.len()
+        );
     }
 }

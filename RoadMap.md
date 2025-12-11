@@ -15,10 +15,10 @@ This milestone focuses on setting up the basic infrastructure of the compiler.
     - [ ] Literals (integers, floats, strings, chars)
     - [ ] Operators
     - [ ] Punctuation
-- [ ] **Parser:** Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
-    - [ ] Basic AST structure
+- [x] **Parser:** Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
+    - [x] Basic AST structure
     - [ ] Parse main function (`fn main(...)`)
-    - [ ] Parse variable declarations (`let`, `let mut`)
+    - [x] Parse variable declarations (`let`, `let mut`)
 - [ ] **Code Generation (LLVM IR):** Set up the basic infrastructure for generating LLVM IR from the AST.
     - [ ] LLVM context and module setup
     - [ ] JIT (Just-In-Time) compilation for running code directly
