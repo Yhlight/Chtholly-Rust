@@ -15,7 +15,7 @@ Chtholly文件后缀为`.cns`。
 /*
 多行注释
 */
-```
+````
 
 ### 主函数
 
@@ -96,9 +96,9 @@ a2 = 20;  // 正确，可变变量可以操控这部分资源
 
 在任何时间点，对于同一份资源，以下两种借用情况只能存在一种：
 
-  * **任意数量的共享引用 ($\&$)：** 允许多个共享引用同时存在，但它们都不能修改资源。
+  * **任意数量的共享引用 (&)：** 允许多个共享引用同时存在，但它们都不能修改资源。
 
-  * **仅一个可变引用 ($\&mut$)：** 允许通过该引用修改资源，但它必须是独占的。
+  * **仅一个可变引用 (&mut)：** 允许通过该引用修改资源，但它必须是独占的。
 
   * 在某一作用域内，如果存在一个可变引用，则不能存在任何其他引用（无论是共享引用还是另一个可变引用）。这是 Chtholly 保证**数据竞争安全**的关键。
 
@@ -123,7 +123,7 @@ let m2 = &mut x; // 正确：现在可以创建可变引用 M2
 
 #### 智能生命周期省略
 
-Chtholly引入了智能的生命周期省略规则，旨在在 90% 的情况下消除手动生命周期注解，最大程度地减轻心智负担，同时保留 Rust 级别的编译期安全。只有在特别的时候，才需要使用类似Rust的生命周期注解。
+Chtholly引入了智能的生命周期省略规则，旨在在 90% 的情况下消除手动生命周期注解，最大程度地减轻心智负担，同时保留 Rust 级别的编译期安全。
 
 ### 数据类型 (Data Types)
 
@@ -473,31 +473,6 @@ for (let i = 0; i < 10; i++) {
 }
 ```
 
-#### foreach循环
-
-Chtholly使用foreach循环。
-
-对于所有容器对象，如果实现了`iterator`约束，则Chtholly会提供foreach循环。
-
-item : container 为移动，对应iterator模块的iterator_move约束。
-
-如果你需要决定如何安全地创建迭代器，请使用create_iterator_move约束，这将决定迭代器对象如何被创建。
-
-&item : container 为不可变引用，对应iterator模块的iterator_let约束。
-
-如果你需要决定如何安全地创建迭代器，请使用create_iterator_let约束，这将决定迭代器对象如何被创建。
-
-&mut item : container 为可变引用，对应iterator模块的iterator_mut约束。
-
-如果你需要决定如何安全地创建迭代器，请使用create_iterator_mut约束，这将决定迭代器对象如何被创建。
-
-```Chtholly
-for (item : container)
-{
-
-}
-```
-
 #### do-while循环
 
 Chtholly使用标准C风格do-while循环。
@@ -634,167 +609,6 @@ optional类型有两个主要方法，unwrap和unwarp_or。
 
 ```
 let a = optional<i32>(10);
-```
-
-### contract
-
-现在，你可以使用contract来创建一个类的约束。
-
-```chtholly
-contract compare<T>  // 支持泛型
-{
-    fn compare<K>(self, other: K);  // 必须实现这个函数
-
-    fn test2()  // 如果没有self，那么这个函数可以具有代码体
-    {
-
-    }
-}
-
-class Test require compare
-{
-    
-}
-```
-
-#### Self
-
-在Chtholly之中，如果你在约束内部使用Self，那么会表示实现了这一个约束的类本身。
-
-注意，这里有一个特别的注意事项，如果一个所需要的内容在约束时就可以确定，而不需要到实现后再确定。
-
-那么你应该直接使用。
-
-如果一个所需要的内容再约束时仍不能确定，在实现时不能够确定，那么我们建议使用Self::来进行区分，尽管它们的最终作用是一样的。
-
-为什么效果一样？这是因为约束的语义最终确定是在实现类之中，这意味着item和Self::item是相同的，只是Self::item多了一层保护。
-
-使用Self::可以让实现类必须显性提供一个参数值，从而避免不必要的错误。
-
-#### 关联类型
-
-在Chtholly之中，泛型无法同时表示多种类型。
-
-这对于约束来说十分有局限，例如我想要让一个函数同时表达string, &string, &mut string。
-
-泛型无法实现这样的功能，为此你可以使用关联类型，以便类型可以被复用。
-
-```Chtholly
-contract iterator
-{
-    type item;
-    fn next(&mut self): optional<Self::item>;  // 由实现类确定
-
-    fn test2(a: Self::item);
-    fn test3(a: &Self::item);
-    fn test4(a: &mut Self::item);
-}
-
-class container requier iterator
-{
-    type item = i32;  // 把所有的item参数替换为i32
-
-    fn next(&mut self): optional<item>
-    {
-
-    }
-
-    fn test2(a: item)
-    {
-
-    }
-
-    fn test3(a: &item)
-    {
-
-    }
-
-    fn test4(a: &mut item)
-    {
-        
-    }
-}
-```
-
-#### 关联约束
-
-如果一个约束需要其他的约束作为附属，那么你需要使用require进行请求。
-
-这种请求行为是单向的，也被称为单向必要请求。
-
-举个例子，假设create_iterator_move约束请求了iterator_move约束。
-
-那么一旦类请求了create_iterator_move约束，就必须请求iterator_move约束。
-
-create_iterator_move和iterator_move可以相互请求，这不会导致问题的产生，但为了简洁性，我们始终推荐开发者进行线性的规划。
-
-```Chtholly
-contract iterator_move require create_iterator_move
-{
-    type item;
-    fn next(&mut self): optional<item>;
-}
-```
-
-#### 类型关联约束
-
-对于type类型，如果type类型的注解是一个约束，那么type类型会期盼一个实现了这一个约束的类型。
-
-
-```Chtholly
-contract create_iterator_move
-{
-    type IntoMoveIter: iterator_move;  // 要求一个实现了iterator_move的类型
-    fn into_iter(self): Self::IntoMoveIter;
-}
-```
-
-#### 内置约束
-
-Chtholly提供了一系列的内置约束，来提供给开发者使用。
-
-你只需要导入不同的模块即可使用。  
-
-##### iterator
-
-需要iterator模块的支持。
-
-```Chtholly
-contract iterator_move require create_iterator_move
-{
-    type item;
-    fn next(&mut self): optional<Self::item>;
-}
-
-contract iterator_let require create_iterator_let
-{
-    type item;
-    fn next(&mut self): optional<Self::item>;
-}
-
-contract iterator_mut require create_iterator_mut
-{
-    type item;
-    fn next(&mut self): optional<Self::item>;
-}
-
-contract create_iterator_move
-{
-    type IntoMoveIter: iterator_move;
-    fn into_iter(self): Self::IntoMoveIter;
-}
-
-contract create_iterator_let
-{
-    type RefIter: iterator_let;
-    fn iter(&self): Self::RefIter;
-}
-
-contract create_iterator_mut
-{
-    type MutIter: iterator_mut;
-    fn iter_mut(&mut self): Self::MutIter;
-}
 ```
 
 ### 模块与import
@@ -953,6 +767,167 @@ switch (operation_result)
     {
         println("处理失败，错误信息:", error.message);
         break;
+    }
+}
+```
+
+## 编译期编程体系
+
+Chtholly 严格遵循**运行时极简**原则，通过一套强大的编译期编程体系（Const System）将复杂计算和代码生成任务前置到编译阶段，从而确保零运行时开销。
+
+所有编译期操作都必须使用 `const` 关键字显式标记，并在编译时（Compile-Time）完成求值。
+
+## 核心原则
+
+| 原则 | 描述 |
+| :--- | :--- |
+| **编译期求值** | 任何标记为 `const` 的表达式，必须能在编译阶段被完全求值，不允许依赖运行时数据。 |
+| **无副作用** | 编译期代码（`const fn`）必须是**纯函数**。不允许进行 I/O、网络通信、内存分配或任何影响程序状态的副作用。 |
+| **零运行时开销** | 所有 `const` 表达式在最终生成的机器码中，将被其计算出的**最终常量值**替换。 |
+
+## const常量定义
+
+`const` 关键字用于定义在编译期已知且不可变的常量。
+
+### 语法
+
+```chtholly
+const NAME: Type = expression;
+```
+
+### 规则与限制
+
+1.  **必须显式标注类型：** 与 `let` 变量不同，`const` 常量必须显式标注其类型，以确保类型安全。
+2.  **必须可被求值：** 赋值表达式必须是一个可以在编译阶段计算出确定值的**常量表达式**（Const Expression）。
+3.  **不允许引用或借用：** `const` 常量不能包含运行时借用 (`&T`) 或指针。然而，可以包含指向其他静态内存区域（例如字符串字面量）的引用。
+
+### 示例
+
+```chtholly
+// 基础类型常量
+const MAX_USERS: i32 = 1000;
+
+// 使用编译期函数计算常量
+const ARRAY_SIZE: i32 = const_math::calculate_size(10, 5);
+
+// 数组常量
+const PRIME_NUMBERS: i32[] = [2, 3, 5, 7, 11];
+
+// 结构体常量
+const ORIGIN: Point = Point { x: 0, y: 0 }; 
+```
+
+## const fn编译期函数
+
+`const fn` 关键字用于定义可在编译期调用的函数。
+
+### 语法
+
+```chtholly
+const fn function_name(params): return_type
+{
+    // ... const expression body
+}
+```
+
+### 调用规则
+
+1.  **调用上下文：** `const fn` 只能在编译期上下文（Const Context）中被调用，例如：
+      * 定义另一个 `const` 常量或 `const fn` 的函数体内部。
+      * 用作泛型参数（Const Generics）。
+      * 用作数组长度。
+2.  **运行时兼容：** `const fn` 默认也是一个普通的运行时函数（Runtime Function）。如果它在运行时上下文被调用，它将作为一个普通的函数被编译和执行。
+
+### 示例
+
+```chtholly
+// 编译期函数：计算斐波那契数列（假设输入小于某个安全值）
+const fn const_fibonacci(n: i32): i32
+{
+    if n == 0 || n == 1 {
+        return n;
+    }
+    // 递归调用也发生在编译期
+    return const_fibonacci(n - 1) + const_fibonacci(n - 2);
+}
+
+// 在常量定义中使用
+const FIB_10: i32 = const_fibonacci(10); 
+
+// 在运行时调用 (合法)
+fn main(): Result<i32, SystemError>
+{
+    let runtime_result = const_fibonacci(20); // 运行时执行
+    // ...
+}
+```
+
+## Const Context 内部规则（允许与限制）
+
+为了确保编译期执行的安全性和确定性，`const fn` 内部的代码受到严格限制。
+
+### 允许的操作（Const Expression）
+
+| 操作类型 | 描述 |
+| :--- | :--- |
+| **数学运算** | 整数、浮点数的加减乘除和位操作。 |
+| **控制流** | `if/else`、`switch` 表达式。 |
+| **循环** | **`while` 循环** 和 **`for` 循环**（要求循环次数在编译期可推导）。编译器必须能证明循环会终止。 |
+| **函数调用** | 只能调用其他 **`const fn`**。 |
+| **结构体操作** | 创建和访问 `const` 兼容的结构体。 |
+| **数组/元组操作** | 索引访问、创建数组。 |
+
+### 严格禁止的操作（Side Effects）
+
+以下操作会引入运行时依赖或副作用，在 `const fn` 中是**禁止**的，编译期会报错：
+
+1.  **I/O 操作：** 读写文件、网络请求、打印到控制台 (`print()` 函数)。
+2.  **内存分配：** 任何涉及堆分配的操作（例如：创建动态 `string` 或 `Array<T>`，除非它们是编译期可构造的静态大小）。
+3.  **运行时依赖：** 获取系统时间、生成随机数、获取用户输入。
+4.  **修改状态：** 对静态可变变量或任何外部状态进行修改。
+5.  **非 `const fn` 调用：** 调用任何未标记为 `const fn` 的函数。
+
+## 编译期数据类型 (Const Data Types)
+
+并非所有 Chtholly 类型都可以在编译期上下文中使用。只有那些**完全在编译期内存模型**中可表示的类型才能作为 `const` 常量或 `const fn` 的参数/返回值。
+
+| 允许的类型 | 描述 |
+| :--- | :--- |
+| **原始类型** | `i32`, `f64`, `bool`, `char`。 |
+| **不可变数组** | `T[N]`，其中 `T` 是编译期类型，`N` 是编译期常量。 |
+| **编译期结构体** | 仅包含其他编译期兼容类型的字段的结构体。 |
+| **枚举** | 任何枚举类型。 |
+| **字符串字面量** | 静态的字符串引用（指向静态内存）。 |
+
+## 编译期错误处理
+
+如果一个 `const fn` 在编译期求值时遇到错误（例如整数除以零，数组越界），编译器必须提供清晰的机制来处理。
+
+### 机制：编译期 `Result<T, E>`
+
+Chtholly 应该扩展其 `Result<T, E>` 错误处理机制 来支持编译期：
+
+1.  **`const fn` 返回 `Result`：** 允许 `const fn` 返回 `Result<T, E>`，以表示可能失败的操作。
+2.  **编译期强制：** 如果一个 `const` 常量依赖于一个返回 `Result` 的 `const fn`，则开发者**必须**在编译期处理 `Err` 分支。
+
+### Const Struct 常结构体
+
+Chtholly支持常结构体，常结构体内部所有成员皆为const成员。
+
+常结构体是编译型产物，不会在运行时中生成。
+
+所有的数据都会以各种合理的方式传递给运行时。
+
+常结构体的成员允许延迟赋值，但是仅限于编译期的使用。
+
+```chtholly
+const struct Point {
+    const x: i32;  // 允许延迟赋值
+    const y: i32;
+
+    const fn print(&self): void
+    {
+
     }
 }
 ```
