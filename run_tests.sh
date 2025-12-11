@@ -4,6 +4,7 @@
 declare -a failing_tests=(
     "./test_lifetime_dangle.cns"
     "./test_lifetime_dangle_intermediate.cns"
+    "./test_lifetime_scope.cns"
     "./test_move.cns"
     "./test_ownership.cns"
 )

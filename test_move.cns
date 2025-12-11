@@ -3,7 +3,7 @@ fn main(): i32 {
     let s2: string = s1;
 
     // The following line should cause a compile-time error
-    // println(s1);
+    println(s1);
 
     let s3: string = "world";
     test_move(s3);

@@ -254,6 +254,12 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
         if(stmt) visit(*stmt);
     }
 
+    for (auto const& [name, symbol] : symbolTable.getAllSymbols()) {
+        if (symbol.type->kind == Type::TK_Reference && symbol.scopeLevel < symbolTable.getCurrentScopeLevel() && symbol.lifetimeScopeLevel == symbolTable.getCurrentScopeLevel()) {
+            throw std::runtime_error("Reference '" + name + "' outlives the data it points to.");
+        }
+    }
+
     for (auto& pair : symbolTable.getCurrentScope()) {
         Symbol& symbol = pair.second;
         if (symbol.borrowedInScope) {
@@ -292,6 +298,22 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
 
         if (lhsSymbol->type->toString() != rhsType->toString()) {
             throw std::runtime_error("Type mismatch in assignment to variable '" + lhsVar->name + "'.");
+        }
+
+        if (rhsType->kind == Type::TK_Reference) {
+            if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.rhs.get())) {
+                Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
+                if (rhsSymbol) {
+                    lhsSymbol->lifetimeScopeLevel = rhsSymbol->lifetimeScopeLevel;
+                }
+            } else if (auto* borrowExpr = dynamic_cast<BorrowExprAST*>(node.rhs.get())) {
+                if (auto* rhsVar = dynamic_cast<VariableExprAST*>(borrowExpr->expression.get())) {
+                    Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
+                    if (rhsSymbol) {
+                        lhsSymbol->lifetimeScopeLevel = rhsSymbol->scopeLevel;
+                    }
+                }
+            }
         }
         node.type = lhsSymbol->type;
         return node.type;

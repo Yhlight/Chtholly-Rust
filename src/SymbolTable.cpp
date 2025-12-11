@@ -51,6 +51,20 @@ Scope& SymbolTable::getCurrentScope() {
     return scopeStack.back();
 }
 
+std::unordered_map<std::string, Symbol> SymbolTable::getAllSymbols() const {
+    std::unordered_map<std::string, Symbol> allSymbols;
+    for (const auto& scope : scopeStack) {
+        for (const auto& pair : scope) {
+            allSymbols[pair.first] = pair.second;
+        }
+    }
+    return allSymbols;
+}
+
+size_t SymbolTable::getCurrentScopeLevel() const {
+    return scopeStack.size() - 1;
+}
+
 bool SymbolTable::add_type(const std::string& name, std::shared_ptr<Type> type) {
     if (types.count(name)) {
         return false;

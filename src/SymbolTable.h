@@ -42,6 +42,10 @@ public:
     // Returns all symbols in the current scope.
     Scope& getCurrentScope();
 
+    std::unordered_map<std::string, Symbol> getAllSymbols() const;
+
+    size_t getCurrentScopeLevel() const;
+
     // Type management
     bool add_type(const std::string& name, std::shared_ptr<Type> type);
     std::shared_ptr<Type> find_type(const std::string& name);
