@@ -15,6 +15,23 @@ void Parser::eat(TokenType type) {
     }
 }
 
+std::unique_ptr<ProgramAST> Parser::parse() {
+    std::vector<std::unique_ptr<StmtAST>> statements;
+    while (currentToken.type != TokenType::Eof) {
+        statements.push_back(parseStatement());
+    }
+    return std::make_unique<ProgramAST>(std::move(statements));
+}
+
+std::unique_ptr<StmtAST> Parser::parseStatement() {
+    switch (currentToken.type) {
+        case TokenType::Let:
+            return parseLetStatement();
+        default:
+            throw std::runtime_error("Unknown statement");
+    }
+}
+
 std::unique_ptr<StmtAST> Parser::parseLetStatement() {
     eat(TokenType::Let);
     std::string variableName = currentToken.value;

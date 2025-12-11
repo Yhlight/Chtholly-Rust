@@ -16,9 +16,9 @@ This milestone focuses on setting up the basic infrastructure of the compiler.
 *   [x] **Parser:**
     *   [x] Implement the parser to build an Abstract Syntax Tree (AST) from the token stream.
     *   [x] Define the AST nodes for all language constructs.
-*   [ ] **Basic Command-Line Interface:**
-    *   [ ] Create a simple command-line tool to invoke the compiler.
-    *   [ ] Add options for input files and output files.
+*   [x] **Basic Command-Line Interface:**
+    *   [x] Create a simple command-line tool to invoke the compiler.
+    *   [x] Add options for input files and output files.
 
 ## Milestone 2: Semantic Analysis and Type System
 

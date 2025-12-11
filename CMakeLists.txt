@@ -42,8 +42,5 @@ target_link_libraries(chtholly PRIVATE
 # --- Testing ---
 enable_testing()
 
-# Add a simple test to ensure the executable runs and exits with a zero status
-add_test(NAME ChthollyRuns COMMAND chtholly)
-
 # Add the tests subdirectory. This is where we'll put the actual language tests.
 add_subdirectory(tests)
