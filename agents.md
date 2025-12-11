@@ -50,7 +50,7 @@ sudo apt-get install -y \
 `inkwell` (via `llvm-sys`) 需要知道在哪里找到 LLVM。您可以通过设置以下环境变量来指定 LLVM 的安装路径：
 
 ```bash
-export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
 ```
 
 将此行添加到您的 `.bashrc` 或 `.zshrc` 文件中，以使其在新的 shell 会- 话中永久生效。
