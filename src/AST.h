@@ -40,6 +40,14 @@ public:
     llvm::Type* getLLVMType(CodeGen& context) override;
 };
 
+class StructType : public Type {
+    std::string m_name;
+public:
+    StructType(const std::string& name) : m_name(name) {}
+    const std::string& getName() const { return m_name; }
+    llvm::Type* getLLVMType(CodeGen& context) override;
+};
+
 
 class ExprAST {
 public:
@@ -47,17 +55,28 @@ public:
     virtual llvm::Value* codegen(CodeGen& context) = 0;
 };
 
+enum class NumberType {
+    Int,
+    Float
+};
+
 class NumberExprAST : public ExprAST {
-    double m_val;
+    int64_t m_intVal;
+    double m_floatVal;
+    NumberType m_type;
 public:
-    NumberExprAST(double val) : m_val(val) {}
+    NumberExprAST(int64_t val) : m_intVal(val), m_type(NumberType::Int) {}
+    NumberExprAST(double val) : m_floatVal(val), m_type(NumberType::Float) {}
     llvm::Value* codegen(CodeGen& context) override;
 };
 
 class VariableExprAST : public ExprAST {
     std::string m_name;
+    Type* m_type;
 public:
-    VariableExprAST(const std::string& name) : m_name(name) {}
+    VariableExprAST(const std::string& name, Type* type = nullptr) : m_name(name), m_type(type) {}
+    const std::string& getName() const { return m_name; }
+    Type* getType() const { return m_type; }
     llvm::Value* codegen(CodeGen& context) override;
 };
 
@@ -139,6 +158,7 @@ public:
         : m_name(name), m_args(std::move(args)), m_returnType(std::move(returnType)) {}
 
     const std::string& getName() const { return m_name; }
+    const std::vector<std::pair<std::string, std::unique_ptr<Type>>>& getArgs() const { return m_args; }
     llvm::Function* codegen(CodeGen& context);
 };
 

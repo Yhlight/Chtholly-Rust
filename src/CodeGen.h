@@ -16,6 +16,19 @@ class NumberExprAST;
 class VariableExprAST;
 class PrototypeAST;
 class FunctionAST;
+class Type;
+class StructDefAST;
+
+enum class OwnershipState {
+    Valid,
+    Moved
+};
+
+struct Symbol {
+    llvm::Value* value;
+    Type* type;
+    OwnershipState state;
+};
 
 class CodeGen {
 public:
@@ -30,13 +43,16 @@ public:
     llvm::Module& getModule() { return *m_module; }
 
     // Symbol table for variables.
-    std::map<std::string, llvm::Value*> m_namedValues;
+    std::map<std::string, Symbol> m_namedValues;
 
     // Type table for structs.
     std::map<std::string, llvm::StructType*> m_structTypes;
 
     // Struct definition table.
     std::map<std::string, StructDefAST*> m_structDefs;
+
+    // Type ownership.
+    std::vector<std::unique_ptr<Type>> m_ownedTypes;
 
 private:
     llvm::LLVMContext m_context;

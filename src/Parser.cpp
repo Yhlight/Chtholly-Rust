@@ -58,6 +58,8 @@ std::unique_ptr<Type> Parser::parseType() {
         return std::make_unique<CharType>();
     case Token::Void:
         return std::make_unique<VoidType>();
+    case Token::Identifier:
+        return std::make_unique<StructType>(m_lexer.getIdentifier());
     default:
         logError("unknown type when expecting a type");
         return nullptr;
@@ -65,9 +67,14 @@ std::unique_ptr<Type> Parser::parseType() {
 }
 
 std::unique_ptr<ExprAST> Parser::parseNumberExpr() {
-    auto result = std::make_unique<NumberExprAST>(m_lexer.getNumber());
+    std::unique_ptr<ExprAST> result;
+    if (m_currentToken == Token::IntNumber) {
+        result = std::make_unique<NumberExprAST>(m_lexer.getIntNumber());
+    } else {
+        result = std::make_unique<NumberExprAST>(m_lexer.getFloatNumber());
+    }
     getNextToken(); // consume the number
-    return std::move(result);
+    return result;
 }
 
 std::unique_ptr<ExprAST> Parser::parseParenExpr() {
@@ -247,7 +254,8 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
         return logError("unknown token when expecting an expression");
     case Token::Identifier:
         return parseIdentifierExpr();
-    case Token::Number:
+    case Token::IntNumber:
+    case Token::FloatNumber:
         return parseNumberExpr();
     case Token::LParen:
         return parseParenExpr();

@@ -20,7 +20,8 @@ enum class Token {
 
     // Primary
     Identifier,
-    Number,
+    IntNumber,
+    FloatNumber,
 
     // Types
     I32,      // i32
@@ -50,13 +51,15 @@ public:
 
     Token getNextToken();
     const std::string& getIdentifier() const { return m_identifier; }
-    double getNumber() const { return m_number; }
+    int64_t getIntNumber() const { return m_intNumber; }
+    double getFloatNumber() const { return m_floatNumber; }
 
 private:
     const char* m_bufferPtr;
     int m_lastChar;
     std::string m_identifier;
-    double m_number;
+    int64_t m_intNumber;
+    double m_floatNumber;
 };
 
 } // namespace chtholly

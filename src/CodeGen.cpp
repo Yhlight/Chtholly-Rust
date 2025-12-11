@@ -24,6 +24,10 @@ llvm::Type* VoidType::getLLVMType(CodeGen& context) {
     return llvm::Type::getVoidTy(context.getContext());
 }
 
+llvm::Type* StructType::getLLVMType(CodeGen& context) {
+    return context.m_structTypes[m_name];
+}
+
 CodeGen::CodeGen() : m_builder(m_context) {
     m_module = std::make_unique<llvm::Module>("ChthollyJIT", m_context);
 }
@@ -38,21 +42,34 @@ llvm::Value* logErrorV(const char* str) {
 }
 
 llvm::Value* NumberExprAST::codegen(CodeGen& context) {
-    return llvm::ConstantFP::get(context.getContext(), llvm::APFloat(m_val));
+    if (m_type == NumberType::Int) {
+        return llvm::ConstantInt::get(llvm::Type::getInt64Ty(context.getContext()), m_intVal, true);
+    } else {
+        return llvm::ConstantFP::get(context.getContext(), llvm::APFloat(m_floatVal));
+    }
 }
 
 llvm::Value* VariableExprAST::codegen(CodeGen& context) {
-    llvm::Value* v = context.m_namedValues[m_name];
-    if (!v) {
+    auto it = context.m_namedValues.find(m_name);
+    if (it == context.m_namedValues.end()) {
         return logErrorV("Unknown variable name");
     }
 
-    // If the value is an alloca, it's a mutable variable, so we load from it.
-    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(v)) {
-        return context.getBuilder().CreateLoad(alloca->getAllocatedType(), v, m_name.c_str());
+    Symbol& symbol = it->second;
+
+    if (symbol.state == OwnershipState::Moved) {
+        return logErrorV("use of moved value");
+    }
+
+    // If the value is an alloca, it's a mutable variable or a struct, so we load from it.
+    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(symbol.value)) {
+        if (alloca->getAllocatedType()->isStructTy()) {
+            return alloca;
+        }
+        return context.getBuilder().CreateLoad(alloca->getAllocatedType(), symbol.value, m_name.c_str());
     } else {
         // Otherwise, it's an immutable value, so we can just return it.
-        return v;
+        return symbol.value;
     }
 }
 
@@ -62,15 +79,30 @@ llvm::Value* BinaryExprAST::codegen(CodeGen& context) {
     if (!L || !R)
         return nullptr;
 
+    bool isFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
+
+    if (isFloat) {
+        if (!L->getType()->isFloatingPointTy()) {
+            L = context.getBuilder().CreateSIToFP(L, llvm::Type::getDoubleTy(context.getContext()), "sitofp");
+        }
+        if (!R->getType()->isFloatingPointTy()) {
+            R = context.getBuilder().CreateSIToFP(R, llvm::Type::getDoubleTy(context.getContext()), "sitofp");
+        }
+    }
+
     switch (m_op) {
     case '+':
-        return context.getBuilder().CreateFAdd(L, R, "addtmp");
+        return isFloat ? context.getBuilder().CreateFAdd(L, R, "addtmp") : context.getBuilder().CreateAdd(L, R, "addtmp");
     case '-':
-        return context.getBuilder().CreateFSub(L, R, "subtmp");
+        return isFloat ? context.getBuilder().CreateFSub(L, R, "subtmp") : context.getBuilder().CreateSub(L, R, "subtmp");
     case '*':
-        return context.getBuilder().CreateFMul(L, R, "multmp");
+        return isFloat ? context.getBuilder().CreateFMul(L, R, "multmp") : context.getBuilder().CreateMul(L, R, "multmp");
     case '/':
-        return context.getBuilder().CreateFDiv(L, R, "divtmp");
+        return isFloat ? context.getBuilder().CreateFDiv(L, R, "divtmp") : context.getBuilder().CreateSDiv(L, R, "divtmp");
+    case '<':
+        return isFloat ? context.getBuilder().CreateFCmpULT(L, R, "cmptmp") : context.getBuilder().CreateICmpULT(L, R, "cmptmp");
+    case '>':
+        return isFloat ? context.getBuilder().CreateFCmpUGT(L, R, "cmptmp") : context.getBuilder().CreateICmpUGT(L, R, "cmptmp");
     default:
         return logErrorV("invalid binary operator");
     }
@@ -81,22 +113,61 @@ llvm::Value* LetExprAST::codegen(CodeGen& context) {
     if (!initVal)
         return nullptr;
 
-    llvm::Type* type = nullptr;
+    Type* varType = nullptr;
     if (m_type) {
-        type = m_type->getLLVMType(context);
-    } else {
-        // If type is not specified, infer it from the initializer.
-        type = initVal->getType();
+        varType = m_type.get();
+    } else if (auto* varExpr = dynamic_cast<VariableExprAST*>(m_init.get())) {
+        auto it = context.m_namedValues.find(varExpr->getName());
+        if (it != context.m_namedValues.end()) {
+            varType = it->second.type;
+        }
     }
 
-    if (m_isMutable) {
-        // For mutable variables, allocate memory on the stack.
-        llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(type, nullptr, m_varName.c_str());
+    if (!varType) {
+        // Fallback for literals, etc.
+        // This is a simplification. A real type system would be more robust.
+        if (initVal->getType()->isIntegerTy()) {
+            auto newType = std::make_unique<I32Type>();
+            varType = newType.get();
+            context.m_ownedTypes.push_back(std::move(newType));
+        } else if (initVal->getType()->isDoubleTy()) {
+            auto newType = std::make_unique<F64Type>();
+            varType = newType.get();
+            context.m_ownedTypes.push_back(std::move(newType));
+        }
+    }
+
+    llvm::Type* llvmType = varType ? varType->getLLVMType(context) : initVal->getType();
+
+    if (auto* varExpr = dynamic_cast<VariableExprAST*>(m_init.get())) {
+        auto it = context.m_namedValues.find(varExpr->getName());
+        if (it != context.m_namedValues.end()) {
+            Symbol& symbol = it->second;
+            if (dynamic_cast<StructType*>(symbol.type)) {
+                symbol.state = OwnershipState::Moved;
+            }
+        }
+    }
+
+    if (initVal->getType() != llvmType) {
+        if (llvmType->isIntegerTy() && initVal->getType()->isFloatingPointTy()) {
+            initVal = context.getBuilder().CreateFPToSI(initVal, llvmType, "fptosi");
+        } else if (llvmType->isFloatingPointTy() && initVal->getType()->isIntegerTy()) {
+            initVal = context.getBuilder().CreateSIToFP(initVal, llvmType, "sitofp");
+        }
+    }
+
+    if (m_isMutable || llvmType->isStructTy()) {
+        // For mutable variables or structs, allocate memory on the stack.
+        llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(llvmType, nullptr, m_varName.c_str());
+        if (llvmType->isStructTy()) {
+            initVal = context.getBuilder().CreateLoad(llvmType, initVal);
+        }
         context.getBuilder().CreateStore(initVal, alloca);
-        context.m_namedValues[m_varName] = alloca;
+        context.m_namedValues[m_varName] = {alloca, varType, OwnershipState::Valid};
     } else {
         // For immutable variables, just keep the value in the symbol table.
-        context.m_namedValues[m_varName] = initVal;
+        context.m_namedValues[m_varName] = {initVal, varType, OwnershipState::Valid};
     }
 
     return initVal;
@@ -202,8 +273,6 @@ llvm::Value* MemberAccessExprAST::codegen(CodeGen& context) {
     llvm::Type* structType = structVal->getType();
     if (auto* ptrType = llvm::dyn_cast<llvm::PointerType>(structType)) {
         structType = ptrType->getElementType();
-    } else {
-        return logErrorV("Expression is not a struct");
     }
 
     llvm::StructType* sType = llvm::dyn_cast<llvm::StructType>(structType);
@@ -266,8 +335,10 @@ llvm::Function* FunctionAST::codegen(CodeGen& context) {
     context.getBuilder().SetInsertPoint(bb);
 
     context.m_namedValues.clear();
+    auto& protoArgs = m_proto->getArgs();
+    int i = 0;
     for (auto& arg : theFunction->args()) {
-        context.m_namedValues[std::string(arg.getName())] = &arg;
+        context.m_namedValues[std::string(arg.getName())] = {&arg, protoArgs[i++].second.get(), OwnershipState::Valid};
     }
 
     llvm::Value* lastVal = nullptr;

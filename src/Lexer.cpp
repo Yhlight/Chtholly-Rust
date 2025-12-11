@@ -42,22 +42,33 @@ Token Lexer::getNextToken() {
     // Number: [0-9.]+
     if (isdigit(m_lastChar) || m_lastChar == '.') {
         std::string numStr;
+        bool isFloat = false;
         const char* numStart = m_bufferPtr - 1;
         while (isdigit(*m_bufferPtr) || *m_bufferPtr == '.') {
+            if (*m_bufferPtr == '.') {
+                isFloat = true;
+            }
             m_bufferPtr++;
         }
         numStr.assign(numStart, m_bufferPtr - numStart);
 
-        char* endPtr;
-        m_number = strtod(numStr.c_str(), &endPtr);
-
-        if (endPtr != numStr.c_str() + numStr.length()) {
-             // Invalid number, but we'll let the parser handle it for now.
+        if (isFloat) {
+            char* endPtr;
+            m_floatNumber = strtod(numStr.c_str(), &endPtr);
+            if (endPtr != numStr.c_str() + numStr.length()) {
+                // Invalid number, but we'll let the parser handle it for now.
+            }
+            m_lastChar = *m_bufferPtr++;
+            return Token::FloatNumber;
+        } else {
+            char* endPtr;
+            m_intNumber = strtol(numStr.c_str(), &endPtr, 10);
+            if (endPtr != numStr.c_str() + numStr.length()) {
+                // Invalid number, but we'll let the parser handle it for now.
+            }
+            m_lastChar = *m_bufferPtr++;
+            return Token::IntNumber;
         }
-
-        m_lastChar = *m_bufferPtr++;
-
-        return Token::Number;
     }
 
     // Comments
