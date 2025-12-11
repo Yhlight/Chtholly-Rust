@@ -24,8 +24,8 @@ This milestone focuses on setting up the basic infrastructure of the compiler.
 
 This milestone will focus on the static analysis of the code to enforce language rules.
 
-*   [ ] **Symbol Table:**
-    *   [ ] Implement a symbol table to store information about variables, functions, and types.
+*   [x] **Symbol Table:**
+    *   [x] Implement a symbol table to store information about variables, functions, and types.
 *   [ ] **Type Checking:**
     *   [ ] Implement type checking for primitive types.
     *   [ ] Enforce type compatibility rules for expressions and assignments.
