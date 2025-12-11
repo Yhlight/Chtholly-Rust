@@ -9,7 +9,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] Immutable and mutable variables
 - [x] Data types
 - [ ] Type casting
-- [ ] Operators
+- [x] Operators
 - [ ] Functions
 - [ ] Classes and Structs
 - [ ] Control flow (if/else, switch)

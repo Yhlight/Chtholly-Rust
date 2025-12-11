@@ -1,9 +1,10 @@
-use crate::ast::{Expression, LiteralValue, Statement, Type};
+use crate::ast::{BinaryOp, Expression, LiteralValue, Statement, Type};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until},
     character::complete::{alpha1, char, digit1, multispace0},
     combinator::{map, map_res, opt, recognize},
+    multi::fold_many0,
     sequence::{delimited, preceded, tuple},
     IResult,
 };
@@ -91,6 +92,70 @@ pub fn parse_literal(input: &str) -> IResult<&str, Expression> {
     })(input)
 }
 
+/// Parses an identifier.
+pub fn parse_identifier(input: &str) -> IResult<&str, Expression> {
+    map(alpha1, |s: &str| Expression::Identifier(s.to_string()))(input)
+}
+
+/// Parses factors, which are the highest-precedence expressions.
+/// factor = literal | identifier | "(" expression ")"
+fn parse_factor(input: &str) -> IResult<&str, Expression> {
+    delimited(
+        multispace0,
+        alt((
+            parse_literal,
+            parse_identifier,
+            delimited(char('('), parse_expression, char(')')),
+        )),
+        multispace0,
+    )(input)
+}
+
+/// Parses terms, handling multiplication, division, and modulo.
+/// term = factor { ("*" | "/" | "%") factor }
+fn parse_term(input: &str) -> IResult<&str, Expression> {
+    let (input, left) = parse_factor(input)?;
+
+    fold_many0(
+        tuple((
+            alt((
+                map(tag("*"), |_| BinaryOp::Multiply),
+                map(tag("/"), |_| BinaryOp::Divide),
+                map(tag("%"), |_| BinaryOp::Modulo),
+            )),
+            parse_factor,
+        )),
+        move || left.clone(),
+        |acc, (op, right)| Expression::Binary {
+            op,
+            left: Box::new(acc),
+            right: Box::new(right),
+        },
+    )(input)
+}
+
+/// Parses expressions, handling addition and subtraction.
+/// expression = term { ("+" | "-") term }
+pub fn parse_expression(input: &str) -> IResult<&str, Expression> {
+    let (input, left) = parse_term(input)?;
+
+    fold_many0(
+        tuple((
+            alt((
+                map(tag("+"), |_| BinaryOp::Add),
+                map(tag("-"), |_| BinaryOp::Subtract),
+            )),
+            parse_term,
+        )),
+        move || left.clone(),
+        |acc, (op, right)| Expression::Binary {
+            op,
+            left: Box::new(acc),
+            right: Box::new(right),
+        },
+    )(input)
+}
+
 /// Parses a `let` or `let mut` statement.
 pub fn parse_let_statement(input: &str) -> IResult<&str, Statement> {
     let (input, _) = tag("let")(input)?;
@@ -106,7 +171,7 @@ pub fn parse_let_statement(input: &str) -> IResult<&str, Statement> {
     let (input, _) = multispace0(input)?;
     let (input, _) = char('=')(input)?;
     let (input, _) = multispace0(input)?;
-    let (input, value) = parse_literal(input)?;
+    let (input, value) = parse_expression(input)?;
     let (input, _) = char(';')(input)?;
 
     Ok((

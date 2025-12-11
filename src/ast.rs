@@ -17,6 +17,24 @@ pub enum Statement {
 pub enum Expression {
     /// A literal value.
     Literal(LiteralValue),
+    /// An identifier used as a variable.
+    Identifier(String),
+    /// A binary operation (e.g., `a + b`).
+    Binary {
+        op: BinaryOp,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+}
+
+/// Represents a binary operator.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum BinaryOp {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulo,
 }
 
 /// Represents a literal value.

@@ -3,8 +3,10 @@
 
 // Note that we are in a different crate, so we need to use `app` to refer
 // to the library crate.
-use app::ast::{Expression, LiteralValue, Statement, Type};
-use app::parser::{parse_comment, parse_let_statement, parse_literal, parse_main_function, parse_type};
+use app::ast::{BinaryOp, Expression, LiteralValue, Statement, Type};
+use app::parser::{
+    parse_comment, parse_expression, parse_let_statement, parse_literal, parse_main_function, parse_type,
+};
 
 #[test]
 fn test_parse_single_line_comment() {
@@ -67,6 +69,67 @@ fn test_parse_let_statement_immutable() {
         is_mutable: false,
         type_annotation: Some(Type::I32),
         value: Expression::Literal(LiteralValue::Integer(10)),
+    };
+    assert_eq!(parse_let_statement(input), Ok(("", expected)));
+}
+
+#[test]
+fn test_parse_expression_simple() {
+    let input = "1 + 2";
+    let expected = Expression::Binary {
+        op: BinaryOp::Add,
+        left: Box::new(Expression::Literal(LiteralValue::Integer(1))),
+        right: Box::new(Expression::Literal(LiteralValue::Integer(2))),
+    };
+    assert_eq!(parse_expression(input), Ok(("", expected)));
+}
+
+#[test]
+fn test_parse_expression_precedence() {
+    let input = "1 + 2 * 3";
+    let expected = Expression::Binary {
+        op: BinaryOp::Add,
+        left: Box::new(Expression::Literal(LiteralValue::Integer(1))),
+        right: Box::new(Expression::Binary {
+            op: BinaryOp::Multiply,
+            left: Box::new(Expression::Literal(LiteralValue::Integer(2))),
+            right: Box::new(Expression::Literal(LiteralValue::Integer(3))),
+        }),
+    };
+    assert_eq!(parse_expression(input), Ok(("", expected)));
+}
+
+#[test]
+fn test_parse_expression_parentheses() {
+    let input = "(1 + 2) * 3";
+    let expected = Expression::Binary {
+        op: BinaryOp::Multiply,
+        left: Box::new(Expression::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expression::Literal(LiteralValue::Integer(1))),
+            right: Box::new(Expression::Literal(LiteralValue::Integer(2))),
+        }),
+        right: Box::new(Expression::Literal(LiteralValue::Integer(3))),
+    };
+    assert_eq!(parse_expression(input), Ok(("", expected)));
+}
+
+#[test]
+fn test_parse_let_statement_with_expression() {
+    let input = "let x = 1 + 2 * 3;";
+    let expected = Statement::Let {
+        name: "x".to_string(),
+        is_mutable: false,
+        type_annotation: None,
+        value: Expression::Binary {
+            op: BinaryOp::Add,
+            left: Box::new(Expression::Literal(LiteralValue::Integer(1))),
+            right: Box::new(Expression::Binary {
+                op: BinaryOp::Multiply,
+                left: Box::new(Expression::Literal(LiteralValue::Integer(2))),
+                right: Box::new(Expression::Literal(LiteralValue::Integer(3))),
+            }),
+        },
     };
     assert_eq!(parse_let_statement(input), Ok(("", expected)));
 }
