@@ -18,10 +18,10 @@ This phase focuses on implementing the fundamental building blocks of the langua
     *   [x] Support for basic syntax: comments, identifiers, literals.
 
 3.  **Variables and Data Types**
-    *   [ ] Implement `let` and `let mut` for variable declarations.
+    *   [x] Implement `let` and `let mut` for variable declarations.
     *   [ ] Support for primitive data types (`i32`, `f64`, `bool`, `char`).
     *   [ ] Type inference and explicit type annotations.
-    *   [ ] Support for basic operators (`+`, `-`, `*`, `/`, `=`, `==`, etc.).
+    *   [x] Support for basic operators (`+`, `-`, `*`, `/`, `=`, `==`, etc.).
 
 4.  **Control Flow**
     *   [ ] Implement `if-else` expressions.

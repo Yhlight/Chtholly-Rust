@@ -38,6 +38,17 @@ namespace Chtholly
         std::unique_ptr<Expr> right;
     };
 
+    class GroupingExpr : public Expr
+    {
+    public:
+        GroupingExpr(std::unique_ptr<Expr> expression)
+            : expression(std::move(expression)) {}
+
+        std::string Accept(ExprVisitor<std::string>& visitor) override;
+
+        std::unique_ptr<Expr> expression;
+    };
+
     class BinaryExpr : public Expr
     {
     public:
@@ -58,11 +69,13 @@ namespace Chtholly
         virtual T Visit(LiteralExpr& expr) = 0;
         virtual T Visit(UnaryExpr& expr) = 0;
         virtual T Visit(BinaryExpr& expr) = 0;
+        virtual T Visit(GroupingExpr& expr) = 0;
     };
 
     inline std::string LiteralExpr::Accept(ExprVisitor<std::string>& visitor) { return visitor.Visit(*this); }
     inline std::string UnaryExpr::Accept(ExprVisitor<std::string>& visitor) { return visitor.Visit(*this); }
     inline std::string BinaryExpr::Accept(ExprVisitor<std::string>& visitor) { return visitor.Visit(*this); }
+    inline std::string GroupingExpr::Accept(ExprVisitor<std::string>& visitor) { return visitor.Visit(*this); }
 }
 
 #endif //CHTHOLLY_EXPR_H

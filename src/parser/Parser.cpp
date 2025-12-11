@@ -31,14 +31,19 @@ namespace Chtholly
 
     std::unique_ptr<Stmt> Parser::LetDeclaration()
     {
+        bool is_mutable = Match({TokenType::Mut});
         Token name = Consume(TokenType::Identifier, "Expect variable name.");
         std::unique_ptr<Expr> initializer = nullptr;
         if (Match({TokenType::Equal}))
         {
             initializer = Expression();
         }
+        else
+        {
+            throw std::runtime_error("Expect initializer in let declaration.");
+        }
         Consume(TokenType::Semicolon, "Expect ';' after variable declaration.");
-        return std::make_unique<LetDeclStmt>(name, std::move(initializer));
+        return std::make_unique<LetDeclStmt>(name, std::move(initializer), is_mutable);
     }
 
     std::unique_ptr<Stmt> Parser::Statement()
@@ -55,6 +60,41 @@ namespace Chtholly
 
     std::unique_ptr<Expr> Parser::Expression()
     {
+        return Term();
+    }
+
+    std::unique_ptr<Expr> Parser::Term()
+    {
+        std::unique_ptr<Expr> expr = Factor();
+        while (Match({TokenType::Minus, TokenType::Plus}))
+        {
+            Token op = Previous();
+            std::unique_ptr<Expr> right = Factor();
+            expr = std::make_unique<BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+
+    std::unique_ptr<Expr> Parser::Factor()
+    {
+        std::unique_ptr<Expr> expr = Unary();
+        while (Match({TokenType::Slash, TokenType::Asterisk}))
+        {
+            Token op = Previous();
+            std::unique_ptr<Expr> right = Unary();
+            expr = std::make_unique<BinaryExpr>(std::move(expr), op, std::move(right));
+        }
+        return expr;
+    }
+
+    std::unique_ptr<Expr> Parser::Unary()
+    {
+        if (Match({TokenType::Bang, TokenType::Minus}))
+        {
+            Token op = Previous();
+            std::unique_ptr<Expr> right = Unary();
+            return std::make_unique<UnaryExpr>(op, std::move(right));
+        }
         return Primary();
     }
 
@@ -65,7 +105,14 @@ namespace Chtholly
             return std::make_unique<LiteralExpr>(Previous());
         }
 
-        return nullptr;
+        if (Match({TokenType::LParen}))
+        {
+            std::unique_ptr<Expr> expr = Expression();
+            Consume(TokenType::RParen, "Expect ')' after expression.");
+            return std::make_unique<GroupingExpr>(std::move(expr));
+        }
+
+        throw std::runtime_error("Expect expression.");
     }
 
     bool Parser::Match(const std::vector<TokenType>& types)

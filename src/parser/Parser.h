@@ -22,6 +22,9 @@ namespace Chtholly
         std::unique_ptr<Stmt> Statement();
         std::unique_ptr<Stmt> ExpressionStatement();
         std::unique_ptr<Expr> Expression();
+        std::unique_ptr<Expr> Term();
+        std::unique_ptr<Expr> Factor();
+        std::unique_ptr<Expr> Unary();
         std::unique_ptr<Expr> Primary();
 
         bool Match(const std::vector<TokenType>& types);

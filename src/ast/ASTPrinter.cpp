@@ -37,9 +37,25 @@ namespace Chtholly
         return Parenthesize(expr.op.GetValue(), *expr.left, *expr.right);
     }
 
+    std::string ASTPrinter::Visit(GroupingExpr& expr)
+    {
+        return Parenthesize("group", *expr.expression);
+    }
+
     std::string ASTPrinter::Visit(LetDeclStmt& stmt)
     {
-        return "(let " + stmt.name.GetValue() + " = " + Print(*stmt.initializer) + ")";
+        std::string result = "(let";
+        if (stmt.is_mutable)
+        {
+            result += " mut";
+        }
+        result += " " + stmt.name.GetValue();
+        if (stmt.initializer)
+        {
+            result += " = " + Print(*stmt.initializer);
+        }
+        result += ")";
+        return result;
     }
 
     std::string ASTPrinter::Visit(ExpressionStmt& stmt)

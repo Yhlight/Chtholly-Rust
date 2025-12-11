@@ -19,6 +19,7 @@ namespace Chtholly
         std::string Visit(LiteralExpr& expr) override;
         std::string Visit(UnaryExpr& expr) override;
         std::string Visit(BinaryExpr& expr) override;
+        std::string Visit(GroupingExpr& expr) override;
 
         std::string Visit(LetDeclStmt& stmt) override;
         std::string Visit(ExpressionStmt& stmt) override;

@@ -21,13 +21,14 @@ namespace Chtholly
     class LetDeclStmt : public Stmt
     {
     public:
-        LetDeclStmt(Token name, std::unique_ptr<Expr> initializer)
-            : name(std::move(name)), initializer(std::move(initializer)) {}
+        LetDeclStmt(Token name, std::unique_ptr<Expr> initializer, bool is_mutable)
+            : name(std::move(name)), initializer(std::move(initializer)), is_mutable(is_mutable) {}
 
         std::string Accept(StmtVisitor<std::string>& visitor) override;
 
         Token name;
         std::unique_ptr<Expr> initializer;
+        bool is_mutable;
     };
 
     class ExpressionStmt : public Stmt
