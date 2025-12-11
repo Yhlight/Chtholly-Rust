@@ -16,6 +16,7 @@ private:
     SymbolTable symbolTable;
     TypeResolver typeResolver;
     FunctionDeclAST* currentFunction = nullptr;
+    int currentFunctionLifetime = -1;
     bool inSwitch = false;
 
     std::shared_ptr<Type> visit(ASTNode& node);

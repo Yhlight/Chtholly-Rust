@@ -3,10 +3,12 @@
 SymbolTable::SymbolTable() {
     // Start with a single global scope
     scopeStack.emplace_back();
+    currentLifetime = 0;
 }
 
 void SymbolTable::enterScope() {
     scopeStack.emplace_back();
+    currentLifetime++;
 }
 
 void SymbolTable::leaveScope() {
@@ -23,7 +25,7 @@ bool SymbolTable::addSymbol(const std::string& name, std::shared_ptr<Type> type,
     if (scopeStack.back().count(name)) {
         return false;
     }
-    scopeStack.back()[name] = {name, std::move(type), isMutable};
+    scopeStack.back()[name] = {name, std::move(type), isMutable, false, 0, false, false, currentLifetime};
     return true;
 }
 

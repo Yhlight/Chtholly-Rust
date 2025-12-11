@@ -16,6 +16,7 @@ struct Symbol {
     int immutableBorrows = 0;
     bool mutableBorrow = false;
     bool borrowedInScope = false;
+    int lifetime;
 };
 
 // A single scope, mapping names to symbols
@@ -40,6 +41,8 @@ public:
     // Returns all symbols in the current scope.
     Scope& getCurrentScope();
 
+    int getCurrentLifetime() const { return currentLifetime; }
+
     // Type management
     bool add_type(const std::string& name, std::shared_ptr<Type> type);
     std::shared_ptr<Type> find_type(const std::string& name);
@@ -47,6 +50,7 @@ public:
 private:
     std::vector<Scope> scopeStack;
     std::unordered_map<std::string, std::shared_ptr<Type>> types;
+    int currentLifetime;
 };
 
 #endif // CHTHOLLY_SYMBOLTABLE_H

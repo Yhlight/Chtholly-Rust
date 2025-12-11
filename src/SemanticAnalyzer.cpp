@@ -211,6 +211,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
     auto returnType = typeResolver.resolve(*node.returnType);
     currentFunction = &node;
+    currentFunctionLifetime = symbolTable.getCurrentLifetime();
     symbolTable.enterScope();
     for (auto& arg : node.args) {
         if(!symbolTable.addSymbol(arg.name, arg.resolvedType, false)) {
@@ -235,6 +236,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
 
     symbolTable.leaveScope();
     currentFunction = nullptr;
+    currentFunctionLifetime = -1;
     return nullptr; // Statements don't have a type
 }
 
@@ -507,6 +509,15 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
         if (returnType->toString() != expectedType->toString()) {
             throw std::runtime_error("Return type mismatch: expected " + expectedType->toString() + ", got " + returnType->toString());
         }
+
+        if (auto* borrowExpr = dynamic_cast<BorrowExprAST*>(node.returnValue.get())) {
+            if (auto* varExpr = dynamic_cast<VariableExprAST*>(borrowExpr->expression.get())) {
+                Symbol* symbol = symbolTable.findSymbol(varExpr->name);
+                if (symbol->lifetime > currentFunctionLifetime) {
+                    throw std::runtime_error("Cannot return a reference to a local variable '" + varExpr->name + "'.");
+                }
+            }
+        }
     } else {
         auto expectedType = typeResolver.resolve(*currentFunction->returnType);
         if (expectedType->toString() != "void") {
@@ -641,6 +652,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
             }
             symbol->immutableBorrows++;
             symbol->borrowedInScope = true;
+        }
+
         }
     }
     node.type = std::make_shared<ReferenceType>(exprType, node.isMutable);
