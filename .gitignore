@@ -1,0 +1,20 @@
+# Build artifacts
+build/
+*.cmake
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+
+# Binaries
+*.out
+*.exe
+*.dll
+*.so
+*.a
+
+# IDE files
+.vscode/
+.idea/
+
+# Other
+*.log
