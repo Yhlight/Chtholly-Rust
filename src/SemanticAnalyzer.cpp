@@ -4,10 +4,10 @@
 #include <utility>
 #include "Type.h"
 
-SemanticAnalyzer::SemanticAnalyzer() : typeResolver(symbolTable) {
+SemanticAnalyzer::SemanticAnalyzer() : typeResolver(symbolTable, lifetimeManager) {
     // Pre-populate with built-in functions
     auto printlnType = std::make_shared<FunctionType>(); // This is a simplification
-    symbolTable.addSymbol("println", printlnType, false);
+    symbolTable.addSymbol("println", printlnType, false, lifetimeManager.getCurrentLifetime());
 }
 
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
@@ -27,7 +27,7 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
                 funcType->argTypes.push_back(arg.resolvedType);
             }
 
-            if (!symbolTable.addSymbol(funcDecl->name, funcType, false)) {
+            if (!symbolTable.addSymbol(funcDecl->name, funcType, false, lifetimeManager.getCurrentLifetime())) {
                 throw std::runtime_error("Function '" + funcDecl->name + "' already declared in this scope.");
             }
         }
@@ -36,6 +36,9 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
     // Second pass: analyze all statements
     for (auto& stmt : ast.statements) {
         if (!dynamic_cast<StructDeclAST*>(stmt.get()) && !dynamic_cast<ClassDeclAST*>(stmt.get())) {
+            if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
+                elideLifetimes(*funcDecl);
+            }
             visit(*stmt);
         }
     }
@@ -142,7 +145,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
         throw std::runtime_error("Variable '" + node.varName + "' must have a type annotation or an initializer.");
     }
 
-    if (!symbolTable.addSymbol(node.varName, varType, node.isMutable)) {
+    if (!symbolTable.addSymbol(node.varName, varType, node.isMutable, lifetimeManager.getCurrentLifetime())) {
         throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
     }
     return nullptr; // Statements don't have a type
@@ -208,12 +211,31 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
 }
 
 
+void SemanticAnalyzer::elideLifetimes(FunctionDeclAST& node) {
+    // For now, we'll just assign a unique lifetime to each elided lifetime.
+    // This is a simplification of the full elision rules.
+    Lifetime nextLifetime = 0;
+    for (auto& arg : node.args) {
+        if (auto* refType = dynamic_cast<ReferenceType*>(arg.resolvedType.get())) {
+            if (refType->lifetime == 0) {
+                refType->lifetime = nextLifetime++;
+            }
+        }
+    }
+    if (auto* refType = dynamic_cast<ReferenceType*>(typeResolver.resolve(*node.returnType).get())) {
+        if (refType->lifetime == 0) {
+            refType->lifetime = nextLifetime++;
+        }
+    }
+}
+
 std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
     auto returnType = typeResolver.resolve(*node.returnType);
     currentFunction = &node;
     symbolTable.enterScope();
+    lifetimeManager.enterScope();
     for (auto& arg : node.args) {
-        if(!symbolTable.addSymbol(arg.name, arg.resolvedType, false)) {
+        if(!symbolTable.addSymbol(arg.name, arg.resolvedType, false, lifetimeManager.getCurrentLifetime())) {
              throw std::runtime_error("Argument '" + arg.name + "' already declared in this scope.");
         }
     }
@@ -234,12 +256,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
 
 
     symbolTable.leaveScope();
+    lifetimeManager.leaveScope();
     currentFunction = nullptr;
     return nullptr; // Statements don't have a type
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
     symbolTable.enterScope();
+    lifetimeManager.enterScope();
     for (auto& stmt : node.statements) {
         if(stmt) visit(*stmt);
     }
@@ -254,6 +278,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BlockStmtAST& node) {
     }
 
     symbolTable.leaveScope();
+    lifetimeManager.leaveScope();
     return nullptr; // Statements don't have a type
 }
 
@@ -478,9 +503,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
     }
 
     // Check arguments
-    for (auto& arg : node.args) {
-        visit(*arg);
-        if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
+    for (size_t i = 0; i < node.args.size(); ++i) {
+        auto argType = visit(*node.args[i]);
+        if (auto* refType = dynamic_cast<ReferenceType*>(argType.get())) {
+            if (refType->lifetime > lifetimeManager.getCurrentLifetime()) {
+                throw std::runtime_error("Argument " + std::to_string(i) + " does not live long enough.");
+            }
+        }
+        if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.args[i].get())) {
             Symbol* argSymbol = symbolTable.findSymbol(varExpr->name);
             if (argSymbol && !argSymbol->type->isCopy()) {
                 argSymbol->isMoved = true;
@@ -600,6 +630,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(DoWhileStmtAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ForStmtAST& node) {
     symbolTable.enterScope();
+    lifetimeManager.enterScope();
     if (node.init) {
         visit(*node.init);
     }
@@ -614,6 +645,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ForStmtAST& node) {
     }
     visit(*node.body);
     symbolTable.leaveScope();
+    lifetimeManager.leaveScope();
     return nullptr;
 }
 
@@ -626,6 +658,9 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
     auto exprType = visit(*node.expression);
     if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.expression.get())) {
         Symbol* symbol = symbolTable.findSymbol(varExpr->name);
+        if (symbol->lifetime > lifetimeManager.getCurrentLifetime()) {
+            throw std::runtime_error("Variable '" + varExpr->name + "' does not live long enough.");
+        }
         if (node.isMutable) {
             if (!symbol->isMutable) {
                 throw std::runtime_error("Cannot mutably borrow immutable variable '" + varExpr->name + "'.");
@@ -642,14 +677,16 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
             symbol->immutableBorrows++;
             symbol->borrowedInScope = true;
         }
+        node.type = std::make_shared<ReferenceType>(exprType, node.isMutable, symbol->lifetime);
+        return node.type;
     }
-    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable);
+    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable, lifetimeManager.getCurrentLifetime());
     return node.type;
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ReferenceTypeAST& node) {
     auto referencedType = typeResolver.resolve(*node.referencedType);
-    return std::make_shared<ReferenceType>(referencedType, node.isMutable);
+    return std::make_shared<ReferenceType>(referencedType, node.isMutable, lifetimeManager.getCurrentLifetime());
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayLiteralExprAST& node) {

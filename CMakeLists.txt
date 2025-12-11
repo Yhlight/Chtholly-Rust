@@ -12,7 +12,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 # Add the executable
-add_executable(chtholly src/main.cpp src/Lexer.cpp src/Parser.cpp src/SymbolTable.cpp src/SemanticAnalyzer.cpp src/TokenTypeToString.cpp src/TypeResolver.cpp src/CodeGenerator.cpp)
+add_executable(chtholly src/main.cpp src/Lexer.cpp src/Parser.cpp src/SymbolTable.cpp src/SemanticAnalyzer.cpp src/TokenTypeToString.cpp src/TypeResolver.cpp src/CodeGenerator.cpp src/LifetimeManager.cpp)
 
 # Link against LLVM libraries
 target_link_libraries(chtholly PRIVATE

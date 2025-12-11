@@ -9,10 +9,11 @@
 #include <map>
 
 class SymbolTable;
+class LifetimeManager;
 
 class CodeGenerator {
 public:
-    CodeGenerator(SymbolTable& symbolTable);
+    CodeGenerator(SymbolTable& symbolTable, LifetimeManager& lifetimeManager);
     void generate(BlockStmtAST& ast);
     void dump() const;
 
@@ -24,6 +25,7 @@ private:
     std::vector<llvm::AllocaInst*> ownedValues; // Track owned values
     llvm::BasicBlock* currentSwitchExit = nullptr;
     TypeResolver typeResolver;
+    LifetimeManager& lifetimeManager;
     bool isMemberAccess = false;
 
     void createStringSwitch(SwitchStmtAST& node);

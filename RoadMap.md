@@ -47,7 +47,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
     - A mutable reference cannot coexist with any other references (mutable or immutable).
 
 ### Milestone 2.3: Lifetime Management
-- [ ] Implement lifetime analysis to prevent dangling references.
+- [x] Implement lifetime analysis to prevent dangling references.
 - [ ] Ensure that no reference can outlive the data it points to.
 - [ ] Implement lifetime elision rules to automatically infer lifetimes in common scenarios, minimizing the need for explicit annotations.
 

@@ -4,19 +4,25 @@
 #include "AST.h"
 #include "SymbolTable.h"
 #include "TypeResolver.h"
+#include "LifetimeManager.h"
 #include <memory>
+#include <vector>
 
 class SemanticAnalyzer {
 public:
     SemanticAnalyzer();
     void analyze(BlockStmtAST& ast);
     SymbolTable& getSymbolTable() { return symbolTable; }
+    LifetimeManager& getLifetimeManager() { return lifetimeManager; }
 
 private:
     SymbolTable symbolTable;
     TypeResolver typeResolver;
+    LifetimeManager lifetimeManager;
     FunctionDeclAST* currentFunction = nullptr;
     bool inSwitch = false;
+
+    void elideLifetimes(FunctionDeclAST& node);
 
     std::shared_ptr<Type> visit(ASTNode& node);
     std::shared_ptr<Type> visit(VarDeclStmtAST& node);

@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include "Lifetime.h"
 
 class Type {
 public:
@@ -164,9 +165,10 @@ class ReferenceType : public Type {
 public:
     std::shared_ptr<Type> referencedType;
     bool isMutable;
+    Lifetime lifetime;
 
-    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable)
-        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable) {}
+    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable, Lifetime lifetime)
+        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable), lifetime(lifetime) {}
 
     std::string toString() const override {
         return std::string("&") + (isMutable ? "mut " : "") + referencedType->toString();
