@@ -17,13 +17,12 @@ Token Lexer::getNextToken() {
 
     // Identifier: [a-zA-Z][a-zA-Z0-9]*
     if (isalpha(m_lastChar)) {
-        m_identifier = m_lastChar;
-        const char* idStart = m_bufferPtr - 1;
+        std::string identifier;
+        identifier += m_lastChar;
         while (isalnum(*m_bufferPtr)) {
-            m_bufferPtr++;
+            identifier += *m_bufferPtr++;
         }
-        m_identifier.assign(idStart, m_bufferPtr - idStart);
-
+        m_identifier = identifier;
         m_lastChar = *m_bufferPtr++;
 
         if (m_identifier == "fn") return Token::Fn;
@@ -33,16 +32,18 @@ Token Lexer::getNextToken() {
 
     // Number: [0-9.]+
     if (isdigit(m_lastChar) || m_lastChar == '.') {
+        std::string numStr;
         const char* numStart = m_bufferPtr - 1;
         while (isdigit(*m_bufferPtr) || *m_bufferPtr == '.') {
             m_bufferPtr++;
         }
+        numStr.assign(numStart, m_bufferPtr - numStart);
 
         char* endPtr;
-        m_number = strtod(numStart, &endPtr);
+        m_number = strtod(numStr.c_str(), &endPtr);
 
-        if (endPtr == numStart) {
-            return Token::Unknown; // No valid number found
+        if (endPtr != numStr.c_str() + numStr.length()) {
+             // Invalid number, but we'll let the parser handle it for now.
         }
 
         m_lastChar = *m_bufferPtr++;
@@ -50,19 +51,16 @@ Token Lexer::getNextToken() {
         return Token::Number;
     }
 
-    // Comments: //
+    // Comments
     if (m_lastChar == '/') {
         if (*m_bufferPtr == '/') {
-            // This is a single-line comment.
-            // Consume the rest of the line.
+            // Single line comment
             do {
                 m_lastChar = *m_bufferPtr++;
             } while (m_lastChar != '\n' && m_lastChar != '\r' && m_lastChar != 0);
 
-            // If we're not at the end of the file, recurse to get the next token.
-            if (m_lastChar != 0) {
+            if (m_lastChar != 0)
                 return getNextToken();
-            }
         }
     }
 
@@ -82,7 +80,8 @@ Token Lexer::getNextToken() {
         case ':': return Token::Colon;
         case ';': return Token::Semicolon;
         case '=': return Token::Assign;
-        default: return Token::Unknown;
+        case ',': return Token::Comma;
+        default: return static_cast<Token>(thisChar);
     }
 }
 

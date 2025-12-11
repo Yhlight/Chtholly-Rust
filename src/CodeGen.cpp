@@ -12,14 +12,13 @@ void CodeGen::generate(FunctionAST& ast) {
     ast.codegen(*this);
 }
 
-llvm::Value* NumberExprAST::codegen(CodeGen& context) {
-    return llvm::ConstantFP::get(context.getContext(), llvm::APFloat(m_val));
-}
-
-// Helper to create a basic error message.
 llvm::Value* logErrorV(const char* str) {
     fprintf(stderr, "Error: %s\n", str);
     return nullptr;
+}
+
+llvm::Value* NumberExprAST::codegen(CodeGen& context) {
+    return llvm::ConstantFP::get(context.getContext(), llvm::APFloat(m_val));
 }
 
 llvm::Value* VariableExprAST::codegen(CodeGen& context) {
@@ -27,7 +26,41 @@ llvm::Value* VariableExprAST::codegen(CodeGen& context) {
     if (!v) {
         return logErrorV("Unknown variable name");
     }
-    return v;
+    return context.getBuilder().CreateLoad(llvm::Type::getDoubleTy(context.getContext()), v, m_name.c_str());
+}
+
+llvm::Value* BinaryExprAST::codegen(CodeGen& context) {
+    llvm::Value *L = m_lhs->codegen(context);
+    llvm::Value *R = m_rhs->codegen(context);
+    if (!L || !R)
+        return nullptr;
+
+    switch (m_op) {
+    case '+':
+        return context.getBuilder().CreateFAdd(L, R, "addtmp");
+    case '-':
+        return context.getBuilder().CreateFSub(L, R, "subtmp");
+    case '*':
+        return context.getBuilder().CreateFMul(L, R, "multmp");
+    case '/':
+        return context.getBuilder().CreateFDiv(L, R, "divtmp");
+    default:
+        return logErrorV("invalid binary operator");
+    }
+}
+
+llvm::Value* LetExprAST::codegen(CodeGen& context) {
+    llvm::Value* initVal = m_init->codegen(context);
+    if (!initVal)
+        return nullptr;
+
+    llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(llvm::Type::getDoubleTy(context.getContext()), 0, m_varName.c_str());
+    context.getBuilder().CreateStore(initVal, alloca);
+
+    // Add the variable to the symbol table.
+    context.m_namedValues[m_varName] = alloca;
+
+    return initVal;
 }
 
 llvm::Function* PrototypeAST::codegen(CodeGen& context) {
@@ -60,8 +93,13 @@ llvm::Function* FunctionAST::codegen(CodeGen& context) {
         context.m_namedValues[std::string(arg.getName())] = &arg;
     }
 
-    if (llvm::Value* retVal = m_body->codegen(context)) {
-        context.getBuilder().CreateRet(retVal);
+    llvm::Value* lastVal = nullptr;
+    for (auto& expr : m_body) {
+        lastVal = expr->codegen(context);
+    }
+
+    if (lastVal) {
+        context.getBuilder().CreateRet(lastVal);
         llvm::verifyFunction(*theFunction);
         return theFunction;
     }

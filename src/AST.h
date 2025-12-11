@@ -28,6 +28,24 @@ public:
     llvm::Value* codegen(CodeGen& context) override;
 };
 
+class BinaryExprAST : public ExprAST {
+    char m_op;
+    std::unique_ptr<ExprAST> m_lhs, m_rhs;
+public:
+    BinaryExprAST(char op, std::unique_ptr<ExprAST> lhs, std::unique_ptr<ExprAST> rhs)
+        : m_op(op), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
+class LetExprAST : public ExprAST {
+    std::string m_varName;
+    std::unique_ptr<ExprAST> m_init;
+public:
+    LetExprAST(const std::string& varName, std::unique_ptr<ExprAST> init)
+        : m_varName(varName), m_init(std::move(init)) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
 // // Expression class for a function call.
 // class CallExprAST : public ExprAST {
 //     std::string m_callee;
@@ -50,9 +68,9 @@ public:
 
 class FunctionAST {
     std::unique_ptr<PrototypeAST> m_proto;
-    std::unique_ptr<ExprAST> m_body;
+    std::vector<std::unique_ptr<ExprAST>> m_body;
 public:
-    FunctionAST(std::unique_ptr<PrototypeAST> proto, std::unique_ptr<ExprAST> body)
+    FunctionAST(std::unique_ptr<PrototypeAST> proto, std::vector<std::unique_ptr<ExprAST>> body)
         : m_proto(std::move(proto)), m_body(std::move(body)) {}
 
     llvm::Function* codegen(CodeGen& context);
