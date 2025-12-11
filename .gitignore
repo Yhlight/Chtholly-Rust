@@ -1,0 +1,14 @@
+# Compiled output
+target/
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
