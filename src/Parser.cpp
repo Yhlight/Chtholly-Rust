@@ -19,12 +19,12 @@ Parser::Parser(Lexer& lexer)
     InitializePrecedence();
 }
 
-std::vector<std::unique_ptr<StmtAST>> Parser::parse() {
-    std::vector<std::unique_ptr<StmtAST>> statements;
+std::vector<std::unique_ptr<FunctionAST>> Parser::parse() {
+    std::vector<std::unique_ptr<FunctionAST>> functions;
     while (currentToken.type != TokenType::EndOfFile) {
-        statements.push_back(parseStatement());
+        functions.push_back(parseFunctionDefinition());
     }
-    return statements;
+    return functions;
 }
 
 std::unique_ptr<StmtAST> Parser::parseStatement() {
@@ -32,7 +32,7 @@ std::unique_ptr<StmtAST> Parser::parseStatement() {
         case TokenType::Let:
             return parseVarDeclStatement();
         default:
-            throw std::runtime_error("Unexpected token: " + currentToken.value);
+            throw std::runtime_error("Unexpected token in statement: " + currentToken.value);
     }
 }
 
@@ -118,7 +118,7 @@ std::unique_ptr<ExprAST> Parser::parseIdentifierExpression() {
 
 std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int ExprPrec, std::unique_ptr<ExprAST> LHS) {
     while (true) {
-        int TokPrec = GetTokPrecedence();
+        int TokPrec = getTokPrecedence();
 
         if (TokPrec < ExprPrec)
             return LHS;
@@ -128,7 +128,7 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int ExprPrec, std::unique_ptr<Exp
 
         auto RHS = parsePrimary();
 
-        int NextPrec = GetTokPrecedence();
+        int NextPrec = getTokPrecedence();
         if (TokPrec < NextPrec) {
             RHS = parseBinOpRHS(TokPrec + 1, std::move(RHS));
         }
@@ -137,7 +137,7 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int ExprPrec, std::unique_ptr<Exp
     }
 }
 
-int Parser::GetTokPrecedence() {
+int Parser::getTokPrecedence() {
     if (currentToken.type < TokenType::Plus || currentToken.type > TokenType::MinusMinus)
         return -1;
 
@@ -147,6 +147,49 @@ int Parser::GetTokPrecedence() {
     return TokPrec;
 }
 
+std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
+    std::string FnName = currentToken.value;
+    consume(TokenType::Identifier);
+
+    consume(TokenType::LeftParen);
+    std::vector<std::pair<std::string, std::string>> ArgNames;
+    while (currentToken.type == TokenType::Identifier) {
+        std::string ArgName = currentToken.value;
+        consume(TokenType::Identifier);
+        consume(TokenType::Colon);
+        std::string ArgType = parseType();
+        ArgNames.push_back({ArgName, ArgType});
+        if (currentToken.type == TokenType::RightParen)
+            break;
+        consume(TokenType::Comma);
+    }
+    consume(TokenType::RightParen);
+
+    consume(TokenType::Colon);
+    std::string ReturnType = parseType();
+
+    return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames), ReturnType);
+}
+
+std::unique_ptr<FunctionAST> Parser::parseFunctionDefinition() {
+    consume(TokenType::Fn);
+    auto Proto = parsePrototype();
+    consume(TokenType::LeftBrace);
+
+    std::vector<std::unique_ptr<StmtAST>> Body;
+    while (currentToken.type != TokenType::RightBrace) {
+        Body.push_back(parseStatement());
+    }
+
+    consume(TokenType::RightBrace);
+    return std::make_unique<FunctionAST>(std::move(Proto), std::move(Body));
+}
+
+std::string Parser::parseType() {
+    std::string TypeName = currentToken.value;
+    consume(TokenType::Identifier);
+    return TypeName;
+}
 
 void Parser::consume(TokenType expected) {
     if (currentToken.type == expected) {

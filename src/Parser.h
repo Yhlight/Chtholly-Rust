@@ -11,7 +11,7 @@ class Parser {
 public:
     Parser(Lexer& lexer);
 
-    std::vector<std::unique_ptr<StmtAST>> parse();
+    std::vector<std::unique_ptr<FunctionAST>> parse();
 
 private:
     std::unique_ptr<StmtAST> parseStatement();
@@ -21,8 +21,11 @@ private:
     std::unique_ptr<ExprAST> parseNumberExpression();
     std::unique_ptr<ExprAST> parseBinOpRHS(int ExprPrec, std::unique_ptr<ExprAST> LHS);
     std::unique_ptr<ExprAST> parseIdentifierExpression();
+    std::unique_ptr<PrototypeAST> parsePrototype();
+    std::unique_ptr<FunctionAST> parseFunctionDefinition();
+    std::string parseType();
+    int getTokPrecedence();
 
-    int GetTokPrecedence();
     void consume(TokenType expected);
 
     Lexer& lexer;
