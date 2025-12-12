@@ -12,12 +12,12 @@ pub struct CodeGenerator<'a, 'ctx> {
     module: Module<'ctx>,
     builder: Builder<'ctx>,
     variables: HashMap<String, PointerValue<'ctx>>,
-    semantic_analyzer: &'a SemanticAnalyzer,
+    semantic_analyzer: &'a mut SemanticAnalyzer,
     current_function: Option<FunctionValue<'ctx>>,
 }
 
 impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
-    pub fn new(context: &'ctx Context, semantic_analyzer: &'a SemanticAnalyzer) -> Self {
+    pub fn new(context: &'ctx Context, semantic_analyzer: &'a mut SemanticAnalyzer) -> Self {
         let module = context.create_module("main");
         let builder = context.create_builder();
         CodeGenerator {
@@ -50,7 +50,7 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
         match statement {
             Statement::Let { name, value, .. } => {
                 let ty = self.get_type(value)?;
-                let alloca = self.create_entry_block_alloca(name, ty);
+                let alloca = self.create_entry_block_alloca(name, ty)?;
                 let value = self.generate_expression(value)?;
                 self.builder.build_store(alloca, value).map_err(|_| "Failed to build store")?;
                 self.variables.insert(name.clone(), alloca);
@@ -62,7 +62,40 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
             Statement::Expression(expr) => {
                 self.generate_expression(expr)?;
             }
+            Statement::Block(statements) => {
+                self.generate_block_statement(statements)?;
+            }
+            Statement::If { condition, consequence, alternative } => {
+                let cond = self.generate_expression(condition)?;
+
+                let then_block = self.context.append_basic_block(self.current_function.unwrap(), "then");
+                let else_block = self.context.append_basic_block(self.current_function.unwrap(), "else");
+                let merge_block = self.context.append_basic_block(self.current_function.unwrap(), "merge");
+
+                self.builder.build_conditional_branch(cond.into_int_value(), then_block, else_block).map_err(|_| "Failed to build conditional branch")?;
+
+                self.builder.position_at_end(then_block);
+                self.generate_statement(consequence)?;
+                self.builder.build_unconditional_branch(merge_block).map_err(|_| "Failed to build unconditional branch")?;
+
+                self.builder.position_at_end(else_block);
+                if let Some(alt) = alternative {
+                    self.generate_statement(alt)?;
+                }
+                self.builder.build_unconditional_branch(merge_block).map_err(|_| "Failed to build unconditional branch")?;
+
+                self.builder.position_at_end(merge_block);
+            }
         }
+        Ok(())
+    }
+
+    fn generate_block_statement(&mut self, statements: &[Statement]) -> Result<(), &'static str> {
+        self.semantic_analyzer.enter_scope();
+        for statement in statements {
+            self.generate_statement(statement)?;
+        }
+        self.semantic_analyzer.leave_scope();
         Ok(())
     }
 
@@ -150,7 +183,7 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
         }
     }
 
-    fn create_entry_block_alloca(&self, name: &str, ty: BasicTypeEnum<'ctx>) -> PointerValue<'ctx> {
+    fn create_entry_block_alloca(&self, name: &str, ty: BasicTypeEnum<'ctx>) -> Result<PointerValue<'ctx>, &'static str> {
         let builder = self.context.create_builder();
         let entry = self.current_function.unwrap().get_first_basic_block().unwrap();
 
@@ -159,7 +192,7 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
             None => builder.position_at_end(entry),
         }
 
-        builder.build_alloca(ty, name).unwrap()
+        builder.build_alloca(ty, name).map_err(|_| "Failed to build alloca")
     }
 
     pub fn print_to_string(&self) -> String {

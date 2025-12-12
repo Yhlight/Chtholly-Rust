@@ -50,6 +50,7 @@ impl<'a> Parser<'a> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
+            Token::If => self.parse_if_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -101,6 +102,63 @@ impl<'a> Parser<'a> {
         }
 
         Some(Statement::Return(value))
+    }
+
+    fn parse_if_statement(&mut self) -> Option<Statement> {
+        if !self.peek_token_is(&Token::LParen) {
+            self.peek_error(&Token::LParen);
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.peek_token_is(&Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return None;
+        }
+        self.next_token();
+
+        if !self.peek_token_is(&Token::LBrace) {
+            self.peek_error(&Token::LBrace);
+            return None;
+        }
+        self.next_token();
+
+        let consequence = self.parse_block_statement()?;
+
+        let alternative = if self.peek_token_is(&Token::Else) {
+            self.next_token();
+            if !self.peek_token_is(&Token::LBrace) {
+                self.peek_error(&Token::LBrace);
+                return None;
+            }
+            self.next_token();
+            Some(Box::new(self.parse_block_statement()?))
+        } else {
+            None
+        };
+
+        Some(Statement::If {
+            condition,
+            consequence: Box::new(consequence),
+            alternative,
+        })
+    }
+
+    fn parse_block_statement(&mut self) -> Option<Statement> {
+        let mut statements = Vec::new();
+        self.next_token();
+
+        while !self.current_token_is(Token::RBrace) && !self.current_token_is(Token::Eof) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+
+        Some(Statement::Block(statements))
     }
 
     fn parse_expression_statement(&mut self) -> Option<Statement> {
@@ -170,15 +228,12 @@ impl<'a> Parser<'a> {
         Some(Expression::Prefix(token, Box::new(right)))
     }
 
+    fn current_token_is(&self, token: Token) -> bool {
+        std::mem::discriminant(&self.current_token) == std::mem::discriminant(&token)
+    }
+
     fn peek_token_is(&self, token: &Token) -> bool {
-        matches!(
-            (&self.peek_token, token),
-            (Token::Identifier(_), Token::Identifier(_))
-                | (Token::Integer(_), Token::Integer(_))
-                | (Token::Float(_), Token::Float(_))
-                | (Token::String(_), Token::String(_))
-                | (Token::Char(_), Token::Char(_))
-        ) || self.peek_token == *token
+        std::mem::discriminant(&self.peek_token) == std::mem::discriminant(token)
     }
 
     fn peek_error(&mut self, token: &Token) {

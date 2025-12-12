@@ -19,7 +19,7 @@ fn test_let_and_return() {
     semantic_analyzer.analyze(&program);
 
     let context = Context::create();
-    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    let mut generator = CodeGenerator::new(&context, &mut semantic_analyzer);
     generator.generate(&program).unwrap();
 
     let actual_ir = generator.print_to_string();
@@ -42,7 +42,7 @@ fn test_float() {
     semantic_analyzer.analyze(&program);
 
     let context = Context::create();
-    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    let mut generator = CodeGenerator::new(&context, &mut semantic_analyzer);
     generator.generate(&program).unwrap();
 
     let actual_ir = generator.print_to_string();
@@ -62,7 +62,7 @@ fn test_boolean() {
     semantic_analyzer.analyze(&program);
 
     let context = Context::create();
-    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    let mut generator = CodeGenerator::new(&context, &mut semantic_analyzer);
     generator.generate(&program).unwrap();
 
     let actual_ir = generator.print_to_string();
@@ -82,7 +82,7 @@ fn test_char() {
     semantic_analyzer.analyze(&program);
 
     let context = Context::create();
-    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    let mut generator = CodeGenerator::new(&context, &mut semantic_analyzer);
     generator.generate(&program).unwrap();
 
     let actual_ir = generator.print_to_string();
@@ -106,7 +106,7 @@ fn test_infix_expression() {
     semantic_analyzer.analyze(&program);
 
     let context = Context::create();
-    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    let mut generator = CodeGenerator::new(&context, &mut semantic_analyzer);
     generator.generate(&program).unwrap();
 
     let actual_ir = generator.print_to_string();
@@ -115,4 +115,23 @@ fn test_infix_expression() {
     assert!(actual_ir.contains("load i64, ptr %y"));
     assert!(actual_ir.contains("add i64"));
     assert!(actual_ir.contains("store i64 %addtmp, ptr %z"));
+}
+
+#[test]
+fn test_if_statement() {
+    let input = "if (true) { let x = 5; }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    let mut semantic_analyzer = SemanticAnalyzer::new();
+    semantic_analyzer.analyze(&program);
+    let context = Context::create();
+    let mut generator = CodeGenerator::new(&context, &mut semantic_analyzer);
+    generator.generate(&program).unwrap();
+    let actual_ir = generator.print_to_string();
+
+    assert!(actual_ir.contains("br i1 true, label %then, label %else"));
+    assert!(actual_ir.contains("then:"));
+    assert!(actual_ir.contains("else:"));
+    assert!(actual_ir.contains("merge:"));
 }

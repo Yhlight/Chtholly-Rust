@@ -23,11 +23,11 @@ This document outlines the development plan for the Chtholly programming languag
 
 ### Milestone 1.3: Functions and Control Flow
 - [ ] Implement function definitions with `fn`.
-- [ ] Implement `if-else` expressions.
+- [x] Implement `if-else` expressions.
 - [ ] Implement `while` and `for` loops.
 - [ ] Implement `do-while` loops.
 - [ ] Implement `switch-case` statements.
-- [ ] Write unit tests for control flow structures.
+- [x] Write unit tests for control flow structures.
 
 ### Milestone 1.4: Ownership and Borrowing
 - [ ] Implement the ownership system.

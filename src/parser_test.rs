@@ -82,3 +82,39 @@ fn test_integer_literal_expression() {
         assert!(false, "Expected an integer literal expression, but got something else.");
     }
 }
+
+#[test]
+fn test_if_statement() {
+    let input = "if (x > y) { x }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.len(), 1);
+
+    if let Statement::If { condition, consequence, alternative } = &program[0] {
+        assert!(matches!(condition, Expression::Infix(_, _, _)));
+        assert!(matches!(**consequence, Statement::Block(_)));
+        assert!(alternative.is_none());
+    } else {
+        panic!("Expected an if statement, but got something else.");
+    }
+}
+
+#[test]
+fn test_if_else_statement() {
+    let input = "if (x > y) { x } else { y }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.len(), 1);
+
+    if let Statement::If { condition, consequence, alternative } = &program[0] {
+        assert!(matches!(condition, Expression::Infix(_, _, _)));
+        assert!(matches!(**consequence, Statement::Block(_)));
+        assert!(alternative.is_some());
+    } else {
+        panic!("Expected an if-else statement, but got something else.");
+    }
+}

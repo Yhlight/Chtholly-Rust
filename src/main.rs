@@ -33,6 +33,13 @@ fn main() {
     let mut parser = parser::Parser::new(lexer);
     let program = parser.parse_program();
 
+    if !parser.errors().is_empty() {
+        for error in parser.errors() {
+            eprintln!("Parse error: {}", error);
+        }
+        return;
+    }
+
     let mut semantic_analyzer = semantic::SemanticAnalyzer::new();
     semantic_analyzer.analyze(&program);
 
@@ -44,7 +51,7 @@ fn main() {
     }
 
     let context = Context::create();
-    let mut generator = generator::CodeGenerator::new(&context, &semantic_analyzer);
+    let mut generator = generator::CodeGenerator::new(&context, &mut semantic_analyzer);
     match generator.generate(&program) {
         Ok(_) => {
             println!("{}", generator.print_to_string());

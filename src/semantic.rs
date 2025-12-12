@@ -18,16 +18,26 @@ pub struct Symbol {
 }
 
 pub struct SemanticAnalyzer {
-    pub symbols: HashMap<String, Symbol>,
+    pub scopes: Vec<HashMap<String, Symbol>>,
     pub errors: Vec<String>,
 }
 
 impl SemanticAnalyzer {
     pub fn new() -> Self {
+        let mut scopes = Vec::new();
+        scopes.push(HashMap::new()); // Global scope
         SemanticAnalyzer {
-            symbols: HashMap::new(),
+            scopes,
             errors: Vec::new(),
         }
+    }
+
+    pub fn enter_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    pub fn leave_scope(&mut self) {
+        self.scopes.pop();
     }
 
     pub fn analyze(&mut self, program: &Program) {
@@ -40,7 +50,7 @@ impl SemanticAnalyzer {
         match statement {
             Statement::Let { name, mutable, value } => {
                 let expr_type = self.analyze_expression(value);
-                self.symbols.insert(name.clone(), Symbol { type_: expr_type, mutable: *mutable });
+                self.scopes.last_mut().unwrap().insert(name.clone(), Symbol { type_: expr_type, mutable: *mutable });
             }
             Statement::Return(expr) => {
                 self.analyze_expression(expr);
@@ -48,18 +58,43 @@ impl SemanticAnalyzer {
             Statement::Expression(expr) => {
                 self.analyze_expression(expr);
             }
+            Statement::Block(statements) => {
+                self.analyze_block_statement(statements);
+            }
+            Statement::If { condition, consequence, alternative } => {
+                let cond_type = self.analyze_expression(condition);
+                if cond_type != Type::Boolean {
+                    self.errors.push(format!(
+                        "if condition must be a boolean, but got {:?}",
+                        cond_type
+                    ));
+                }
+                self.analyze_statement(consequence);
+                if let Some(alt) = alternative {
+                    self.analyze_statement(alt);
+                }
+            }
         }
+    }
+
+    fn analyze_block_statement(&mut self, statements: &[Statement]) {
+        self.enter_scope();
+        for statement in statements {
+            self.analyze_statement(statement);
+        }
+        self.leave_scope();
     }
 
     fn analyze_expression(&mut self, expression: &Expression) -> Type {
         match expression {
             Expression::Identifier(name) => {
-                if let Some(symbol) = self.symbols.get(name) {
-                    symbol.type_.clone()
-                } else {
-                    self.errors.push(format!("undeclared variable: {}", name));
-                    Type::Void
+                for scope in self.scopes.iter().rev() {
+                    if let Some(symbol) = scope.get(name) {
+                        return symbol.type_.clone();
+                    }
                 }
+                self.errors.push(format!("undeclared variable: {}", name));
+                Type::Void
             }
             Expression::Integer(_) => Type::Integer,
             Expression::Float(_) => Type::Float,
@@ -95,22 +130,23 @@ impl SemanticAnalyzer {
             }
             Expression::Assign { name, value } => {
                 let right_type = self.analyze_expression(value);
-                if let Some(symbol) = self.symbols.get(name) {
-                    if !symbol.mutable {
-                        self.errors
-                            .push(format!("cannot assign to immutable variable `{}`", name));
+                for scope in self.scopes.iter().rev() {
+                    if let Some(symbol) = scope.get(name) {
+                        if !symbol.mutable {
+                            self.errors
+                                .push(format!("cannot assign to immutable variable `{}`", name));
+                        }
+                        if symbol.type_ != right_type {
+                            self.errors.push(format!(
+                                "type mismatch: {:?} and {:?}",
+                                symbol.type_, right_type
+                            ));
+                        }
+                        return symbol.type_.clone();
                     }
-                    if symbol.type_ != right_type {
-                        self.errors.push(format!(
-                            "type mismatch: {:?} and {:?}",
-                            symbol.type_, right_type
-                        ));
-                    }
-                    symbol.type_.clone()
-                } else {
-                    self.errors.push(format!("undeclared variable: {}", name));
-                    Type::Void
                 }
+                self.errors.push(format!("undeclared variable: {}", name));
+                Type::Void
             }
             _ => Type::Void,
         }
@@ -118,7 +154,14 @@ impl SemanticAnalyzer {
 
     pub fn type_of(&self, expression: &Expression) -> Option<Type> {
         match expression {
-            Expression::Identifier(name) => self.symbols.get(name).map(|s| s.type_.clone()),
+            Expression::Identifier(name) => {
+                for scope in self.scopes.iter().rev() {
+                    if let Some(symbol) = scope.get(name) {
+                        return Some(symbol.type_.clone());
+                    }
+                }
+                None
+            }
             Expression::Integer(_) => Some(Type::Integer),
             Expression::Float(_) => Some(Type::Float),
             Expression::String(_) => Some(Type::String),
@@ -141,7 +184,14 @@ impl SemanticAnalyzer {
                     _ => None,
                 }
             }
-            Expression::Assign { name, .. } => self.symbols.get(name).map(|s| s.type_.clone()),
+            Expression::Assign { name, .. } => {
+                for scope in self.scopes.iter().rev() {
+                    if let Some(symbol) = scope.get(name) {
+                        return Some(symbol.type_.clone());
+                    }
+                }
+                None
+            }
             _ => None,
         }
     }

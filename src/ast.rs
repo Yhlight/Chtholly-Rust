@@ -9,6 +9,12 @@ pub enum Statement {
     },
     Return(Expression),
     Expression(Expression),
+    Block(Vec<Statement>),
+    If {
+        condition: Expression,
+        consequence: Box<Statement>,
+        alternative: Option<Box<Statement>>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -21,15 +27,6 @@ pub enum Expression {
     Boolean(bool),
     Prefix(Token, Box<Expression>),
     Infix(Box<Expression>, Token, Box<Expression>),
-    If {
-        condition: Box<Expression>,
-        consequence: Vec<Statement>,
-        alternative: Option<Vec<Statement>>,
-    },
-    Function {
-        parameters: Vec<String>,
-        body: Vec<Statement>,
-    },
     Call {
         function: Box<Expression>,
         arguments: Vec<Expression>,

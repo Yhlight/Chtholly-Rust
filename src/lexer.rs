@@ -276,9 +276,15 @@ impl<'a> Lexer<'a> {
         }
 
         if number.contains('.') {
-            Token::Float(number.parse().unwrap())
+            match number.parse() {
+                Ok(n) => Token::Float(n),
+                Err(_) => Token::Illegal(number),
+            }
         } else {
-            Token::Integer(number.parse().unwrap())
+            match number.parse() {
+                Ok(n) => Token::Integer(n),
+                Err(_) => Token::Illegal(number),
+            }
         }
     }
 
