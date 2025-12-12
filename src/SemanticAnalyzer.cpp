@@ -278,6 +278,13 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
             if (rhsSymbol && !rhsSymbol->type->isCopy()) {
                 rhsSymbol->isMoved = true;
             }
+        } else if (auto* borrowExpr = dynamic_cast<BorrowExprAST*>(node.rhs.get())) {
+            if (auto* rhsVar = dynamic_cast<VariableExprAST*>(borrowExpr->expression.get())) {
+                Symbol* rhsSymbol = symbolTable.findSymbol(rhsVar->name);
+                if (lhsSymbol->lifetime < rhsSymbol->lifetime) {
+                    throw std::runtime_error("Reference may outlive borrowed value '" + rhsVar->name + "'.");
+                }
+            }
         }
 
         if (lhsSymbol->type->toString() != rhsType->toString()) {
@@ -642,6 +649,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
             symbol->immutableBorrows++;
             symbol->borrowedInScope = true;
         }
+
     }
     node.type = std::make_shared<ReferenceType>(exprType, node.isMutable);
     return node.type;

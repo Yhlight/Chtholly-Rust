@@ -1,0 +1,10 @@
+fn main(): i32 {
+    let mut r: &i32;
+    {
+        let x = 5;
+        r = &x;
+    }
+    println(r);
+
+    return 0;
+}

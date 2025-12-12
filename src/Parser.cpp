@@ -67,6 +67,9 @@ std::unique_ptr<StmtAST> Parser::parse_statement() {
     if (peek().type == TokenType::RETURN) {
         return parse_return_statement();
     }
+    if (peek().type == TokenType::LEFT_BRACE) {
+        return parse_block();
+    }
     return parse_expression_statement();
 }
 
