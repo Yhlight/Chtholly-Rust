@@ -1,10 +1,13 @@
-use crate::ast::{BinaryOp, Expression, LiteralValue, Statement, Type};
+use crate::ast::{
+    BinaryOp, Expression, FunctionCall, FunctionDeclaration, LiteralValue, Parameter, Statement,
+    Type,
+};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until},
     character::complete::{alpha1, char, digit1, multispace0},
-    combinator::{map, map_res, opt, recognize},
-    multi::fold_many0,
+    combinator::{all_consuming, map, map_res, not, opt, peek, recognize},
+    multi::{fold_many0, many0, separated_list0},
     sequence::{delimited, preceded, tuple},
     IResult,
 };
@@ -29,44 +32,12 @@ pub fn parse_comment(input: &str) -> IResult<&str, &str> {
     alt((parse_single_line_comment, parse_multi_line_comment))(input)
 }
 
-// Parse the main function
-pub fn parse_main_function(input: &str) -> IResult<&str, &str> {
-    let (input, _) = tuple((
-        multispace0,
-        tag("fn"),
-        multispace0,
-        tag("main"),
-        multispace0,
-        char('('),
-        multispace0,
-        tag("args"),
-        multispace0,
-        char(':'),
-        multispace0,
-        tag("string[]"),
-        multispace0,
-        char(')'),
-        multispace0,
-        char(':'),
-        multispace0,
-        tag("Result<i32, SystemError>"),
-        multispace0,
-    ))(input)?;
-
-    let (input, body) = delimited(
-        tuple((char('{'), multispace0)),
-        take_until("}"),
-        tuple((multispace0, char('}'))),
-    )(input)?;
-
-    Ok((input, body))
-}
-
 /// Parses a primitive type into a `Type` enum.
 pub fn parse_type(input: &str) -> IResult<&str, Type> {
     alt((
         map(tag("i32"), |_| Type::I32),
         map(tag("bool"), |_| Type::Bool),
+        map(tag("void"), |_| Type::Void),
     ))(input)
 }
 
@@ -98,17 +69,45 @@ pub fn parse_identifier(input: &str) -> IResult<&str, Expression> {
 }
 
 /// Parses factors, which are the highest-precedence expressions.
-/// factor = literal | identifier | "(" expression ")"
+/// factor = literal | function_call | identifier | "(" expression ")"
 fn parse_factor(input: &str) -> IResult<&str, Expression> {
     delimited(
         multispace0,
         alt((
             parse_literal,
+            parse_function_call,
             parse_identifier,
             delimited(char('('), parse_expression, char(')')),
         )),
         multispace0,
     )(input)
+}
+
+fn parse_block(input: &str) -> IResult<&str, Vec<Statement>> {
+    delimited(
+        char('{'),
+        many0(preceded(not(peek(tag("fn"))), parse_statement)),
+        tuple((multispace0, char('}'))),
+    )(input)
+}
+
+/// Parses a function call expression.
+fn parse_function_call(input: &str) -> IResult<&str, Expression> {
+    let (input, name) = alpha1(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, arguments) = delimited(
+        char('('),
+        separated_list0(tuple((multispace0, char(','), multispace0)), parse_expression),
+        char(')'),
+    )(input)?;
+
+    Ok((
+        input,
+        Expression::FunctionCall(FunctionCall {
+            name: name.to_string(),
+            arguments,
+        }),
+    ))
 }
 
 /// Parses terms, handling multiplication, division, and modulo.
@@ -183,4 +182,74 @@ pub fn parse_let_statement(input: &str) -> IResult<&str, Statement> {
             value,
         },
     ))
+}
+
+/// Parses a function parameter.
+fn parse_parameter(input: &str) -> IResult<&str, Parameter> {
+    let (input, name) = alpha1(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, _) = char(':')(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, type_annotation) = parse_type(input)?;
+    Ok((
+        input,
+        Parameter {
+            name: name.to_string(),
+            type_annotation,
+        },
+    ))
+}
+
+/// Parses a function declaration.
+pub fn parse_function_declaration(input: &str) -> IResult<&str, Statement> {
+    let (input, _) = tag("fn")(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, name) = alpha1(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, parameters) = delimited(
+        char('('),
+        separated_list0(tuple((multispace0, char(','), multispace0)), parse_parameter),
+        char(')'),
+    )(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, return_type) = opt(preceded(tuple((char(':'), multispace0)), parse_type))(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, body) = parse_block(input)?;
+
+    Ok((
+        input,
+        Statement::FunctionDeclaration(FunctionDeclaration {
+            name: name.to_string(),
+            parameters,
+            return_type: return_type.unwrap_or(Type::Void),
+            body,
+        }),
+    ))
+}
+
+
+/// Parses any top-level statement.
+pub fn parse_statement(input: &str) -> IResult<&str, Statement> {
+    delimited(
+        multispace0,
+        alt((parse_let_statement, parse_expression_statement)),
+        multispace0,
+    )(input)
+}
+
+/// Parses an expression statement.
+fn parse_expression_statement(input: &str) -> IResult<&str, Statement> {
+    let (input, expr) = parse_expression(input)?;
+    let (input, _) = char(';')(input)?;
+    Ok((input, Statement::ExpressionStatement(expr)))
+}
+
+/// Parses a program, which is a list of top-level declarations.
+pub fn parse_program(input: &str) -> IResult<&str, Vec<Statement>> {
+    all_consuming(many0(delimited(
+        multispace0,
+        // For now, only function declarations are top-level.
+        parse_function_declaration,
+        multispace0,
+    )))(input)
 }

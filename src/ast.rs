@@ -10,6 +10,26 @@ pub enum Statement {
         type_annotation: Option<Type>,
         value: Expression,
     },
+    /// A function declaration.
+    FunctionDeclaration(FunctionDeclaration),
+    /// An expression used as a statement.
+    ExpressionStatement(Expression),
+}
+
+/// Represents a function declaration.
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionDeclaration {
+    pub name: String,
+    pub parameters: Vec<Parameter>,
+    pub return_type: Type,
+    pub body: Vec<Statement>,
+}
+
+/// Represents a function parameter.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Parameter {
+    pub name: String,
+    pub type_annotation: Type,
 }
 
 /// Represents an expression.
@@ -25,6 +45,15 @@ pub enum Expression {
         left: Box<Expression>,
         right: Box<Expression>,
     },
+    /// A function call.
+    FunctionCall(FunctionCall),
+}
+
+/// Represents a function call.
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionCall {
+    pub name: String,
+    pub arguments: Vec<Expression>,
 }
 
 /// Represents a binary operator.
@@ -49,4 +78,5 @@ pub enum LiteralValue {
 pub enum Type {
     I32,
     Bool,
+    Void,
 }

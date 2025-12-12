@@ -10,7 +10,7 @@ This document outlines the development plan for the Chtholly programming languag
 - [x] Data types
 - [ ] Type casting
 - [x] Operators
-- [ ] Functions
+- [x] Functions
 - [ ] Classes and Structs
 - [ ] Control flow (if/else, switch)
 - [ ] Loops (while, for, do-while)
