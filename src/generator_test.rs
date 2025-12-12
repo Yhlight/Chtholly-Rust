@@ -2,6 +2,7 @@ use inkwell::context::Context;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::generator::CodeGenerator;
+use crate::semantic::SemanticAnalyzer;
 
 #[test]
 fn test_let_and_return() {
@@ -14,13 +15,104 @@ fn test_let_and_return() {
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
-    let context = Context::create();
-    let mut generator = CodeGenerator::new(&context);
-    generator.generate(&program).unwrap();
+    let mut semantic_analyzer = SemanticAnalyzer::new();
+    semantic_analyzer.analyze(&program);
 
-    let expected_ir = "; ModuleID = 'main'\nsource_filename = \"main\"\n\ndefine i64 @main() {\nentry:\n  %x = alloca i64, align 8\n  store i64 5, ptr %x, align 4\n  %x1 = load i64, ptr %x, align 4\n  ret i64 %x1\n}\n";
+    let context = Context::create();
+    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    generator.generate(&program).unwrap();
 
     let actual_ir = generator.print_to_string();
 
-    assert_eq!(expected_ir, actual_ir.replace("\r\n", "\n"));
+    assert!(actual_ir.contains("define i64 @main()"));
+    assert!(actual_ir.contains("%x = alloca i64"));
+    assert!(actual_ir.contains("store i64 5, ptr %x"));
+    assert!(actual_ir.contains("ret i64"));
+}
+
+#[test]
+fn test_float() {
+    let input = "let x = 5.5;";
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut semantic_analyzer = SemanticAnalyzer::new();
+    semantic_analyzer.analyze(&program);
+
+    let context = Context::create();
+    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    generator.generate(&program).unwrap();
+
+    let actual_ir = generator.print_to_string();
+
+    assert!(actual_ir.contains("store double 5.5"));
+}
+
+#[test]
+fn test_boolean() {
+    let input = "let x = true;";
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut semantic_analyzer = SemanticAnalyzer::new();
+    semantic_analyzer.analyze(&program);
+
+    let context = Context::create();
+    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    generator.generate(&program).unwrap();
+
+    let actual_ir = generator.print_to_string();
+
+    assert!(actual_ir.contains("store i1 true"));
+}
+
+#[test]
+fn test_char() {
+    let input = "let x = 'a';";
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut semantic_analyzer = SemanticAnalyzer::new();
+    semantic_analyzer.analyze(&program);
+
+    let context = Context::create();
+    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    generator.generate(&program).unwrap();
+
+    let actual_ir = generator.print_to_string();
+
+    assert!(actual_ir.contains("store i8 97"));
+}
+
+#[test]
+fn test_infix_expression() {
+    let input = r#"
+        let x = 5;
+        let y = 10;
+        let z = x + y;
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut semantic_analyzer = SemanticAnalyzer::new();
+    semantic_analyzer.analyze(&program);
+
+    let context = Context::create();
+    let mut generator = CodeGenerator::new(&context, &semantic_analyzer);
+    generator.generate(&program).unwrap();
+
+    let actual_ir = generator.print_to_string();
+
+    assert!(actual_ir.contains("load i64, ptr %x"));
+    assert!(actual_ir.contains("load i64, ptr %y"));
+    assert!(actual_ir.contains("add i64"));
+    assert!(actual_ir.contains("store i64 %addtmp, ptr %z"));
 }

@@ -1,4 +1,4 @@
-use crate::ast::{Program, Statement, Expression};
+use crate::ast::{Statement, Expression};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 
@@ -6,7 +6,7 @@ use crate::parser::Parser;
 fn test_let_statements() {
     let input = r#"
         let x = 5;
-        let y = 10;
+        let mut y = 10;
         let foobar = 838383;
     "#;
 
@@ -16,13 +16,18 @@ fn test_let_statements() {
 
     assert_eq!(program.len(), 3);
 
-    let expected_identifiers = vec!["x", "y", "foobar"];
+    let expected = vec![
+        ("x", false),
+        ("y", true),
+        ("foobar", false),
+    ];
 
     for (i, statement) in program.iter().enumerate() {
-        if let Statement::Let(name, _) = statement {
-            assert_eq!(name, expected_identifiers[i]);
+        if let Statement::Let { name, mutable, .. } = statement {
+            assert_eq!(name, expected[i].0);
+            assert_eq!(*mutable, expected[i].1);
         } else {
-            panic!("Expected a let statement, but got something else.");
+            assert!(false, "Expected a let statement, but got something else.");
         }
     }
 }
@@ -42,11 +47,7 @@ fn test_return_statements() {
     assert_eq!(program.len(), 3);
 
     for statement in program.iter() {
-        if let Statement::Return(_) = statement {
-            // expected
-        } else {
-            panic!("Expected a return statement, but got something else.");
-        }
+        assert!(matches!(statement, Statement::Return(_)));
     }
 }
 
@@ -62,7 +63,7 @@ fn test_identifier_expression() {
     if let Statement::Expression(Expression::Identifier(name)) = &program[0] {
         assert_eq!(name, "foobar");
     } else {
-        panic!("Expected an identifier expression, but got something else.");
+        assert!(false, "Expected an identifier expression, but got something else.");
     }
 }
 
@@ -78,6 +79,6 @@ fn test_integer_literal_expression() {
     if let Statement::Expression(Expression::Integer(value)) = &program[0] {
         assert_eq!(*value, 5);
     } else {
-        panic!("Expected an integer literal expression, but got something else.");
+        assert!(false, "Expected an integer literal expression, but got something else.");
     }
 }

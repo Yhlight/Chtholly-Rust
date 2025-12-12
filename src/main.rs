@@ -44,7 +44,7 @@ fn main() {
     }
 
     let context = Context::create();
-    let mut generator = generator::CodeGenerator::new(&context);
+    let mut generator = generator::CodeGenerator::new(&context, &semantic_analyzer);
     match generator.generate(&program) {
         Ok(_) => {
             println!("{}", generator.print_to_string());

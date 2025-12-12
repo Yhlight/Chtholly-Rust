@@ -41,3 +41,24 @@ fn test_undeclared_variable() {
         "undeclared variable: x"
     );
 }
+
+#[test]
+fn test_reassign_to_immutable_variable() {
+    let input = r#"
+        let x = 5;
+        x = 10;
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&program);
+
+    assert_eq!(analyzer.errors.len(), 1);
+    assert_eq!(
+        analyzer.errors[0],
+        "cannot assign to immutable variable `x`"
+    );
+}

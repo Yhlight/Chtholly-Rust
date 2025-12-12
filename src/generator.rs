@@ -2,19 +2,22 @@ use std::collections::HashMap;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{PointerValue, FunctionValue};
+use inkwell::values::{PointerValue, FunctionValue, BasicValueEnum};
+use inkwell::types::{BasicTypeEnum, BasicType};
 use crate::ast::{Program, Statement, Expression};
+use crate::semantic::{self, SemanticAnalyzer};
 
-pub struct CodeGenerator<'ctx> {
+pub struct CodeGenerator<'a, 'ctx> {
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,
     variables: HashMap<String, PointerValue<'ctx>>,
+    semantic_analyzer: &'a SemanticAnalyzer,
     current_function: Option<FunctionValue<'ctx>>,
 }
 
-impl<'ctx> CodeGenerator<'ctx> {
-    pub fn new(context: &'ctx Context) -> Self {
+impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
+    pub fn new(context: &'ctx Context, semantic_analyzer: &'a SemanticAnalyzer) -> Self {
         let module = context.create_module("main");
         let builder = context.create_builder();
         CodeGenerator {
@@ -22,6 +25,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             module,
             builder,
             variables: HashMap::new(),
+            semantic_analyzer,
             current_function: None,
         }
     }
@@ -44,9 +48,10 @@ impl<'ctx> CodeGenerator<'ctx> {
 
     fn generate_statement(&mut self, statement: &Statement) -> Result<(), &'static str> {
         match statement {
-            Statement::Let(name, expr) => {
-                let alloca = self.create_entry_block_alloca(name);
-                let value = self.generate_expression(expr)?;
+            Statement::Let { name, value, .. } => {
+                let ty = self.get_type(value)?;
+                let alloca = self.create_entry_block_alloca(name, ty);
+                let value = self.generate_expression(value)?;
                 self.builder.build_store(alloca, value).map_err(|_| "Failed to build store")?;
                 self.variables.insert(name.clone(), alloca);
             }
@@ -61,33 +66,91 @@ impl<'ctx> CodeGenerator<'ctx> {
         Ok(())
     }
 
-    fn generate_expression(&mut self, expression: &Expression) -> Result<inkwell::values::BasicValueEnum<'ctx>, &'static str> {
+    fn get_type(&self, expression: &Expression) -> Result<BasicTypeEnum<'ctx>, &'static str> {
+        let semantic_type = self.semantic_analyzer.type_of(expression).ok_or("could not determine type")?;
+        match semantic_type {
+            semantic::Type::Integer => Ok(self.context.i64_type().as_basic_type_enum()),
+            semantic::Type::Float => Ok(self.context.f64_type().as_basic_type_enum()),
+            semantic::Type::Boolean => Ok(self.context.bool_type().as_basic_type_enum()),
+            semantic::Type::Char => Ok(self.context.i8_type().as_basic_type_enum()),
+            _ => Err("unsupported type")
+        }
+    }
+
+    fn generate_expression(&mut self, expression: &Expression) -> Result<BasicValueEnum<'ctx>, &'static str> {
         match expression {
             Expression::Identifier(name) => {
                 let ptr = self.variables.get(name).ok_or("undeclared variable")?;
-                let value = self.builder.build_load(self.context.i64_type(), *ptr, name.as_str()).map_err(|_| "Failed to build load")?;
+                let ty = self.get_type(expression)?;
+                let value = self.builder.build_load(ty, *ptr, name.as_str()).map_err(|_| "Failed to build load")?;
                 Ok(value)
             }
             Expression::Integer(value) => {
                 Ok(self.context.i64_type().const_int(*value as u64, false).into())
             }
+            Expression::Float(value) => {
+                Ok(self.context.f64_type().const_float(*value).into())
+            }
+            Expression::Boolean(value) => {
+                Ok(self.context.bool_type().const_int(*value as u64, false).into())
+            }
+            Expression::Char(value) => {
+                Ok(self.context.i8_type().const_int(*value as u64, false).into())
+            }
             Expression::Infix(left, op, right) => {
                 let left_val = self.generate_expression(left)?;
                 let right_val = self.generate_expression(right)?;
+                let left_ty = self.get_type(left)?;
 
-                match op {
-                    crate::lexer::Token::Plus => {
-                        let result = self.builder.build_int_add(left_val.into_int_value(), right_val.into_int_value(), "addtmp").map_err(|_| "Failed to build int add")?;
-                        Ok(result.into())
+                if left_ty.is_float_type() {
+                    match op {
+                        crate::lexer::Token::Plus => {
+                            let result = self.builder.build_float_add(left_val.into_float_value(), right_val.into_float_value(), "addtmp").map_err(|_| "Failed to build float add")?;
+                            Ok(result.into())
+                        }
+                        crate::lexer::Token::Minus => {
+                            let result = self.builder.build_float_sub(left_val.into_float_value(), right_val.into_float_value(), "subtmp").map_err(|_| "Failed to build float sub")?;
+                            Ok(result.into())
+                        }
+                        _ => Err("unsupported operator"),
                     }
-                    _ => Err("unsupported operator"),
+                } else {
+                    match op {
+                        crate::lexer::Token::Plus => {
+                            let result = self.builder.build_int_add(left_val.into_int_value(), right_val.into_int_value(), "addtmp").map_err(|_| "Failed to build int add")?;
+                            Ok(result.into())
+                        }
+                        crate::lexer::Token::Minus => {
+                            let result = self.builder.build_int_sub(left_val.into_int_value(), right_val.into_int_value(), "subtmp").map_err(|_| "Failed to build int sub")?;
+                            Ok(result.into())
+                        }
+                        crate::lexer::Token::Asterisk => {
+                            let result = self.builder.build_int_mul(left_val.into_int_value(), right_val.into_int_value(), "multmp").map_err(|_| "Failed to build int mul")?;
+                            Ok(result.into())
+                        }
+                        crate::lexer::Token::Slash => {
+                            let result = self.builder.build_int_signed_div(left_val.into_int_value(), right_val.into_int_value(), "divtmp").map_err(|_| "Failed to build int div")?;
+                            Ok(result.into())
+                        }
+                        crate::lexer::Token::EqualEqual => {
+                            let result = self.builder.build_int_compare(inkwell::IntPredicate::EQ, left_val.into_int_value(), right_val.into_int_value(), "eqtmp").map_err(|_| "Failed to build int compare")?;
+                            Ok(result.into())
+                        }
+                        _ => Err("unsupported operator"),
+                    }
                 }
+            }
+            Expression::Assign { name, value } => {
+                let new_value = self.generate_expression(value)?;
+                let ptr = self.variables.get(name).ok_or("undeclared variable")?;
+                self.builder.build_store(*ptr, new_value).map_err(|_| "Failed to build store")?;
+                Ok(new_value)
             }
             _ => Err("unsupported expression"),
         }
     }
 
-    fn create_entry_block_alloca(&self, name: &str) -> PointerValue<'ctx> {
+    fn create_entry_block_alloca(&self, name: &str, ty: BasicTypeEnum<'ctx>) -> PointerValue<'ctx> {
         let builder = self.context.create_builder();
         let entry = self.current_function.unwrap().get_first_basic_block().unwrap();
 
@@ -96,7 +159,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             None => builder.position_at_end(entry),
         }
 
-        builder.build_alloca(self.context.i64_type(), name).unwrap()
+        builder.build_alloca(ty, name).unwrap()
     }
 
     pub fn print_to_string(&self) -> String {

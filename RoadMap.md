@@ -6,18 +6,20 @@ This document outlines the development plan for the Chtholly programming languag
 
 ### Milestone 1.1: Basic Syntax and Scaffolding
 - [x] Set up the development environment.
-- [ ] Initialize the Cargo project.
-- [ ] Implement the command-line interface (CLI) for file processing.
-- [ ] Implement a basic lexer for tokenizing the source code.
-- [ ] Implement a basic parser to construct an Abstract Syntax Tree (AST).
-- [ ] Define the core AST data structures.
+- [x] Initialize the Cargo project.
+- [x] Implement the command-line interface (CLI) for file processing.
+- [x] Implement a basic lexer for tokenizing the source code.
+- [x] Implement a basic parser to construct an Abstract Syntax Tree (AST).
+- [x] Define the core AST data structures.
 
 ### Milestone 1.2: Variables and Data Types
-- [ ] Implement `let` and `let mut` for variable declarations.
-- [ ] Support basic data types: `i32`, `f64`, `bool`, `char`.
+- [x] Implement `let` for immutable variable declarations.
+- [x] Implement `mut` for mutable variables.
+- [x] Support `i64` integer literals.
+- [x] Support `f64`, `bool`, `char` data types.
 - [ ] Implement type inference and type annotations.
 - [ ] Implement move semantics for variable assignments.
-- [ ] Write unit tests for variable declarations and assignments.
+- [x] Write unit tests for variable declarations and assignments.
 
 ### Milestone 1.3: Functions and Control Flow
 - [ ] Implement function definitions with `fn`.

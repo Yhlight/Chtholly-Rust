@@ -26,6 +26,8 @@ pub enum Token {
     Use,
     As,
     Package,
+    True,
+    False,
 
     // Literals
     Identifier(String),
@@ -255,6 +257,8 @@ impl<'a> Lexer<'a> {
             "use" => Token::Use,
             "as" => Token::As,
             "package" => Token::Package,
+            "true" => Token::True,
+            "false" => Token::False,
             _ => Token::Identifier(ident),
         }
     }

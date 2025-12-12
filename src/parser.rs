@@ -55,9 +55,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {
-        if !self.expect_peek(Token::Identifier("".to_string())) {
+        let mutable = if self.peek_token_is(&Token::Mut) {
+            self.next_token();
+            true
+        } else {
+            false
+        };
+
+        if !self.peek_token_is(&Token::Identifier("".to_string())) {
+            self.peek_error(&Token::Identifier("".to_string()));
             return None;
         }
+        self.next_token();
 
         let name = if let Token::Identifier(name) = self.current_token.clone() {
             name
@@ -65,9 +74,11 @@ impl<'a> Parser<'a> {
             return None;
         };
 
-        if !self.expect_peek(Token::Equal) {
+        if !self.peek_token_is(&Token::Equal) {
+            self.peek_error(&Token::Equal);
             return None;
         }
+        self.next_token();
 
         self.next_token();
 
@@ -77,7 +88,7 @@ impl<'a> Parser<'a> {
             self.next_token();
         }
 
-        Some(Statement::Let(name, value))
+        Some(Statement::Let { name, mutable, value })
     }
 
     fn parse_return_statement(&mut self) -> Option<Statement> {
@@ -120,17 +131,36 @@ impl<'a> Parser<'a> {
             Token::Float(value) => Some(Expression::Float(value)),
             Token::String(value) => Some(Expression::String(value)),
             Token::Char(value) => Some(Expression::Char(value)),
+            Token::True => Some(Expression::Boolean(true)),
+            Token::False => Some(Expression::Boolean(false)),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             _ => None,
         }
     }
 
     fn parse_infix(&mut self, left: Expression) -> Option<Expression> {
-        let token = self.current_token.clone();
-        let precedence = self.current_precedence();
-        self.next_token();
-        let right = self.parse_expression(precedence)?;
-        Some(Expression::Infix(Box::new(left), token, Box::new(right)))
+        match self.current_token {
+            Token::Equal => {
+                if let Expression::Identifier(name) = left {
+                    let precedence = self.current_precedence();
+                    self.next_token();
+                    let value = self.parse_expression(precedence)?;
+                    Some(Expression::Assign {
+                        name,
+                        value: Box::new(value),
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => {
+                let token = self.current_token.clone();
+                let precedence = self.current_precedence();
+                self.next_token();
+                let right = self.parse_expression(precedence)?;
+                Some(Expression::Infix(Box::new(left), token, Box::new(right)))
+            }
+        }
     }
 
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
@@ -140,18 +170,15 @@ impl<'a> Parser<'a> {
         Some(Expression::Prefix(token, Box::new(right)))
     }
 
-    fn expect_peek(&mut self, token: Token) -> bool {
-        if self.peek_token_is(&token) {
-            self.next_token();
-            true
-        } else {
-            self.peek_error(&token);
-            false
-        }
-    }
-
     fn peek_token_is(&self, token: &Token) -> bool {
-        std::mem::discriminant(&self.peek_token) == std::mem::discriminant(token)
+        matches!(
+            (&self.peek_token, token),
+            (Token::Identifier(_), Token::Identifier(_))
+                | (Token::Integer(_), Token::Integer(_))
+                | (Token::Float(_), Token::Float(_))
+                | (Token::String(_), Token::String(_))
+                | (Token::Char(_), Token::Char(_))
+        ) || self.peek_token == *token
     }
 
     fn peek_error(&mut self, token: &Token) {
@@ -174,6 +201,7 @@ impl<'a> Parser<'a> {
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
+    Assign,
     Equals,
     LessGreater,
     Sum,
@@ -184,8 +212,9 @@ enum Precedence {
 
 fn token_to_precedence(token: &Token) -> Precedence {
     match token {
+        Token::Equal => Precedence::Assign,
         Token::EqualEqual | Token::NotEqual => Precedence::Equals,
-        Token::LessThan | Token::GreaterThan => Precedence::LessGreater,
+        Token::LessThan | Token::GreaterThan | Token::LessThanOrEqual | Token::GreaterThanOrEqual => Precedence::LessGreater,
         Token::Plus | Token::Minus => Precedence::Sum,
         Token::Slash | Token::Asterisk => Precedence::Product,
         Token::LParen => Precedence::Call,
