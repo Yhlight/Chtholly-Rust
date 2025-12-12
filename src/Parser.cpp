@@ -117,8 +117,33 @@ std::unique_ptr<ExprAST> Parser::parseIdentifierExpr() {
         return std::make_unique<StructInitExprAST>(idName, std::move(args));
     }
 
-    // Simple variable ref.
-    return std::make_unique<VariableExprAST>(idName);
+    if (m_currentToken != Token::LParen) {
+        // Simple variable ref.
+        return std::make_unique<VariableExprAST>(idName);
+    }
+
+    // Function call.
+    getNextToken(); // eat (.
+    std::vector<std::unique_ptr<ExprAST>> args;
+    if (m_currentToken != Token::RParen) {
+        while (true) {
+            if (auto arg = parseExpression())
+                args.push_back(std::move(arg));
+            else
+                return nullptr;
+
+            if (m_currentToken == Token::RParen)
+                break;
+
+            if (m_currentToken != Token::Comma)
+                return logError("Expected ')' or ',' in argument list");
+            getNextToken();
+        }
+    }
+
+    getNextToken(); // eat ).
+
+    return std::make_unique<CallExprAST>(idName, std::move(args));
 }
 
 std::unique_ptr<ExprAST> Parser::parseLetExpr() {

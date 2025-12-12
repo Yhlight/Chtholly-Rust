@@ -38,9 +38,9 @@ This document outlines the planned development milestones for the Chtholly progr
 
 *Goal: Implement Chtholly's core memory safety features. This is the most critical milestone.*
 
-- **[ ] Ownership System:**
-    - **[ ] Move Semantics:** Enforce move semantics for assignments and function calls. The original variable becomes inaccessible after a move.
-    - **[ ] `Copy` Trait:** Implement a `Copy` trait for primitive types that are copied instead of moved.
+- **[X] Ownership System:**
+    - **[X] Move Semantics:** Enforce move semantics for assignments and function calls. The original variable becomes inaccessible after a move.
+    - **[X] `Copy` Trait:** Implement a `Copy` trait for primitive types that are copied instead of moved.
     - **[ ] Drop Semantics:** Implement automatic resource cleanup (`drop`/destructor calls) when a variable goes out of scope.
 - **[ ] Borrowing & References:**
     - **[ ] Immutable References (`&`):** Allow creating shared references to a resource.

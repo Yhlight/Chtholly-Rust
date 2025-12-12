@@ -13,26 +13,31 @@ class Type {
 public:
     virtual ~Type() = default;
     virtual llvm::Type* getLLVMType(CodeGen& context) = 0;
+    virtual bool isCopyable() const { return false; }
 };
 
 class I32Type : public Type {
 public:
     llvm::Type* getLLVMType(CodeGen& context) override;
+    bool isCopyable() const override { return true; }
 };
 
 class F64Type : public Type {
 public:
     llvm::Type* getLLVMType(CodeGen& context) override;
+    bool isCopyable() const override { return true; }
 };
 
 class BoolType : public Type {
 public:
     llvm::Type* getLLVMType(CodeGen& context) override;
+    bool isCopyable() const override { return true; }
 };
 
 class CharType : public Type {
 public:
     llvm::Type* getLLVMType(CodeGen& context) override;
+    bool isCopyable() const override { return true; }
 };
 
 class VoidType : public Type {
@@ -138,14 +143,14 @@ public:
     llvm::Value* codegen(CodeGen& context) override;
 };
 
-// // Expression class for a function call.
-// class CallExprAST : public ExprAST {
-//     std::string m_callee;
-//     std::vector<std::unique_ptr<ExprAST>> m_args;
-// public:
-//     CallExprAST(const std::string& callee, std::vector<std::unique_ptr<ExprAST>> args)
-//         : m_callee(callee), m_args(std::move(args)) {}
-// };
+class CallExprAST : public ExprAST {
+    std::string m_callee;
+    std::vector<std::unique_ptr<ExprAST>> m_args;
+public:
+    CallExprAST(const std::string& callee, std::vector<std::unique_ptr<ExprAST>> args)
+        : m_callee(callee), m_args(std::move(args)) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
 
 class PrototypeAST {
     std::string m_name;

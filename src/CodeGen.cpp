@@ -143,7 +143,7 @@ llvm::Value* LetExprAST::codegen(CodeGen& context) {
         auto it = context.m_namedValues.find(varExpr->getName());
         if (it != context.m_namedValues.end()) {
             Symbol& symbol = it->second;
-            if (dynamic_cast<StructType*>(symbol.type)) {
+            if (symbol.type && !symbol.type->isCopyable()) {
                 symbol.state = OwnershipState::Moved;
             }
         }
@@ -217,6 +217,14 @@ llvm::Value* IfExprAST::codegen(CodeGen& context) {
     theFunction->getBasicBlockList().push_back(mergeBB);
     context.getBuilder().SetInsertPoint(mergeBB);
 
+    if (m_else.empty()) {
+        if (theFunction->getReturnType()->isVoidTy()) {
+            return llvm::Constant::getNullValue(llvm::Type::getVoidTy(context.getContext()));
+        } else {
+            return logErrorV("if expression used as a value must have an else block");
+        }
+    }
+
     if (thenV && elseV) {
         if (thenV->getType() != elseV->getType()) {
             return logErrorV("if expression must have same type for then and else blocks");
@@ -249,6 +257,16 @@ llvm::Value* StructInitExprAST::codegen(CodeGen& context) {
     llvm::StructType* structType = context.m_structTypes[m_structName];
     if (!structType) {
         return logErrorV("Unknown struct type");
+    }
+
+    auto it = context.m_structDefs.find(m_structName);
+    if (it == context.m_structDefs.end()) {
+        return logErrorV("Unknown struct type");
+    }
+    StructDefAST* structDef = it->second;
+
+    if (m_args.size() != structDef->getMembers().size()) {
+        return logErrorV("Incorrect # arguments in struct initializer");
     }
 
     llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(structType, nullptr, m_structName.c_str());
@@ -300,6 +318,39 @@ llvm::Value* MemberAccessExprAST::codegen(CodeGen& context) {
 
     llvm::Value* memberPtr = context.getBuilder().CreateStructGEP(sType, structVal, memberIndex, m_memberName.c_str());
     return context.getBuilder().CreateLoad(sType->getElementType(memberIndex), memberPtr, m_memberName.c_str());
+}
+
+llvm::Value* CallExprAST::codegen(CodeGen& context) {
+    llvm::Function* calleeF = context.getModule().getFunction(m_callee);
+    if (!calleeF) {
+        return logErrorV("Unknown function referenced");
+    }
+
+    if (calleeF->arg_size() != m_args.size()) {
+        return logErrorV("Incorrect # arguments passed");
+    }
+
+    std::vector<llvm::Value*> argsV;
+    for (unsigned i = 0, e = m_args.size(); i != e; ++i) {
+        if (auto* varExpr = dynamic_cast<VariableExprAST*>(m_args[i].get())) {
+            auto it = context.m_namedValues.find(varExpr->getName());
+            if (it != context.m_namedValues.end()) {
+                Symbol& symbol = it->second;
+                if (symbol.state == OwnershipState::Moved) {
+                    return logErrorV("use of moved value in function call");
+                }
+                if (!symbol.type->isCopyable()) {
+                    symbol.state = OwnershipState::Moved;
+                }
+            }
+        }
+        argsV.push_back(m_args[i]->codegen(context));
+        if (!argsV.back()) {
+            return nullptr;
+        }
+    }
+
+    return context.getBuilder().CreateCall(calleeF, argsV, "calltmp");
 }
 
 
