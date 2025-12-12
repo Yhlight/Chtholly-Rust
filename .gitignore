@@ -1,0 +1,28 @@
+# Build artifacts
+/build/
+/bin/
+/compile_commands.json
+
+# CMake files
+/cmake-build-*/
+/CMakeCache.txt
+/CMakeFiles/
+/Makefile
+/install_manifest.txt
+
+# C++ project files
+*.o
+*.so
+*.a
+*.out
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE files
+.idea/
+.vscode/
+
+# Other
+*.log
