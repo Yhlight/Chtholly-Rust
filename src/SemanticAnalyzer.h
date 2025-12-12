@@ -11,8 +11,10 @@ public:
     SemanticAnalyzer();
     void analyze(BlockStmtAST& ast);
     SymbolTable& getSymbolTable() { return symbolTable; }
+    const std::vector<std::string>& getErrors() const { return errors; }
 
 private:
+    void addError(const std::string& message);
     SymbolTable symbolTable;
     TypeResolver typeResolver;
     FunctionDeclAST* currentFunction = nullptr;
@@ -49,6 +51,14 @@ private:
     std::shared_ptr<Type> visit(ArrayIndexExprAST& node);
     std::shared_ptr<Type> visit(EnumDeclAST& node);
     std::shared_ptr<Type> visit(EnumVariantExprAST& node);
+
+    void registerTypesAndFunctions(BlockStmtAST& ast);
+    void performLifetimeElision(BlockStmtAST& ast);
+    void analyzeStatements(BlockStmtAST& ast);
+
+    size_t getLifetime(ASTNode& node);
+
+    std::vector<std::string> errors;
 };
 
 #endif // CHTHOLLY_SEMANTICANALYZER_H

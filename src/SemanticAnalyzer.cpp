@@ -10,8 +10,17 @@ SemanticAnalyzer::SemanticAnalyzer() : typeResolver(symbolTable) {
     symbolTable.addSymbol("println", printlnType, false);
 }
 
+void SemanticAnalyzer::addError(const std::string& message) {
+    errors.push_back(message);
+}
+
 void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
-    // First pass: register all type and function declarations
+    registerTypesAndFunctions(ast);
+    performLifetimeElision(ast);
+    analyzeStatements(ast);
+}
+
+void SemanticAnalyzer::registerTypesAndFunctions(BlockStmtAST& ast) {
     for (auto& stmt : ast.statements) {
         if (auto* structDecl = dynamic_cast<StructDeclAST*>(stmt.get())) {
             visit(*structDecl);
@@ -28,12 +37,35 @@ void SemanticAnalyzer::analyze(BlockStmtAST& ast) {
             }
 
             if (!symbolTable.addSymbol(funcDecl->name, funcType, false)) {
-                throw std::runtime_error("Function '" + funcDecl->name + "' already declared in this scope.");
+                addError("Function '" + funcDecl->name + "' already declared in this scope.");
             }
         }
     }
+}
 
-    // Second pass: analyze all statements
+void SemanticAnalyzer::performLifetimeElision(BlockStmtAST& ast) {
+    for (auto& stmt : ast.statements) {
+        if (auto* funcDecl = dynamic_cast<FunctionDeclAST*>(stmt.get())) {
+            auto returnType = typeResolver.resolve(*funcDecl->returnType);
+            if (auto* returnRefType = dynamic_cast<ReferenceType*>(returnType.get())) {
+                ReferenceType* inputRefType = nullptr;
+                int refCount = 0;
+                for (auto& arg : funcDecl->args) {
+                    if (auto* ref = dynamic_cast<ReferenceType*>(arg.resolvedType.get())) {
+                        inputRefType = ref;
+                        refCount++;
+                    }
+                }
+
+                if (refCount == 1 && returnRefType->lifetime == 0) {
+                    returnRefType->lifetime = inputRefType->lifetime;
+                }
+            }
+        }
+    }
+}
+
+void SemanticAnalyzer::analyzeStatements(BlockStmtAST& ast) {
     for (auto& stmt : ast.statements) {
         if (!dynamic_cast<StructDeclAST*>(stmt.get()) && !dynamic_cast<ClassDeclAST*>(stmt.get())) {
             visit(*stmt);
@@ -108,6 +140,22 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ASTNode& node) {
     return nullptr;
 }
 
+size_t SemanticAnalyzer::getLifetime(ASTNode& node) {
+    if (auto* varExpr = dynamic_cast<VariableExprAST*>(&node)) {
+        Symbol* symbol = symbolTable.findSymbol(varExpr->name);
+        if (!symbol) {
+            addError("Variable '" + varExpr->name + "' not declared.");
+            return 0;
+        }
+        return symbol->lifetime;
+    } else if (auto* memberAccessExpr = dynamic_cast<MemberAccessExprAST*>(&node)) {
+        return getLifetime(*memberAccessExpr->object);
+    } else {
+        addError("Cannot determine lifetime of this expression type.");
+        return 0;
+    }
+}
+
 std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
     std::shared_ptr<Type> initType = nullptr;
     if (node.initExpr) {
@@ -130,20 +178,21 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VarDeclStmtAST& node) {
             auto* dynamicArrayType = static_cast<DynamicArrayType*>(declaredType.get());
             auto* staticArrayType = static_cast<ArrayType*>(initType.get());
             if (dynamicArrayType->elementType->toString() != staticArrayType->elementType->toString()) {
-                throw std::runtime_error("Type mismatch for variable '" + node.varName + "'. Expected dynamic array of " + dynamicArrayType->elementType->toString() + " but got static array of " + staticArrayType->elementType->toString());
+                addError("Type mismatch for variable '" + node.varName + "'. Expected dynamic array of " + dynamicArrayType->elementType->toString() + " but got static array of " + staticArrayType->elementType->toString());
             }
         } else if (declaredType->toString() != initType->toString()) {
-            throw std::runtime_error("Type mismatch for variable '" + node.varName + "'. Expected " + declaredType->toString() + " but got " + initType->toString());
+            addError("Type mismatch for variable '" + node.varName + "'. Expected " + declaredType->toString() + " but got " + initType->toString());
         }
     }
 
     auto varType = declaredType ? declaredType : initType;
     if (!varType) {
-        throw std::runtime_error("Variable '" + node.varName + "' must have a type annotation or an initializer.");
+        addError("Variable '" + node.varName + "' must have a type annotation or an initializer.");
+        return nullptr;
     }
 
     if (!symbolTable.addSymbol(node.varName, varType, node.isMutable)) {
-        throw std::runtime_error("Variable '" + node.varName + "' already declared in this scope.");
+        addError("Variable '" + node.varName + "' already declared in this scope.");
     }
     return nullptr; // Statements don't have a type
 }
@@ -155,7 +204,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ClassDeclAST& node) {
         if (member->defaultValue) {
             auto defaultType = visit(*member->defaultValue);
             if (memberType->toString() != defaultType->toString()) {
-                throw std::runtime_error("Type mismatch for default value of member '" + member->name + "' in class '" + node.name + "'.");
+                addError("Type mismatch for default value of member '" + member->name + "' in class '" + node.name + "'.");
             }
         }
         members.emplace_back(member->name, memberType);
@@ -174,7 +223,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ClassDeclAST& node) {
 
     auto classType = std::make_shared<ClassType>(node.name, members, methods);
     if (!symbolTable.add_type(node.name, classType)) {
-        throw std::runtime_error("Class '" + node.name + "' already declared.");
+        addError("Class '" + node.name + "' already declared.");
     }
 
     // Analyze method bodies
@@ -195,14 +244,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructDeclAST& node) {
         if (member->defaultValue) {
             auto defaultType = visit(*member->defaultValue);
             if (memberType->toString() != defaultType->toString()) {
-                throw std::runtime_error("Type mismatch for default value of member '" + member->name + "' in struct '" + node.name + "'.");
+                addError("Type mismatch for default value of member '" + member->name + "' in struct '" + node.name + "'.");
             }
         }
         members.emplace_back(member->name, memberType);
     }
     auto structType = std::make_shared<StructType>(node.name, members);
     if (!symbolTable.add_type(node.name, structType)) {
-        throw std::runtime_error("Struct '" + node.name + "' already declared.");
+        addError("Struct '" + node.name + "' already declared.");
     }
     return nullptr; // Statements don't have a type
 }
@@ -214,7 +263,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
     symbolTable.enterScope();
     for (auto& arg : node.args) {
         if(!symbolTable.addSymbol(arg.name, arg.resolvedType, false)) {
-             throw std::runtime_error("Argument '" + arg.name + "' already declared in this scope.");
+             addError("Argument '" + arg.name + "' already declared in this scope.");
         }
     }
     visit(*node.body);
@@ -228,7 +277,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionDeclAST& node) {
         }
 
         if (!hasReturn) {
-            throw std::runtime_error("Non-void function '" + node.name + "' must have a return statement as the last statement.");
+            addError("Non-void function '" + node.name + "' must have a return statement as the last statement.");
         }
     }
 
@@ -261,15 +310,18 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
     if (node.op == TokenType::EQUAL) {
         auto* lhsVar = dynamic_cast<VariableExprAST*>(node.lhs.get());
         if (!lhsVar) {
-            throw std::runtime_error("The left-hand side of an assignment must be a variable.");
+            addError("The left-hand side of an assignment must be a variable.");
+            return nullptr;
         }
 
         Symbol* lhsSymbol = symbolTable.findSymbol(lhsVar->name);
         if (!lhsSymbol) {
-            throw std::runtime_error("Variable '" + lhsVar->name + "' not declared.");
+            addError("Variable '" + lhsVar->name + "' not declared.");
+            return nullptr;
         }
         if (!lhsSymbol->isMutable) {
-            throw std::runtime_error("Variable '" + lhsVar->name + "' is not mutable.");
+            addError("Variable '" + lhsVar->name + "' is not mutable.");
+            return nullptr;
         }
 
         auto rhsType = visit(*node.rhs);
@@ -281,7 +333,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
         }
 
         if (lhsSymbol->type->toString() != rhsType->toString()) {
-            throw std::runtime_error("Type mismatch in assignment to variable '" + lhsVar->name + "'.");
+            addError("Type mismatch in assignment to variable '" + lhsVar->name + "'.");
         }
         node.type = lhsSymbol->type;
         return node.type;
@@ -292,23 +344,25 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BinaryExprAST& node) {
     auto rhsType = visit(*node.rhs);
 
     if (!lhsType || !rhsType) {
-        throw std::runtime_error("Could not resolve type for one or both operands in binary expression.");
+        addError("Could not resolve type for one or both operands in binary expression.");
+        return nullptr;
     }
 
     if (node.op == TokenType::LESS || node.op == TokenType::LESS_EQUAL || node.op == TokenType::GREATER || node.op == TokenType::GREATER_EQUAL || node.op == TokenType::DOUBLE_EQUAL || node.op == TokenType::NOT_EQUAL) {
         if (lhsType->toString() != rhsType->toString()) {
-            throw std::runtime_error("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
+            addError("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
         }
         node.type = std::make_shared<BoolType>();
         return node.type;
     }
 
     if ((!lhsType->isInteger() && !lhsType->isFloat()) || (!rhsType->isInteger() && !rhsType->isFloat())) {
-        throw std::runtime_error("Binary operator applied to non-numeric type.");
+        addError("Binary operator applied to non-numeric type.");
+        return nullptr;
     }
 
     if (lhsType->toString() != rhsType->toString()) {
-        throw std::runtime_error("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
+        addError("Type mismatch in binary expression: " + lhsType->toString() + " vs " + rhsType->toString());
     }
 
     node.type = lhsType;
@@ -338,7 +392,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(EnumDeclAST& node) {
     }
     auto enumType = std::make_shared<EnumType>(node.name, variants);
     if (!symbolTable.add_type(node.name, enumType)) {
-        throw std::runtime_error("Enum '" + node.name + "' already declared.");
+        addError("Enum '" + node.name + "' already declared.");
     }
     return nullptr;
 }
@@ -346,20 +400,23 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(EnumDeclAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(EnumVariantExprAST& node) {
     auto type = symbolTable.find_type(node.enumName);
     if (!type || !type->isEnum()) {
-        throw std::runtime_error("Type '" + node.enumName + "' is not an enum.");
+        addError("Type '" + node.enumName + "' is not an enum.");
+        return nullptr;
     }
     auto* enumType = static_cast<EnumType*>(type.get());
     if (enumType->variants.find(node.variantName) == enumType->variants.end()) {
-        throw std::runtime_error("Enum '" + node.enumName + "' has no variant named '" + node.variantName + "'.");
+        addError("Enum '" + node.enumName + "' has no variant named '" + node.variantName + "'.");
+        return nullptr;
     }
     auto& variantTypes = enumType->variants[node.variantName];
     if (variantTypes.size() != node.args.size()) {
-        throw std::runtime_error("Incorrect number of arguments for enum variant '" + node.variantName + "'.");
+        addError("Incorrect number of arguments for enum variant '" + node.variantName + "'.");
+        return nullptr;
     }
     for (size_t i = 0; i < node.args.size(); ++i) {
         auto argType = visit(*node.args[i]);
         if (argType->toString() != variantTypes[i]->toString()) {
-            throw std::runtime_error("Type mismatch for argument " + std::to_string(i) + " of enum variant '" + node.variantName + "'.");
+            addError("Type mismatch for argument " + std::to_string(i) + " of enum variant '" + node.variantName + "'.");
         }
     }
     node.type = type;
@@ -379,10 +436,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(BoolExprAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(VariableExprAST& node) {
     Symbol* symbol = symbolTable.findSymbol(node.name);
     if (!symbol) {
-        throw std::runtime_error("Variable '" + node.name + "' not declared.");
+        addError("Variable '" + node.name + "' not declared.");
+        return nullptr;
     }
     if (symbol->isMoved) {
-        throw std::runtime_error("Variable '" + node.name + "' has been moved and is no longer valid.");
+        addError("Variable '" + node.name + "' has been moved and is no longer valid.");
     }
     node.type = symbol->type;
     return node.type;
@@ -391,21 +449,22 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(VariableExprAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(StructInitializerExprAST& node) {
     auto type = symbolTable.find_type(node.structName);
     if (!type) {
-        throw std::runtime_error("Type '" + node.structName + "' not declared.");
+        addError("Type '" + node.structName + "' not declared.");
+        return nullptr;
     }
 
     if (auto* structType = dynamic_cast<StructType*>(type.get())) {
         if (node.members.size() != structType->members.size()) {
-            throw std::runtime_error("Incorrect number of initializers for struct '" + node.structName + "'.");
+            addError("Incorrect number of initializers for struct '" + node.structName + "'.");
         }
         // ... (rest of the logic for structs)
     } else if (auto* classType = dynamic_cast<ClassType*>(type.get())) {
         if (node.members.size() != classType->members.size()) {
-            throw std::runtime_error("Incorrect number of initializers for class '" + node.structName + "'.");
+            addError("Incorrect number of initializers for class '" + node.structName + "'.");
         }
         // ... (logic for classes)
     } else {
-        throw std::runtime_error("'" + node.structName + "' is not a struct or class.");
+        addError("'" + node.structName + "' is not a struct or class.");
     }
 
     // Common logic for both structs and classes
@@ -417,10 +476,22 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(StructInitializerExprAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(MemberAccessExprAST& node) {
     auto objectType = visit(*node.object);
-    if (auto* structType = dynamic_cast<StructType*>(objectType.get())) {
-        for (const auto& member : structType->members) {
-            if (member.first == node.memberName) {
-                node.type = member.second;
+    bool isRef = false;
+    size_t lifetime = 0;
+    if (auto* refType = dynamic_cast<ReferenceType*>(objectType.get())) {
+        objectType = refType->referencedType;
+        isRef = true;
+        lifetime = refType->lifetime;
+    }
+    if (objectType) {
+        if (auto* structType = dynamic_cast<StructType*>(objectType.get())) {
+            for (const auto& member : structType->members) {
+                if (member.first == node.memberName) {
+                    if (isRef) {
+                    node.type = std::make_shared<ReferenceType>(member.second, false, lifetime);
+                } else {
+                    node.type = member.second;
+                }
                 return node.type;
             }
         }
@@ -436,10 +507,13 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(MemberAccessExprAST& node) {
             return node.type;
         }
     } else {
-        throw std::runtime_error("Member access on non-struct or non-class type.");
+        addError("Member access on non-struct or non-class type.");
+        return nullptr;
     }
 
-    throw std::runtime_error("Type '" + objectType->toString() + "' has no member named '" + node.memberName + "'.");
+    addError("Type '" + objectType->toString() + "' has no member named '" + node.memberName + "'.");
+    }
+    return nullptr;
 }
 
 
@@ -452,7 +526,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
                 if (auto* varExpr = dynamic_cast<VariableExprAST*>(arg.get())) {
                     Symbol* argSymbol = symbolTable.findSymbol(varExpr->name);
                     if (argSymbol && argSymbol->isMoved) {
-                        throw std::runtime_error("Variable '" + varExpr->name + "' has been moved and is no longer valid.");
+                        addError("Variable '" + varExpr->name + "' has been moved and is no longer valid.");
                     }
                     // Do not move the argument for println
                 }
@@ -464,7 +538,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
     // Resolve the callee type
     auto calleeType = visit(*node.callee);
     if (!calleeType) {
-        throw std::runtime_error("Could not resolve callee type for function call.");
+        addError("Could not resolve callee type for function call.");
+        return nullptr;
     }
 
     // Get the function type
@@ -474,7 +549,8 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
     } else if (auto* mt = dynamic_cast<MethodType*>(calleeType.get())) {
         funcType = mt;
     } else {
-        throw std::runtime_error("Expression is not a function, cannot be called.");
+        addError("Expression is not a function, cannot be called.");
+        return nullptr;
     }
 
     // Check arguments
@@ -489,6 +565,27 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FunctionCallExprAST& node) {
     }
 
     node.type = funcType->returnType;
+
+    // Propagate inferred lifetime
+    if (auto* returnRefType = dynamic_cast<ReferenceType*>(node.type.get())) {
+        if (returnRefType->lifetime != 0) {
+            // Lifetime is already resolved, do nothing
+        } else {
+            ReferenceType* inputRefType = nullptr;
+            int refCount = 0;
+            for (auto& arg : node.args) {
+                if (auto* ref = dynamic_cast<ReferenceType*>(visit(*arg).get())) {
+                    inputRefType = ref;
+                    refCount++;
+                }
+            }
+
+            if (refCount == 1) {
+                returnRefType->lifetime = inputRefType->lifetime;
+            }
+        }
+    }
+
     return node.type;
 }
 
@@ -499,18 +596,24 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ExprStmtAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
     if (!currentFunction) {
-        throw std::runtime_error("Return statement outside of a function.");
+        addError("Return statement outside of a function.");
+        return nullptr;
     }
     if (node.returnValue) {
         auto returnType = visit(*node.returnValue);
+        if (auto* refType = dynamic_cast<ReferenceType*>(returnType.get())) {
+            if (refType->lifetime == symbolTable.getCurrentScopeIndex()) {
+                addError("Cannot return a reference to a local variable.");
+            }
+        }
         auto expectedType = typeResolver.resolve(*currentFunction->returnType);
         if (returnType->toString() != expectedType->toString()) {
-            throw std::runtime_error("Return type mismatch: expected " + expectedType->toString() + ", got " + returnType->toString());
+            addError("Return type mismatch: expected " + expectedType->toString() + ", got " + returnType->toString());
         }
     } else {
         auto expectedType = typeResolver.resolve(*currentFunction->returnType);
         if (expectedType->toString() != "void") {
-            throw std::runtime_error("Non-void function must return a value.");
+            addError("Non-void function must return a value.");
         }
     }
     return nullptr;
@@ -520,7 +623,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReturnStmtAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(IfStmtAST& node) {
     auto conditionType = visit(*node.condition);
     if (!conditionType->isBool()) {
-        throw std::runtime_error("If condition must be a boolean expression.");
+        addError("If condition must be a boolean expression.");
     }
 
     visit(*node.thenBranch);
@@ -534,7 +637,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(IfStmtAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(SwitchStmtAST& node) {
     auto conditionType = visit(*node.condition);
     if (!conditionType->isInteger() && !conditionType->isString()) {
-        throw std::runtime_error("Switch condition must be an integer or a string.");
+        addError("Switch condition must be an integer or a string.");
     }
 
     bool oldInSwitch = inSwitch;
@@ -544,11 +647,11 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(SwitchStmtAST& node) {
         visit(*caseBlock);
         if (caseBlock->value) {
             if (!dynamic_cast<NumberExprAST*>(caseBlock->value.get()) && !dynamic_cast<StringExprAST*>(caseBlock->value.get())) {
-                throw std::runtime_error("Case value must be a literal.");
+                addError("Case value must be a literal.");
             }
             auto caseType = visit(*caseBlock->value);
             if (caseType->toString() != conditionType->toString()) {
-                throw std::runtime_error("Case value type does not match switch condition type.");
+                addError("Case value type does not match switch condition type.");
             }
         }
     }
@@ -568,14 +671,14 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(CaseBlockAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(BreakStmtAST& node) {
     if (!inSwitch) {
-        throw std::runtime_error("Break statement outside of a switch statement.");
+        addError("Break statement outside of a switch statement.");
     }
     return nullptr; // Statements don't have a type
 }
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(FallthroughStmtAST& node) {
     if (!inSwitch) {
-        throw std::runtime_error("Fallthrough statement outside of a switch statement.");
+        addError("Fallthrough statement outside of a switch statement.");
     }
     return nullptr; // Statements don't have a type
 }
@@ -583,7 +686,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(FallthroughStmtAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(WhileStmtAST& node) {
     auto conditionType = visit(*node.condition);
     if (!conditionType->isBool()) {
-        throw std::runtime_error("While condition must be a boolean expression.");
+        addError("While condition must be a boolean expression.");
     }
     visit(*node.body);
     return nullptr;
@@ -593,7 +696,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(DoWhileStmtAST& node) {
     visit(*node.body);
     auto conditionType = visit(*node.condition);
     if (!conditionType->isBool()) {
-        throw std::runtime_error("Do-while condition must be a boolean expression.");
+        addError("Do-while condition must be a boolean expression.");
     }
     return nullptr;
 }
@@ -606,7 +709,7 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ForStmtAST& node) {
     if (node.condition) {
         auto conditionType = visit(*node.condition);
         if (!conditionType->isBool()) {
-            throw std::runtime_error("For condition must be a boolean expression.");
+            addError("For condition must be a boolean expression.");
         }
     }
     if (node.increment) {
@@ -624,26 +727,31 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(TypeNameAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(BorrowExprAST& node) {
     auto exprType = visit(*node.expression);
+
+    // Get lifetime of the expression
+    size_t lifetime = getLifetime(*node.expression);
+
     if (auto* varExpr = dynamic_cast<VariableExprAST*>(node.expression.get())) {
         Symbol* symbol = symbolTable.findSymbol(varExpr->name);
         if (node.isMutable) {
             if (!symbol->isMutable) {
-                throw std::runtime_error("Cannot mutably borrow immutable variable '" + varExpr->name + "'.");
+                addError("Cannot mutably borrow immutable variable '" + varExpr->name + "'.");
             }
             if (symbol->mutableBorrow || symbol->immutableBorrows > 0) {
-                throw std::runtime_error("Cannot mutably borrow '" + varExpr->name + "' as it is already borrowed.");
+                addError("Cannot mutably borrow '" + varExpr->name + "' as it is already borrowed.");
             }
             symbol->mutableBorrow = true;
             symbol->borrowedInScope = true;
         } else {
             if (symbol->mutableBorrow) {
-                throw std::runtime_error("Cannot immutably borrow '" + varExpr->name + "' as it is already mutably borrowed.");
+                addError("Cannot immutably borrow '" + varExpr->name + "' as it is already mutably borrowed.");
             }
             symbol->immutableBorrows++;
             symbol->borrowedInScope = true;
         }
     }
-    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable);
+
+    node.type = std::make_shared<ReferenceType>(exprType, node.isMutable, lifetime);
     return node.type;
 }
 
@@ -654,14 +762,15 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ReferenceTypeAST& node) {
 
 std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayLiteralExprAST& node) {
     if (node.elements.empty()) {
-        throw std::runtime_error("Array literals cannot be empty.");
+        addError("Array literals cannot be empty.");
+        return nullptr;
     }
 
     auto firstElementType = visit(*node.elements[0]);
     for (size_t i = 1; i < node.elements.size(); ++i) {
         auto elementType = visit(*node.elements[i]);
         if (elementType->toString() != firstElementType->toString()) {
-            throw std::runtime_error("All elements in an array literal must have the same type.");
+            addError("All elements in an array literal must have the same type.");
         }
     }
 
@@ -674,12 +783,13 @@ std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayLiteralExprAST& node) {
 std::shared_ptr<Type> SemanticAnalyzer::visit(ArrayIndexExprAST& node) {
     auto arrayType = visit(*node.array);
     if (!arrayType->isArray() && !arrayType->isDynamicArray()) {
-        throw std::runtime_error("Cannot index into a non-array type.");
+        addError("Cannot index into a non-array type.");
+        return nullptr;
     }
 
     auto indexType = visit(*node.index);
     if (!indexType->isInteger()) {
-        throw std::runtime_error("Array index must be an integer.");
+        addError("Array index must be an integer.");
     }
 
     if (arrayType->isArray()) {

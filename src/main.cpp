@@ -57,10 +57,12 @@ int main(int argc, char** argv) {
 
     if (ast) {
         SemanticAnalyzer analyzer;
-        try {
-            analyzer.analyze(*ast);
-        } catch (const std::exception& e) {
-            std::cerr << "Semantic error: " << e.what() << std::endl;
+        analyzer.analyze(*ast);
+
+        if (!analyzer.getErrors().empty()) {
+            for (const auto& error : analyzer.getErrors()) {
+                std::cerr << "Semantic error: " << error << std::endl;
+            }
             return 1;
         }
 

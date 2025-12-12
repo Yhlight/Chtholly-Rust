@@ -1,0 +1,40 @@
+// This function should fail to compile because it returns a reference to a local variable.
+fn dangle(): &i32 {
+    let x: i32 = 10;
+    return &x;
+}
+
+// This function should compile successfully due to lifetime elision.
+fn elision(x: &i32): &i32 {
+    return x;
+}
+
+// This function should compile successfully because it borrows from an outer scope.
+fn borrow_outer(x: &i32): &i32 {
+    let y: &i32 = x;
+    return y;
+}
+
+struct Point {
+    let x: i32;
+    let y: i32;
+}
+
+// This function should fail to compile because it returns a reference to a local variable.
+fn dangle_field(): &i32 {
+    let p: Point = Point { x: 1, y: 2 };
+    return &p.x;
+}
+
+fn main(): i32 {
+    let x: i32 = 10;
+    let y: &i32 = elision(&x);
+    let z: &i32 = borrow_outer(&x);
+
+    let p: Point = Point { x: 1, y: 2 };
+    let a: &i32 = &p.x;
+
+    dangle_field();
+
+    return 0;
+}

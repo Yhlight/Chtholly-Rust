@@ -41,6 +41,7 @@ public:
     virtual bool isArray() const { return false; }
     virtual bool isDynamicArray() const { return false; }
     virtual bool isEnum() const { return false; }
+    virtual bool isReference() const { return false; }
 
     virtual std::string toString() const = 0;
 };
@@ -164,9 +165,10 @@ class ReferenceType : public Type {
 public:
     std::shared_ptr<Type> referencedType;
     bool isMutable;
+    size_t lifetime; // The lifetime of the borrow
 
-    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable)
-        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable) {}
+    ReferenceType(std::shared_ptr<Type> referencedType, bool isMutable, size_t lifetime = 0)
+        : Type(TK_Reference), referencedType(std::move(referencedType)), isMutable(isMutable), lifetime(lifetime) {}
 
     std::string toString() const override {
         return std::string("&") + (isMutable ? "mut " : "") + referencedType->toString();
