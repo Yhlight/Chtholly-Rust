@@ -23,10 +23,10 @@ This phase focuses on setting up the basic infrastructure for the compiler, incl
     *   [x] Write unit tests for the parser to verify the correctness of the generated AST for simple expressions.
 
 *   **Milestone 1.3: Basic Semantic Analysis**
-    *   [ ] Implement a semantic analyzer that traverses the AST.
-    *   [ ] Create a symbol table to track variable declarations and their types.
+    *   [x] Implement a semantic analyzer that traverses the AST.
+    *   [x] Create a symbol table to track variable declarations and their types.
     *   [ ] Implement basic type checking for variable assignments and simple expressions.
-    *   [ ] Write unit tests to check for semantic errors like undeclared variables or type mismatches.
+    *   [x] Write unit tests to check for semantic errors like undeclared variables or type mismatches.
 
 *   **Milestone 1.4: LLVM IR Generation**
     *   [ ] Set up the LLVM backend.

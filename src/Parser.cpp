@@ -4,14 +4,14 @@
 
 namespace Chtholly {
 
-static std::map<char, int> BinopPrecedence;
+static std::map<TokenType, int> BinopPrecedence;
 
 void InitializePrecedence() {
-    BinopPrecedence['<'] = 10;
-    BinopPrecedence['+'] = 20;
-    BinopPrecedence['-'] = 20;
-    BinopPrecedence['*'] = 40;
-    BinopPrecedence['/'] = 40;
+    BinopPrecedence[TokenType::Less] = 10;
+    BinopPrecedence[TokenType::Plus] = 20;
+    BinopPrecedence[TokenType::Minus] = 20;
+    BinopPrecedence[TokenType::Star] = 40;
+    BinopPrecedence[TokenType::Slash] = 40;
 }
 
 Parser::Parser(Lexer& lexer)
@@ -53,13 +53,19 @@ std::unique_ptr<StmtAST> Parser::parseVarDeclStatement() {
     std::string name = currentToken.value;
     consume(TokenType::Identifier);
 
+    std::string type = "";
+    if (currentToken.type == TokenType::Colon) {
+        consume(TokenType::Colon);
+        type = parseType();
+    }
+
     consume(TokenType::Equal);
 
     auto init = parseExpression();
 
     consume(TokenType::Semicolon);
 
-    return std::make_unique<VarDeclStmtAST>(name, isMutable, std::move(init));
+    return std::make_unique<VarDeclStmtAST>(name, type, isMutable, std::move(init));
 }
 
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
@@ -123,7 +129,7 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int ExprPrec, std::unique_ptr<Exp
         if (TokPrec < ExprPrec)
             return LHS;
 
-        char BinOp = currentToken.value[0];
+        TokenType BinOp = currentToken.type;
         consume(currentToken.type);
 
         auto RHS = parsePrimary();
@@ -138,13 +144,9 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int ExprPrec, std::unique_ptr<Exp
 }
 
 int Parser::getTokPrecedence() {
-    if (currentToken.type < TokenType::Plus || currentToken.type > TokenType::MinusMinus)
+    if (BinopPrecedence.find(currentToken.type) == BinopPrecedence.end())
         return -1;
-
-    int TokPrec = BinopPrecedence[currentToken.value[0]];
-    if (TokPrec <= 0)
-        return -1;
-    return TokPrec;
+    return BinopPrecedence[currentToken.type];
 }
 
 std::unique_ptr<PrototypeAST> Parser::parsePrototype() {

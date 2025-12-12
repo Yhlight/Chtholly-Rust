@@ -8,7 +8,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-add_executable(chtholly_tests TestRunner.cpp LexerTests.cpp ParserTests.cpp)
+add_executable(chtholly_tests TestRunner.cpp LexerTests.cpp ParserTests.cpp SemanticAnalyzerTests.cpp)
 
 target_link_libraries(chtholly_tests PRIVATE gtest_main chtholly_lib)
 

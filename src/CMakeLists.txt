@@ -1,5 +1,5 @@
 # src/CMakeLists.txt
-add_library(chtholly_lib lib.cpp Lexer.cpp Parser.cpp)
+add_library(chtholly_lib lib.cpp Lexer.cpp Parser.cpp AST.cpp SemanticAnalyzer.cpp)
 
 # Add LLVM include dirs and definitions
 target_include_directories(chtholly_lib PRIVATE ${LLVM_INCLUDE_DIRS})
