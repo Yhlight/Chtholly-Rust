@@ -11,12 +11,15 @@ pub enum Token {
     Minus,
     Asterisk,
     Slash,
+    Assign,
 
     // Delimiters
     LParen,
     RParen,
     LBrace,
     RBrace,
+    Semicolon,
+    Comma,
 
     // Keywords
     Let,

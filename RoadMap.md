@@ -2,32 +2,34 @@
 
 This document outlines the development plan for the Chtholly programming language.
 
-## Phase 1: Project Setup and Core Infrastructure
+## Phase 1: Project Setup and Core Infrastructure (Completed)
 
-- [ ] **Project Initialization:**
-  - [ ] Initialize Rust project with Cargo.
-  - [ ] Configure `Cargo.toml` with `inkwell` dependency.
-  - [ ] Set up `.gitignore`.
-- [ ] **Environment Setup:**
-  - [ ] Install Rust and Cargo.
-  - [ ] Install LLVM 18 and required libraries.
-  - [ ] Configure environment variables.
+- [x] **Project Initialization:**
+  - [x] Initialize Rust project with Cargo.
+  - [x] Configure `Cargo.toml` with `inkwell` dependency.
+  - [x] Set up `.gitignore`.
+- [x] **Environment Setup:**
+  - [x] Install Rust and Cargo.
+  - [x] Install LLVM 18 and required libraries.
+  - [x] Configure environment variables.
 
 ## Phase 2: Lexer and Parser
 
-- [ ] **Lexer (Tokenizer):**
-  - [ ] Implement tokenization for all language keywords, operators, and literals.
-- [ ] **Parser (AST Generation):**
-  - [ ] Define Abstract Syntax Tree (AST) nodes.
-  - [ ] Implement parsing for basic expressions and statements.
-  - [ ] Implement parsing for variable declarations (`let`, `let mut`).
+- [x] **Lexer (Tokenizer):**
+  - [x] Implement tokenization for basic keywords, operators, and literals.
+  - [x] Handle single-line (`//`) and multi-line (`/* ... */`) comments.
+- [x] **Parser (AST Generation):**
+  - [x] Define Abstract Syntax Tree (AST) nodes for expressions.
+  - [x] Implement parsing for basic expressions.
+  - [x] Implement parsing for statements (e.g., variable declarations).
+  - [x] Implement parsing for variable declarations (`let`, `let mut`).
   - [ ] Implement parsing for function definitions (`fn`).
   - [ ] Implement parsing for control flow (`if`, `else`, `while`, `for`).
 
 ## Phase 3: Semantic Analysis and Type Checking
 
-- [ ] **Symbol Table:**
-  - [ ] Implement a symbol table to track variables, functions, and types.
+- [x] **Symbol Table:**
+  - [x] Implement a symbol table to track variables.
 - [ ] **Type Checking:**
   - [ ] Implement type inference and checking for expressions and variable declarations.
 - [ ] **Ownership and Borrowing:**
@@ -35,10 +37,11 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 4: Code Generation (LLVM IR)
 
-- [ ] **LLVM Backend Integration:**
-  - [ ] Set up `inkwell` to generate LLVM IR.
-- [ ] **Code Generation:**
-  - [ ] Generate LLVM IR for basic expressions and statements.
+- [x] **LLVM Backend Integration:**
+  - [x] Set up `inkwell` to generate LLVM IR.
+- [x] **Code Generation:**
+  - [x] Generate LLVM IR for basic expressions.
+  - [x] Generate LLVM IR for variable declarations and assignments.
   - [ ] Generate LLVM IR for functions.
   - [ ] Generate LLVM IR for control flow.
 
@@ -62,8 +65,9 @@ This document outlines the development plan for the Chtholly programming languag
 
 ## Phase 7: Testing and CI/CD
 
-- [ ] **Unit Tests:**
-  - [ ] Write unit tests for the lexer, parser, and code generator.
+- [x] **Unit Tests:**
+  - [x] Write unit tests for the initial lexer, parser, and code generator.
+  - [x] Add tests for new features (variables, comments, etc.).
 - [ ] **Integration Tests:**
   - [ ] Write integration tests for the entire compiler.
 - [ ] **CI/CD:**

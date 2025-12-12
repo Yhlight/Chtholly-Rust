@@ -4,16 +4,17 @@ pub mod ast;
 pub mod codegen;
 pub mod lexer;
 pub mod parser;
+pub mod semantics;
 
 fn main() {
-    let input = "1 + 2 * 3";
+    let input = "let x = 10; let y = x + 5;";
 
     let lexer = lexer::Lexer::new(input);
     let mut parser = parser::Parser::new(lexer);
-    let ast = parser.parse_expression().expect("Failed to parse expression");
+    let ast = parser.parse_program();
 
     let context = Context::create();
-    let codegen = codegen::CodeGenerator::new(&context, "main");
+    let mut codegen = codegen::CodeGenerator::new(&context, "main");
 
     match codegen.compile(&ast) {
         Ok(ir) => println!("{}", ir),
