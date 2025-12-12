@@ -42,8 +42,8 @@ This document outlines the planned development milestones for the Chtholly progr
     - **[X] Move Semantics:** Enforce move semantics for assignments and function calls. The original variable becomes inaccessible after a move.
     - **[X] `Copy` Trait:** Implement a `Copy` trait for primitive types that are copied instead of moved.
     - **[ ] Drop Semantics:** Implement automatic resource cleanup (`drop`/destructor calls) when a variable goes out of scope.
-- **[ ] Borrowing & References:**
-    - **[ ] Immutable References (`&`):** Allow creating shared references to a resource.
+- **[X] Borrowing & References:**
+    - **[X] Immutable References (`&`):** Allow creating shared references to a resource.
     - **[ ] Mutable References (`&mut`):** Allow creating exclusive, mutable references.
 - **[ ] Borrow Checker (Static Analysis):**
     - **[ ] Rule Enforcement:** Implement the core borrow checking rules at compile time:

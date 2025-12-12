@@ -53,6 +53,13 @@ public:
     llvm::Type* getLLVMType(CodeGen& context) override;
 };
 
+class ReferenceType : public Type {
+    std::unique_ptr<Type> m_referencedType;
+public:
+    ReferenceType(std::unique_ptr<Type> referencedType) : m_referencedType(std::move(referencedType)) {}
+    llvm::Type* getLLVMType(CodeGen& context) override;
+};
+
 
 class ExprAST {
 public:
@@ -120,6 +127,20 @@ class StructInitExprAST : public ExprAST {
 public:
     StructInitExprAST(const std::string& structName, std::vector<std::unique_ptr<ExprAST>> args)
         : m_structName(structName), m_args(std::move(args)) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
+class ReferenceExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> m_expr;
+public:
+    ReferenceExprAST(std::unique_ptr<ExprAST> expr) : m_expr(std::move(expr)) {}
+    llvm::Value* codegen(CodeGen& context) override;
+};
+
+class DereferenceExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> m_expr;
+public:
+    DereferenceExprAST(std::unique_ptr<ExprAST> expr) : m_expr(std::move(expr)) {}
     llvm::Value* codegen(CodeGen& context) override;
 };
 

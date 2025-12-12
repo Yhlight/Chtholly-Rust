@@ -45,6 +45,15 @@ std::unique_ptr<PrototypeAST> Parser::logErrorP(const char* str) {
 }
 
 std::unique_ptr<Type> Parser::parseType() {
+    if (m_currentToken == Token::Ampersand) {
+        getNextToken(); // eat &.
+        auto referencedType = parseType();
+        if (!referencedType) {
+            return nullptr;
+        }
+        return std::make_unique<ReferenceType>(std::move(referencedType));
+    }
+
     Token typeToken = m_currentToken;
     getNextToken(); // consume type token
     switch (typeToken) {
@@ -273,6 +282,24 @@ std::unique_ptr<ExprAST> Parser::parseStructDef() {
     return std::make_unique<StructDefAST>(name, std::move(members));
 }
 
+std::unique_ptr<ExprAST> Parser::parseUnaryExpr() {
+    if (m_currentToken == Token::Ampersand) {
+        getNextToken(); // eat &.
+        auto operand = parseUnaryExpr();
+        if (!operand)
+            return nullptr;
+        return std::make_unique<ReferenceExprAST>(std::move(operand));
+    }
+    if (m_currentToken == Token::Star) {
+        getNextToken(); // eat *.
+        auto operand = parseUnaryExpr();
+        if (!operand)
+            return nullptr;
+        return std::make_unique<DereferenceExprAST>(std::move(operand));
+    }
+    return parsePrimary();
+}
+
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
     switch (m_currentToken) {
     default:
@@ -328,7 +355,7 @@ std::unique_ptr<ExprAST> Parser::parseBinOpRHS(int exprPrec,
 }
 
 std::unique_ptr<ExprAST> Parser::parseExpression() {
-    auto lhs = parsePrimary();
+    auto lhs = parseUnaryExpr();
     if (!lhs)
         return nullptr;
 

@@ -102,6 +102,8 @@ Token Lexer::getNextToken() {
         case ';': return Token::Semicolon;
         case '=': return Token::Assign;
         case ',': return Token::Comma;
+        case '&': return Token::Ampersand;
+        case '*': return Token::Star;
         default: return static_cast<Token>(thisChar);
     }
 }

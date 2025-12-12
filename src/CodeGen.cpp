@@ -28,6 +28,10 @@ llvm::Type* StructType::getLLVMType(CodeGen& context) {
     return context.m_structTypes[m_name];
 }
 
+llvm::Type* ReferenceType::getLLVMType(CodeGen& context) {
+    return llvm::PointerType::get(m_referencedType->getLLVMType(context), 0);
+}
+
 CodeGen::CodeGen() : m_builder(m_context) {
     m_module = std::make_unique<llvm::Module>("ChthollyJIT", m_context);
 }
@@ -351,6 +355,38 @@ llvm::Value* CallExprAST::codegen(CodeGen& context) {
     }
 
     return context.getBuilder().CreateCall(calleeF, argsV, "calltmp");
+}
+
+llvm::Value* ReferenceExprAST::codegen(CodeGen& context) {
+    if (auto* varExpr = dynamic_cast<VariableExprAST*>(m_expr.get())) {
+        auto it = context.m_namedValues.find(varExpr->getName());
+        if (it == context.m_namedValues.end()) {
+            return logErrorV("Unknown variable name");
+        }
+        Symbol& symbol = it->second;
+        if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(symbol.value)) {
+            return alloca;
+        } else {
+            // It's an immutable primitive value. We need to alloca it to take a reference.
+            llvm::AllocaInst* alloca = context.getBuilder().CreateAlloca(symbol.value->getType(), nullptr, varExpr->getName().c_str());
+            context.getBuilder().CreateStore(symbol.value, alloca);
+            // We need to update the symbol table to point to the new alloca.
+            symbol.value = alloca;
+            return alloca;
+        }
+    }
+    return logErrorV("Cannot take reference of non-variable expression");
+}
+
+llvm::Value* DereferenceExprAST::codegen(CodeGen& context) {
+    llvm::Value* val = m_expr->codegen(context);
+    if (!val) {
+        return nullptr;
+    }
+    if (!val->getType()->isPointerTy()) {
+        return logErrorV("Cannot dereference non-pointer type");
+    }
+    return context.getBuilder().CreateLoad(val->getType()->getPointerElementType(), val, "deref");
 }
 
 

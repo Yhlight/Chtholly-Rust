@@ -40,6 +40,8 @@ enum class Token {
     Dot,      // .
     Assign,   // =
     Comma,    // ,
+    Ampersand,// &
+    Star,     // *
 
     // Unknown character
     Unknown
