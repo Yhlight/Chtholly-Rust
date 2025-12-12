@@ -31,6 +31,35 @@ public:
     const std::string& getName() const { return Name; }
 };
 
+/// BinaryExprAST - Expression class for a binary operator.
+class BinaryExprAST : public ExprAST {
+    char Op;
+    std::unique_ptr<ExprAST> LHS, RHS;
+
+public:
+    BinaryExprAST(char op, std::unique_ptr<ExprAST> LHS,
+                  std::unique_ptr<ExprAST> RHS)
+        : Op(op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+
+    char getOp() const { return Op; }
+    const ExprAST* getLHS() const { return LHS.get(); }
+    const ExprAST* getRHS() const { return RHS.get(); }
+};
+
+/// CallExprAST - Expression class for function calls.
+class CallExprAST : public ExprAST {
+    std::string Callee;
+    std::vector<std::unique_ptr<ExprAST>> Args;
+
+public:
+    CallExprAST(const std::string &Callee,
+                std::vector<std::unique_ptr<ExprAST>> Args)
+        : Callee(Callee), Args(std::move(Args)) {}
+
+    const std::string& getCallee() const { return Callee; }
+    const std::vector<std::unique_ptr<ExprAST>>& getArgs() const { return Args; }
+};
+
 /// StmtAST - Base class for all statement nodes.
 class StmtAST {
 public:

@@ -18,9 +18,9 @@ This phase focuses on setting up the basic infrastructure for the compiler, incl
 
 *   **Milestone 1.2: Parser & Abstract Syntax Tree (AST)**
     *   [x] Define the structure of the Abstract Syntax Tree (AST).
-    *   [x] Implement a parser that consumes tokens from the lexer and builds an AST.
+    *   [ ] Implement a parser that consumes tokens from the lexer and builds an AST.
     *   [x] Start with parsing basic constructs like variable declarations (`let`, `let mut`).
-    *   [x] Write unit tests for the parser to verify the correctness of the generated AST for simple expressions.
+    *   [ ] Write unit tests for the parser to verify the correctness of the generated AST for simple expressions.
 
 *   **Milestone 1.3: Basic Semantic Analysis**
     *   [ ] Implement a semantic analyzer that traverses the AST.

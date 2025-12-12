@@ -19,7 +19,10 @@ private:
     std::unique_ptr<StmtAST> parseVarDeclStatement();
     std::unique_ptr<ExprAST> parsePrimary();
     std::unique_ptr<ExprAST> parseNumberExpression();
+    std::unique_ptr<ExprAST> parseBinOpRHS(int ExprPrec, std::unique_ptr<ExprAST> LHS);
+    std::unique_ptr<ExprAST> parseIdentifierExpression();
 
+    int GetTokPrecedence();
     void consume(TokenType expected);
 
     Lexer& lexer;
