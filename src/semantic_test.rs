@@ -1,0 +1,43 @@
+use crate::lexer::Lexer;
+use crate::parser::Parser;
+use crate::semantic::SemanticAnalyzer;
+
+#[test]
+fn test_type_checking() {
+    let input = r#"
+        let x = 5;
+        let y = 10.5;
+        let z = x + y;
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&program);
+
+    assert_eq!(analyzer.errors.len(), 1);
+    assert_eq!(
+        analyzer.errors[0],
+        "type mismatch: Integer and Float"
+    );
+}
+
+#[test]
+fn test_undeclared_variable() {
+    let input = "x + 5;";
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&program);
+
+    assert_eq!(analyzer.errors.len(), 1);
+    assert_eq!(
+        analyzer.errors[0],
+        "undeclared variable: x"
+    );
+}
