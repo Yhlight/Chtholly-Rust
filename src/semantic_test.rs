@@ -93,3 +93,33 @@ fn test_if_scoping() {
     analyzer.analyze(&program);
     assert_eq!(analyzer.errors.len(), 0);
 }
+
+#[test]
+fn test_while_condition_not_boolean() {
+    let input = "while (5) { 10 }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&program);
+    assert_eq!(analyzer.errors.len(), 1);
+    assert_eq!(
+        analyzer.errors[0],
+        "while condition must be a boolean, but got Integer"
+    );
+}
+
+#[test]
+fn test_break_outside_loop() {
+    let input = "break;";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&program);
+    assert_eq!(analyzer.errors.len(), 1);
+    assert_eq!(
+        analyzer.errors[0],
+        "break statement outside of a loop"
+    );
+}

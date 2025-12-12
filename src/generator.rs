@@ -4,6 +4,7 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::{PointerValue, FunctionValue, BasicValueEnum};
 use inkwell::types::{BasicTypeEnum, BasicType};
+use inkwell::basic_block::BasicBlock;
 use crate::ast::{Program, Statement, Expression};
 use crate::semantic::{self, SemanticAnalyzer};
 
@@ -14,6 +15,7 @@ pub struct CodeGenerator<'a, 'ctx> {
     variables: HashMap<String, PointerValue<'ctx>>,
     semantic_analyzer: &'a mut SemanticAnalyzer,
     current_function: Option<FunctionValue<'ctx>>,
+    loop_end_blocks: Vec<BasicBlock<'ctx>>,
 }
 
 impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
@@ -27,6 +29,7 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
             variables: HashMap::new(),
             semantic_analyzer,
             current_function: None,
+            loop_end_blocks: Vec::new(),
         }
     }
 
@@ -85,6 +88,30 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
                 self.builder.build_unconditional_branch(merge_block).map_err(|_| "Failed to build unconditional branch")?;
 
                 self.builder.position_at_end(merge_block);
+            }
+            Statement::While { condition, body } => {
+                let loop_cond_block = self.context.append_basic_block(self.current_function.unwrap(), "loop_cond");
+                let loop_body_block = self.context.append_basic_block(self.current_function.unwrap(), "loop_body");
+                let loop_end_block = self.context.append_basic_block(self.current_function.unwrap(), "loop_end");
+
+                self.builder.build_unconditional_branch(loop_cond_block).map_err(|_| "Failed to build unconditional branch")?;
+
+                self.builder.position_at_end(loop_cond_block);
+                let cond = self.generate_expression(condition)?;
+                self.builder.build_conditional_branch(cond.into_int_value(), loop_body_block, loop_end_block).map_err(|_| "Failed to build conditional branch")?;
+
+                self.builder.position_at_end(loop_body_block);
+                self.loop_end_blocks.push(loop_end_block);
+                self.generate_statement(body)?;
+                self.loop_end_blocks.pop();
+                self.builder.build_unconditional_branch(loop_cond_block).map_err(|_| "Failed to build unconditional branch")?;
+
+                self.builder.position_at_end(loop_end_block);
+            }
+            Statement::Break => {
+                if let Some(loop_end_block) = self.loop_end_blocks.last() {
+                    self.builder.build_unconditional_branch(*loop_end_block).map_err(|_| "Failed to build unconditional branch")?;
+                }
             }
         }
         Ok(())

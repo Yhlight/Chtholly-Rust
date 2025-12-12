@@ -20,6 +20,7 @@ pub struct Symbol {
 pub struct SemanticAnalyzer {
     pub scopes: Vec<HashMap<String, Symbol>>,
     pub errors: Vec<String>,
+    in_loop: bool,
 }
 
 impl SemanticAnalyzer {
@@ -29,6 +30,7 @@ impl SemanticAnalyzer {
         SemanticAnalyzer {
             scopes,
             errors: Vec::new(),
+            in_loop: false,
         }
     }
 
@@ -72,6 +74,24 @@ impl SemanticAnalyzer {
                 self.analyze_statement(consequence);
                 if let Some(alt) = alternative {
                     self.analyze_statement(alt);
+                }
+            }
+            Statement::While { condition, body } => {
+                let cond_type = self.analyze_expression(condition);
+                if cond_type != Type::Boolean {
+                    self.errors.push(format!(
+                        "while condition must be a boolean, but got {:?}",
+                        cond_type
+                    ));
+                }
+                let old_in_loop = self.in_loop;
+                self.in_loop = true;
+                self.analyze_statement(body);
+                self.in_loop = old_in_loop;
+            }
+            Statement::Break => {
+                if !self.in_loop {
+                    self.errors.push("break statement outside of a loop".to_string());
                 }
             }
         }

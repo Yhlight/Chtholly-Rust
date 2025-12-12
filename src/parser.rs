@@ -51,6 +51,8 @@ impl<'a> Parser<'a> {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
             Token::If => self.parse_if_statement(),
+            Token::While => self.parse_while_statement(),
+            Token::Break => Some(Statement::Break),
             _ => self.parse_expression_statement(),
         }
     }
@@ -144,6 +146,36 @@ impl<'a> Parser<'a> {
             condition,
             consequence: Box::new(consequence),
             alternative,
+        })
+    }
+
+    fn parse_while_statement(&mut self) -> Option<Statement> {
+        if !self.peek_token_is(&Token::LParen) {
+            self.peek_error(&Token::LParen);
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.peek_token_is(&Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return None;
+        }
+        self.next_token();
+
+        if !self.peek_token_is(&Token::LBrace) {
+            self.peek_error(&Token::LBrace);
+            return None;
+        }
+        self.next_token();
+
+        let body = self.parse_block_statement()?;
+
+        Some(Statement::While {
+            condition,
+            body: Box::new(body),
         })
     }
 

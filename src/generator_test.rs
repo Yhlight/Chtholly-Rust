@@ -135,3 +135,23 @@ fn test_if_statement() {
     assert!(actual_ir.contains("else:"));
     assert!(actual_ir.contains("merge:"));
 }
+
+#[test]
+fn test_while_statement() {
+    let input = "while (true) { }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    let mut semantic_analyzer = SemanticAnalyzer::new();
+    semantic_analyzer.analyze(&program);
+    let context = Context::create();
+    let mut generator = CodeGenerator::new(&context, &mut semantic_analyzer);
+    generator.generate(&program).unwrap();
+    let actual_ir = generator.print_to_string();
+
+    assert!(actual_ir.contains("loop_cond:"));
+    assert!(actual_ir.contains("br i1 true, label %loop_body, label %loop_end"));
+    assert!(actual_ir.contains("loop_body:"));
+    assert!(actual_ir.contains("br label %loop_cond"));
+    assert!(actual_ir.contains("loop_end:"));
+}

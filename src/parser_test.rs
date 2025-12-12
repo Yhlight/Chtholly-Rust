@@ -118,3 +118,20 @@ fn test_if_else_statement() {
         panic!("Expected an if-else statement, but got something else.");
     }
 }
+
+#[test]
+fn test_while_statement() {
+    let input = "while (x > y) { x }";
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.len(), 1);
+
+    if let Statement::While { condition, body } = &program[0] {
+        assert!(matches!(condition, Expression::Infix(_, _, _)));
+        assert!(matches!(**body, Statement::Block(_)));
+    } else {
+        panic!("Expected a while statement, but got something else.");
+    }
+}

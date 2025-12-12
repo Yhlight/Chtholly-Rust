@@ -15,6 +15,11 @@ pub enum Statement {
         consequence: Box<Statement>,
         alternative: Option<Box<Statement>>,
     },
+    While {
+        condition: Expression,
+        body: Box<Statement>,
+    },
+    Break,
 }
 
 #[derive(Debug, PartialEq, Clone)]
