@@ -12,9 +12,9 @@ This phase focuses on setting up the basic infrastructure for the compiler, incl
 
 *   **Milestone 1.1: Project Setup & Lexer**
     *   [x] Set up the development environment with CMake, C++17, and LLVM 18.
-    *   [ ] Implement the lexer to tokenize the Chtholly source code (`.cns` files).
-    *   [ ] Define all tokens based on `Chtholly.md` (keywords, identifiers, literals, operators, etc.).
-    *   [ ] Write unit tests for the lexer to cover all token types and edge cases.
+    *   [x] Implement the lexer to tokenize the Chtholly source code (`.cns` files).
+    *   [x] Define all tokens based on `Chtholly.md` (keywords, identifiers, literals, operators, etc.).
+    *   [x] Write unit tests for the lexer to cover all token types and edge cases.
 
 *   **Milestone 1.2: Parser & Abstract Syntax Tree (AST)**
     *   [ ] Define the structure of the Abstract Syntax Tree (AST).
