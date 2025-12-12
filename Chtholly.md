@@ -862,6 +862,28 @@ fn main(): Result<i32, SystemError>
 }
 ```
 
+## Const Struct 常结构体
+
+Chtholly支持常结构体，常结构体内部所有成员皆为const成员。
+
+常结构体是编译型产物，不会在运行时中生成。
+
+所有的数据都会以各种合理的方式传递给运行时。
+
+常结构体的成员允许延迟赋值，但是仅限于编译期的使用。
+
+```chtholly
+const struct Point {
+    const x: i32;  // 允许延迟赋值
+    const y: i32;
+
+    const fn print(&self): void
+    {
+
+    }
+}
+```
+
 ## Const Context 内部规则（允许与限制）
 
 为了确保编译期执行的安全性和确定性，`const fn` 内部的代码受到严格限制。
