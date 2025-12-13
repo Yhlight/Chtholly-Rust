@@ -27,6 +27,28 @@ TEST(SemanticAnalyzerTest, UndeclaredVariable) {
     EXPECT_THROW(analyzer.analyze(*functions[0]), std::runtime_error);
 }
 
+TEST(SemanticAnalyzerTest, ValidIfStatement) {
+    std::string source = "fn main(): void { if (1 > 2) { let x: i32 = 1; } }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+
+    ASSERT_EQ(functions.size(), 1);
+    EXPECT_NO_THROW(analyzer.analyze(*functions[0]));
+}
+
+TEST(SemanticAnalyzerTest, InvalidIfStatementCondition) {
+    std::string source = "fn main(): void { if (1) { let x: i32 = 1; } }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+
+    ASSERT_EQ(functions.size(), 1);
+    EXPECT_THROW(analyzer.analyze(*functions[0]), std::runtime_error);
+}
+
 TEST(SemanticAnalyzerTest, ValidReturnType) {
     std::string source = "fn main(): i32 { return 10; }";
     Lexer lexer(source);

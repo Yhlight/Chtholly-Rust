@@ -39,4 +39,8 @@ void ExprStmtAST::accept(ASTVisitor& visitor) const {
     visitor.visit(*this);
 }
 
+void IfStmtAST::accept(ASTVisitor& visitor) const {
+    visitor.visit(*this);
+}
+
 } // namespace Chtholly

@@ -103,3 +103,31 @@ TEST(ParserTest, ParseCallExpression) {
     const auto& args = call_expr->getArgs();
     ASSERT_EQ(args.size(), 2);
 }
+
+TEST(ParserTest, ParseIfStatement) {
+    std::string source = "fn main(): void { if (1 > 2) { let x: i32 = 1; } }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+
+    ASSERT_EQ(functions.size(), 1);
+    auto* func = functions[0].get();
+    const auto& body = func->getBody();
+    ASSERT_EQ(body.size(), 1);
+
+    auto* if_stmt = dynamic_cast<IfStmtAST*>(body[0].get());
+    ASSERT_NE(if_stmt, nullptr);
+
+    auto* cond = dynamic_cast<const BinaryExprAST*>(if_stmt->getCond());
+    ASSERT_NE(cond, nullptr);
+    EXPECT_EQ(cond->getOp(), TokenType::Greater);
+
+    const auto& then_block = if_stmt->getThen();
+    ASSERT_EQ(then_block.size(), 1);
+    auto* then_stmt = dynamic_cast<VarDeclStmtAST*>(then_block[0].get());
+    ASSERT_NE(then_stmt, nullptr);
+    EXPECT_EQ(then_stmt->getName(), "x");
+
+    const auto& else_block = if_stmt->getElse();
+    ASSERT_EQ(else_block.size(), 0);
+}

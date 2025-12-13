@@ -148,6 +148,23 @@ public:
     void accept(ASTVisitor& visitor) const override;
 };
 
+class IfStmtAST : public StmtAST {
+    std::unique_ptr<ExprAST> Cond;
+    std::vector<std::unique_ptr<StmtAST>> Then;
+    std::vector<std::unique_ptr<StmtAST>> Else;
+
+public:
+    IfStmtAST(std::unique_ptr<ExprAST> Cond,
+              std::vector<std::unique_ptr<StmtAST>> Then,
+              std::vector<std::unique_ptr<StmtAST>> Else)
+        : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
+
+    const ExprAST* getCond() const { return Cond.get(); }
+    const std::vector<std::unique_ptr<StmtAST>>& getThen() const { return Then; }
+    const std::vector<std::unique_ptr<StmtAST>>& getElse() const { return Else; }
+    void accept(ASTVisitor& visitor) const override;
+};
+
 } // namespace Chtholly
 
 #endif // CHTHOLLY_AST_H

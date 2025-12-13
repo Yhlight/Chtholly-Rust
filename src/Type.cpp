@@ -17,4 +17,9 @@ Type* Type::getVoidTy() {
     return &VoidTy;
 }
 
+Type* Type::getBoolTy() {
+    static Type boolTy(BoolTyID);
+    return &boolTy;
+}
+
 } // namespace Chtholly

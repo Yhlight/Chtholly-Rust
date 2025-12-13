@@ -12,6 +12,7 @@ class FunctionAST;
 class VarDeclStmtAST;
 class ReturnStmtAST;
 class ExprStmtAST;
+class IfStmtAST;
 
 class ASTVisitor {
 public:
@@ -25,6 +26,7 @@ public:
     virtual void visit(const VarDeclStmtAST& node) = 0;
     virtual void visit(const ReturnStmtAST& node) = 0;
     virtual void visit(const ExprStmtAST& node) = 0;
+    virtual void visit(const IfStmtAST& node) = 0;
 };
 
 } // namespace Chtholly

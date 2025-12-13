@@ -83,7 +83,7 @@ This phase will add more features to make Chtholly a more expressive and useful 
     *   [ ] Add support for `self`, `&self`, and `&mut self` in member functions.
 
 *   **Milestone 3.2: Control Flow**
-    *   [ ] Implement `if-else` expressions.
+    *   [x] Implement `if-else` expressions.
     *   [ ] Implement `while`, `for`, and `do-while` loops.
     *   [ ] Implement `switch-case` statements with the improved semantics (`fallthrough`).
 

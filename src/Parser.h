@@ -34,6 +34,7 @@ private:
     int getTokPrecedence();
     std::unique_ptr<StmtAST> parseReturnStatement();
     std::unique_ptr<StmtAST> parseExpressionStatement();
+    std::unique_ptr<StmtAST> parseIfStatement();
 
     void consume(TokenType expected);
 

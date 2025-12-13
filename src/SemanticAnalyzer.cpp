@@ -32,7 +32,19 @@ void SemanticAnalyzer::visit(const BinaryExprAST& node) {
     if (LHSType->getTypeID() != RHSType->getTypeID()) {
         throw std::runtime_error("Type mismatch in binary expression");
     }
-    lastType = LHSType;
+
+    switch (node.getOp()) {
+        case TokenType::Less:
+        case TokenType::LessEqual:
+        case TokenType::Greater:
+        case TokenType::GreaterEqual:
+        case TokenType::EqualEqual:
+        case TokenType::BangEqual:
+            lastType = Type::getBoolTy();
+            break;
+        default:
+            lastType = LHSType;
+    }
 }
 
 void SemanticAnalyzer::visit(const CallExprAST& node) {
@@ -87,6 +99,21 @@ void SemanticAnalyzer::visit(const ReturnStmtAST& node) {
 
 void SemanticAnalyzer::visit(const ExprStmtAST& node) {
     node.getExpr()->accept(*this);
+}
+
+void SemanticAnalyzer::visit(const IfStmtAST& node) {
+    node.getCond()->accept(*this);
+    if (!lastType->isBoolTy()) {
+        throw std::runtime_error("If condition must be a boolean expression");
+    }
+
+    for (const auto& stmt : node.getThen()) {
+        stmt->accept(*this);
+    }
+
+    for (const auto& stmt : node.getElse()) {
+        stmt->accept(*this);
+    }
 }
 
 } // namespace Chtholly

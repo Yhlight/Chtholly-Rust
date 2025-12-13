@@ -22,6 +22,7 @@ public:
     void visit(const VarDeclStmtAST& node) override;
     void visit(const ReturnStmtAST& node) override;
     void visit(const ExprStmtAST& node) override;
+    void visit(const IfStmtAST& node) override;
 
 private:
     mutable std::map<std::string, const Type*> symbolTable;

@@ -11,6 +11,7 @@ public:
         IntegerTyID,
         FloatTyID,
         VoidTyID,
+        BoolTyID,
     };
 
     TypeID getTypeID() const { return ID; }
@@ -18,10 +19,12 @@ public:
     bool isIntegerTy() const { return getTypeID() == IntegerTyID; }
     bool isFloatTy() const { return getTypeID() == FloatTyID; }
     bool isVoidTy() const { return getTypeID() == VoidTyID; }
+    bool isBoolTy() const { return getTypeID() == BoolTyID; }
 
     static Type* getIntegerTy();
     static Type* getFloatTy();
     static Type* getVoidTy();
+    static Type* getBoolTy();
 
 private:
     TypeID ID;

@@ -10,6 +10,11 @@ static std::map<TokenType, int> BinopPrecedence;
 
 void InitializePrecedence() {
     BinopPrecedence[TokenType::Less] = 10;
+    BinopPrecedence[TokenType::LessEqual] = 10;
+    BinopPrecedence[TokenType::Greater] = 10;
+    BinopPrecedence[TokenType::GreaterEqual] = 10;
+    BinopPrecedence[TokenType::EqualEqual] = 10;
+    BinopPrecedence[TokenType::BangEqual] = 10;
     BinopPrecedence[TokenType::Plus] = 20;
     BinopPrecedence[TokenType::Minus] = 20;
     BinopPrecedence[TokenType::Star] = 40;
@@ -37,6 +42,7 @@ void Parser::synchronize() {
         case TokenType::Fn:
         case TokenType::Let:
         case TokenType::Return:
+        case TokenType::If:
             return;
         default:
             break;
@@ -60,6 +66,8 @@ std::vector<std::unique_ptr<FunctionAST>> Parser::parse() {
 std::unique_ptr<StmtAST> Parser::parseStatement() {
     try {
         switch (currentToken.type) {
+        case TokenType::If:
+            return parseIfStatement();
         case TokenType::Let:
             return parseVarDeclStatement();
         case TokenType::Return:
@@ -128,8 +136,7 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
                 return V;
             }
         default:
-            logError("Unexpected token in expression: " + currentToken.value);
-            return nullptr;
+            throw std::runtime_error("Unexpected token in expression: " + currentToken.value);
     }
 }
 
@@ -255,6 +262,8 @@ Type* Parser::parseType() {
         return Type::getFloatTy();
     } else if (TypeName == "void") {
         return Type::getVoidTy();
+    } else if (TypeName == "bool") {
+        return Type::getBoolTy();
     }
     return nullptr;
 }
@@ -276,6 +285,46 @@ std::unique_ptr<StmtAST> Parser::parseExpressionStatement() {
     }
     consume(TokenType::Semicolon);
     return std::make_unique<ExprStmtAST>(std::move(expr));
+}
+
+std::unique_ptr<StmtAST> Parser::parseIfStatement() {
+    consume(TokenType::If);
+    consume(TokenType::LeftParen);
+    auto Cond = parseExpression();
+    if (!Cond) return nullptr;
+    consume(TokenType::RightParen);
+
+    consume(TokenType::LeftBrace);
+    std::vector<std::unique_ptr<StmtAST>> Then;
+    while (currentToken.type != TokenType::RightBrace && currentToken.type != TokenType::EndOfFile) {
+        auto stmt = parseStatement();
+        if (stmt) {
+            Then.push_back(std::move(stmt));
+        }
+    }
+    consume(TokenType::RightBrace);
+
+    std::vector<std::unique_ptr<StmtAST>> Else;
+    if (currentToken.type == TokenType::Else) {
+        consume(TokenType::Else);
+        if (currentToken.type == TokenType::If) {
+            auto else_if_stmt = parseIfStatement();
+            if (else_if_stmt) {
+                Else.push_back(std::move(else_if_stmt));
+            }
+        } else {
+            consume(TokenType::LeftBrace);
+            while (currentToken.type != TokenType::RightBrace && currentToken.type != TokenType::EndOfFile) {
+                auto stmt = parseStatement();
+                if (stmt) {
+                    Else.push_back(std::move(stmt));
+                }
+            }
+            consume(TokenType::RightBrace);
+        }
+    }
+
+    return std::make_unique<IfStmtAST>(std::move(Cond), std::move(Then), std::move(Else));
 }
 
 } // namespace Chtholly
