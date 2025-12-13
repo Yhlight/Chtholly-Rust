@@ -3,6 +3,8 @@
 
 #include "AST.h"
 #include "Lexer.h"
+#include "Type.h"
+#include <string>
 #include <vector>
 
 namespace Chtholly {
@@ -13,7 +15,12 @@ public:
 
     std::vector<std::unique_ptr<FunctionAST>> parse();
 
+    const std::vector<std::string>& getErrors() const { return m_errors; }
+
 private:
+    void logError(const std::string& message);
+    void synchronize();
+
     std::unique_ptr<StmtAST> parseStatement();
     std::unique_ptr<ExprAST> parseExpression();
     std::unique_ptr<StmtAST> parseVarDeclStatement();
@@ -23,13 +30,16 @@ private:
     std::unique_ptr<ExprAST> parseIdentifierExpression();
     std::unique_ptr<PrototypeAST> parsePrototype();
     std::unique_ptr<FunctionAST> parseFunctionDefinition();
-    std::string parseType();
+    Type* parseType();
     int getTokPrecedence();
+    std::unique_ptr<StmtAST> parseReturnStatement();
+    std::unique_ptr<StmtAST> parseExpressionStatement();
 
     void consume(TokenType expected);
 
     Lexer& lexer;
     Token currentToken;
+    std::vector<std::string> m_errors;
 };
 
 } // namespace Chtholly

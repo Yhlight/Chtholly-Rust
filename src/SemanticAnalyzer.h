@@ -1,6 +1,8 @@
 #ifndef CHTHOLLY_SEMANTICANALYZER_H
 #define CHTHOLLY_SEMANTICANALYZER_H
 
+#include "AST.h"
+#include "Type.h"
 #include "ASTVisitor.h"
 #include <map>
 #include <string>
@@ -18,9 +20,13 @@ public:
     void visit(const PrototypeAST& node) override;
     void visit(const FunctionAST& node) override;
     void visit(const VarDeclStmtAST& node) override;
+    void visit(const ReturnStmtAST& node) override;
+    void visit(const ExprStmtAST& node) override;
 
 private:
-    mutable std::map<std::string, std::string> symbolTable;
+    mutable std::map<std::string, const Type*> symbolTable;
+    const Type* m_currentFunctionReturnType = nullptr;
+    const Type* lastType;
 };
 
 } // namespace Chtholly

@@ -1,6 +1,8 @@
 #include "Parser.h"
-#include <stdexcept>
+#include "AST.h"
+#include <iostream>
 #include <map>
+#include <stdexcept>
 
 namespace Chtholly {
 
@@ -19,20 +21,56 @@ Parser::Parser(Lexer& lexer)
     InitializePrecedence();
 }
 
+void Parser::logError(const std::string& message) {
+    m_errors.push_back("Error at line " + std::to_string(currentToken.line) +
+                       ", column " + std::to_string(currentToken.column) + ": " +
+                       message);
+}
+
+void Parser::synchronize() {
+    while (currentToken.type != TokenType::EndOfFile) {
+        if (currentToken.type == TokenType::Semicolon) {
+            consume(TokenType::Semicolon);
+            return;
+        }
+        switch (currentToken.type) {
+        case TokenType::Fn:
+        case TokenType::Let:
+        case TokenType::Return:
+            return;
+        default:
+            break;
+        }
+        currentToken = lexer.nextToken();
+    }
+}
+
+
 std::vector<std::unique_ptr<FunctionAST>> Parser::parse() {
     std::vector<std::unique_ptr<FunctionAST>> functions;
     while (currentToken.type != TokenType::EndOfFile) {
-        functions.push_back(parseFunctionDefinition());
+        auto func = parseFunctionDefinition();
+        if (func) {
+            functions.push_back(std::move(func));
+        }
     }
     return functions;
 }
 
 std::unique_ptr<StmtAST> Parser::parseStatement() {
-    switch (currentToken.type) {
+    try {
+        switch (currentToken.type) {
         case TokenType::Let:
             return parseVarDeclStatement();
+        case TokenType::Return:
+            return parseReturnStatement();
         default:
-            throw std::runtime_error("Unexpected token in statement: " + currentToken.value);
+            return parseExpressionStatement();
+        }
+    } catch (const std::runtime_error& e) {
+        logError(e.what());
+        synchronize();
+        return nullptr;
     }
 }
 
@@ -53,10 +91,10 @@ std::unique_ptr<StmtAST> Parser::parseVarDeclStatement() {
     std::string name = currentToken.value;
     consume(TokenType::Identifier);
 
-    std::string type = "";
+    Type* ty = nullptr;
     if (currentToken.type == TokenType::Colon) {
         consume(TokenType::Colon);
-        type = parseType();
+        ty = parseType();
     }
 
     consume(TokenType::Equal);
@@ -65,7 +103,14 @@ std::unique_ptr<StmtAST> Parser::parseVarDeclStatement() {
 
     consume(TokenType::Semicolon);
 
-    return std::make_unique<VarDeclStmtAST>(name, type, isMutable, std::move(init));
+    return std::make_unique<VarDeclStmtAST>(name, ty, isMutable, std::move(init));
+}
+
+std::unique_ptr<StmtAST> Parser::parseReturnStatement() {
+    consume(TokenType::Return);
+    auto value = parseExpression();
+    consume(TokenType::Semicolon);
+    return std::make_unique<ReturnStmtAST>(std::move(value));
 }
 
 std::unique_ptr<ExprAST> Parser::parsePrimary() {
@@ -83,7 +128,8 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
                 return V;
             }
         default:
-            throw std::runtime_error("Unexpected token in expression: " + currentToken.value);
+            logError("Unexpected token in expression: " + currentToken.value);
+            return nullptr;
     }
 }
 
@@ -154,12 +200,12 @@ std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
     consume(TokenType::Identifier);
 
     consume(TokenType::LeftParen);
-    std::vector<std::pair<std::string, std::string>> ArgNames;
+    std::vector<std::pair<std::string, Type*>> ArgNames;
     while (currentToken.type == TokenType::Identifier) {
         std::string ArgName = currentToken.value;
         consume(TokenType::Identifier);
         consume(TokenType::Colon);
-        std::string ArgType = parseType();
+        auto ArgType = parseType();
         ArgNames.push_back({ArgName, ArgType});
         if (currentToken.type == TokenType::RightParen)
             break;
@@ -168,38 +214,68 @@ std::unique_ptr<PrototypeAST> Parser::parsePrototype() {
     consume(TokenType::RightParen);
 
     consume(TokenType::Colon);
-    std::string ReturnType = parseType();
+    auto ReturnType = parseType();
 
     return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames), ReturnType);
 }
 
 std::unique_ptr<FunctionAST> Parser::parseFunctionDefinition() {
-    consume(TokenType::Fn);
-    auto Proto = parsePrototype();
-    consume(TokenType::LeftBrace);
+    try {
+        consume(TokenType::Fn);
+        auto Proto = parsePrototype();
+        if (!Proto) return nullptr;
 
-    std::vector<std::unique_ptr<StmtAST>> Body;
-    while (currentToken.type != TokenType::RightBrace) {
-        Body.push_back(parseStatement());
+        consume(TokenType::LeftBrace);
+
+        std::vector<std::unique_ptr<StmtAST>> Body;
+        while (currentToken.type != TokenType::RightBrace &&
+               currentToken.type != TokenType::EndOfFile) {
+            auto stmt = parseStatement();
+            if (stmt) {
+                Body.push_back(std::move(stmt));
+            }
+        }
+
+        consume(TokenType::RightBrace);
+        return std::make_unique<FunctionAST>(std::move(Proto), std::move(Body));
+
+    } catch (const std::runtime_error& e) {
+        logError(e.what());
+        synchronize();
+        return nullptr;
     }
-
-    consume(TokenType::RightBrace);
-    return std::make_unique<FunctionAST>(std::move(Proto), std::move(Body));
 }
 
-std::string Parser::parseType() {
+Type* Parser::parseType() {
     std::string TypeName = currentToken.value;
     consume(TokenType::Identifier);
-    return TypeName;
+    if (TypeName == "i32") {
+        return Type::getIntegerTy();
+    } else if (TypeName == "f64") {
+        return Type::getFloatTy();
+    } else if (TypeName == "void") {
+        return Type::getVoidTy();
+    }
+    return nullptr;
 }
 
 void Parser::consume(TokenType expected) {
     if (currentToken.type == expected) {
         currentToken = lexer.nextToken();
     } else {
-        throw std::runtime_error("Expected token " + std::to_string((int)expected) +
-                                 " but got " + std::to_string((int)currentToken.type));
+        throw std::runtime_error("Expected token " + tokenTypeToString(expected) +
+                                 " but got " +
+                                 tokenTypeToString(currentToken.type));
     }
+}
+
+std::unique_ptr<StmtAST> Parser::parseExpressionStatement() {
+    auto expr = parseExpression();
+    if (!expr) {
+        return nullptr;
+    }
+    consume(TokenType::Semicolon);
+    return std::make_unique<ExprStmtAST>(std::move(expr));
 }
 
 } // namespace Chtholly

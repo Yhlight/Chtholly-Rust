@@ -5,11 +5,12 @@
 #include <memory>
 #include <vector>
 #include "Token.h"
+#include "Type.h"
+#include "ASTVisitor.h"
 
 namespace Chtholly {
 
 class StmtAST;
-class ASTVisitor;
 
 /// ExprAST - Base class for all expression nodes.
 class ExprAST {
@@ -74,16 +75,16 @@ public:
 /// of arguments the function takes).
 class PrototypeAST {
     std::string Name;
-    std::vector<std::pair<std::string, std::string>> Args;
-    std::string ReturnType;
+    std::vector<std::pair<std::string, Type*>> Args;
+    Type* ReturnType;
 
 public:
-    PrototypeAST(const std::string &Name, std::vector<std::pair<std::string, std::string>> Args, const std::string& ReturnType)
+    PrototypeAST(const std::string &Name, std::vector<std::pair<std::string, Type*>> Args, Type* ReturnType)
         : Name(Name), Args(std::move(Args)), ReturnType(ReturnType) {}
 
     const std::string &getName() const { return Name; }
-    const std::vector<std::pair<std::string, std::string>> &getArgs() const { return Args; }
-    const std::string& getReturnType() const { return ReturnType; }
+    const std::vector<std::pair<std::string, Type*>> &getArgs() const { return Args; }
+    const Type* getReturnType() const { return ReturnType; }
     void accept(ASTVisitor& visitor) const;
 };
 
@@ -113,18 +114,37 @@ public:
 /// VarDeclStmtAST - Statement class for a variable declaration like "let x: i32 = 5;".
 class VarDeclStmtAST : public StmtAST {
     std::string Name;
-    std::string Type;
+    Type* Ty;
     bool IsMutable;
     std::unique_ptr<ExprAST> Init;
 
 public:
-    VarDeclStmtAST(const std::string &Name, const std::string& Type, bool IsMutable, std::unique_ptr<ExprAST> Init)
-        : Name(Name), Type(Type), IsMutable(IsMutable), Init(std::move(Init)) {}
+    VarDeclStmtAST(const std::string &Name, Type* Ty, bool IsMutable, std::unique_ptr<ExprAST> Init)
+        : Name(Name), Ty(Ty), IsMutable(IsMutable), Init(std::move(Init)) {}
 
     const std::string& getName() const { return Name; }
-    const std::string& getType() const { return Type; }
+    const Type* getType() const { return Ty; }
     bool isMutable() const { return IsMutable; }
     const ExprAST* getInit() const { return Init.get(); }
+    void accept(ASTVisitor& visitor) const override;
+};
+
+/// ReturnStmtAST - Statement class for a return statement.
+class ReturnStmtAST : public StmtAST {
+    std::unique_ptr<ExprAST> Value;
+
+public:
+    ReturnStmtAST(std::unique_ptr<ExprAST> Value) : Value(std::move(Value)) {}
+    const ExprAST* getValue() const { return Value.get(); }
+    void accept(ASTVisitor& visitor) const override;
+};
+
+class ExprStmtAST : public StmtAST {
+    std::unique_ptr<ExprAST> expr;
+
+public:
+    ExprStmtAST(std::unique_ptr<ExprAST> expr) : expr(std::move(expr)) {}
+    const ExprAST* getExpr() const { return expr.get(); }
     void accept(ASTVisitor& visitor) const override;
 };
 

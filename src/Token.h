@@ -87,6 +87,8 @@ struct Token {
     int column;
 };
 
+std::string tokenTypeToString(TokenType type);
+
 } // namespace Chtholly
 
 #endif // CHTHOLLY_TOKEN_H

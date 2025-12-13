@@ -31,4 +31,12 @@ void VarDeclStmtAST::accept(ASTVisitor& visitor) const {
     visitor.visit(*this);
 }
 
+void ReturnStmtAST::accept(ASTVisitor& visitor) const {
+    visitor.visit(*this);
+}
+
+void ExprStmtAST::accept(ASTVisitor& visitor) const {
+    visitor.visit(*this);
+}
+
 } // namespace Chtholly
