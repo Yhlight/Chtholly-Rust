@@ -10,6 +10,7 @@ public:
     virtual ~ASTVisitor() = default;
 
     virtual void visit(const NumberExprAST& node) = 0;
+    virtual void visit(const StringExprAST& node) = 0;
     virtual void visit(const VariableExprAST& node) = 0;
     virtual void visit(const BinaryExprAST& node) = 0;
     virtual void visit(const CallExprAST& node) = 0;

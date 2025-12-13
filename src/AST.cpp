@@ -7,6 +7,10 @@ void NumberExprAST::accept(ASTVisitor& visitor) const {
     visitor.visit(*this);
 }
 
+void StringExprAST::accept(ASTVisitor& visitor) const {
+    visitor.visit(*this);
+}
+
 void VariableExprAST::accept(ASTVisitor& visitor) const {
     visitor.visit(*this);
 }

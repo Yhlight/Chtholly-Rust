@@ -149,15 +149,22 @@ Token Lexer::number() {
 
 Token Lexer::stringLiteral() {
     advance(); // Consume the opening "
-    int start = current;
+    std::string value;
     while (current < source.length() && peek() != '"') {
-        if (peek() == '\n') {
-            line++;
-            column = 1;
+        if (peek() == '\\') {
+            advance(); // Consume the backslash
+            switch (peek()) {
+                case '"': value += '"'; break;
+                case '\\': value += '\\'; break;
+                case 'n': value += '\n'; break;
+                case 't': value += '\t'; break;
+                default: value += peek(); break;
+            }
+        } else {
+            value += peek();
         }
         advance();
     }
-    std::string value = source.substr(start, current - start);
     advance(); // Consume the closing "
     return makeToken(TokenType::String, value);
 }

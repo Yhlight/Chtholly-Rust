@@ -75,6 +75,8 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
         case TokenType::Integer:
         case TokenType::Float:
             return parseNumberExpression();
+        case TokenType::String:
+            return parseStringExpression();
         case TokenType::LeftParen:
             consume(TokenType::LeftParen);
             {
@@ -91,6 +93,12 @@ std::unique_ptr<ExprAST> Parser::parseNumberExpression() {
     double value = std::stod(currentToken.value);
     consume(currentToken.type);
     return std::make_unique<NumberExprAST>(value);
+}
+
+std::unique_ptr<ExprAST> Parser::parseStringExpression() {
+    std::string value = currentToken.value;
+    consume(TokenType::String);
+    return std::make_unique<StringExprAST>(value);
 }
 
 std::unique_ptr<ExprAST> Parser::parseIdentifierExpression() {

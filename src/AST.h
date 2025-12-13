@@ -28,6 +28,16 @@ public:
     void accept(ASTVisitor& visitor) const override;
 };
 
+/// StringExprAST - Expression class for string literals.
+class StringExprAST : public ExprAST {
+    std::string Val;
+
+public:
+    StringExprAST(const std::string& Val) : Val(Val) {}
+    const std::string& getValue() const { return Val; }
+    void accept(ASTVisitor& visitor) const override;
+};
+
 /// VariableExprAST - Expression class for referencing a variable, like "a".
 class VariableExprAST : public ExprAST {
     std::string Name;

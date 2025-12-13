@@ -12,6 +12,7 @@ public:
     void analyze(const FunctionAST& function);
 
     void visit(const NumberExprAST& node) override;
+    void visit(const StringExprAST& node) override;
     void visit(const VariableExprAST& node) override;
     void visit(const BinaryExprAST& node) override;
     void visit(const CallExprAST& node) override;
@@ -21,6 +22,7 @@ public:
 
 private:
     mutable std::map<std::string, std::string> symbolTable;
+    mutable std::string currentExprType;
 };
 
 } // namespace Chtholly

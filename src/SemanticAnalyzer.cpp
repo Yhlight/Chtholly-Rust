@@ -8,18 +8,32 @@ void SemanticAnalyzer::analyze(const FunctionAST& function) {
 }
 
 void SemanticAnalyzer::visit(const NumberExprAST& node) {
-    // Nothing to do
+    // For simplicity, we'll assume all numbers are i32 for now.
+    // This will be expanded later.
+    currentExprType = "i32";
+}
+
+void SemanticAnalyzer::visit(const StringExprAST& node) {
+    currentExprType = "string";
 }
 
 void SemanticAnalyzer::visit(const VariableExprAST& node) {
     if (symbolTable.find(node.getName()) == symbolTable.end()) {
         throw std::runtime_error("Undeclared variable: " + node.getName());
     }
+    currentExprType = symbolTable[node.getName()];
 }
 
 void SemanticAnalyzer::visit(const BinaryExprAST& node) {
     node.getLHS()->accept(*this);
+    std::string leftType = currentExprType;
     node.getRHS()->accept(*this);
+    std::string rightType = currentExprType;
+
+    if (leftType != rightType) {
+        throw std::runtime_error("Type mismatch in binary expression");
+    }
+    currentExprType = leftType;
 }
 
 void SemanticAnalyzer::visit(const CallExprAST& node) {
@@ -45,8 +59,15 @@ void SemanticAnalyzer::visit(const VarDeclStmtAST& node) {
     if (symbolTable.find(node.getName()) != symbolTable.end()) {
         throw std::runtime_error("Variable already declared: " + node.getName());
     }
-    symbolTable[node.getName()] = node.getType();
+
     node.getInit()->accept(*this);
+    std::string initType = currentExprType;
+
+    if (node.getType() != initType) {
+        throw std::runtime_error("Type mismatch in variable declaration for '" + node.getName() + "'. Expected " + node.getType() + " but got " + initType);
+    }
+
+    symbolTable[node.getName()] = node.getType();
 }
 
 } // namespace Chtholly

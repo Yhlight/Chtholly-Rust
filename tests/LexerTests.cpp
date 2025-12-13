@@ -85,12 +85,16 @@ TEST(LexerTest, Numbers) {
 }
 
 TEST(LexerTest, StringLiteral) {
-    std::string source = "\"hello world\"";
+    std::string source = "\"hello world\" \"with \\\"escapes\\\"\"";
     Lexer lexer(source);
 
     Token token = lexer.nextToken();
     EXPECT_EQ(token.type, TokenType::String);
     EXPECT_EQ(token.value, "hello world");
+
+    token = lexer.nextToken();
+    EXPECT_EQ(token.type, TokenType::String);
+    EXPECT_EQ(token.value, "with \"escapes\"");
 }
 
 TEST(LexerTest, CharLiteral) {
