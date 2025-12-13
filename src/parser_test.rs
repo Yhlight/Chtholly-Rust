@@ -1,4 +1,4 @@
-use crate::ast::{Statement, Expression};
+use crate::ast::{Statement, Expression, Type};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 
@@ -26,6 +26,41 @@ fn test_let_statements() {
         if let Statement::Let { name, mutable, .. } = statement {
             assert_eq!(name, expected[i].0);
             assert_eq!(*mutable, expected[i].1);
+        } else {
+            assert!(false, "Expected a let statement, but got something else.");
+        }
+    }
+}
+
+#[test]
+fn test_let_statements_with_type_annotation() {
+    let input = r#"
+        let x: i32 = 5;
+        let mut y: f64 = 10.0;
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    assert_eq!(program.len(), 2);
+
+    let expected = vec![
+        ("x", false, Some(Type::I32)),
+        ("y", true, Some(Type::F64)),
+    ];
+
+    for (i, statement) in program.iter().enumerate() {
+        if let Statement::Let {
+            name,
+            mutable,
+            type_annotation,
+            ..
+        } = statement
+        {
+            assert_eq!(name, expected[i].0);
+            assert_eq!(*mutable, expected[i].1);
+            assert_eq!(*type_annotation, expected[i].2);
         } else {
             assert!(false, "Expected a let statement, but got something else.");
         }

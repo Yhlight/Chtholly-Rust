@@ -1,4 +1,4 @@
-use crate::ast::{Program, Statement, Expression};
+use crate::ast::{Program, Statement, Expression, Type};
 use crate::lexer::{Lexer, Token};
 
 pub struct Parser<'a> {
@@ -77,6 +77,15 @@ impl<'a> Parser<'a> {
             return None;
         };
 
+        let type_annotation = if self.peek_token_is(&Token::Colon) {
+            self.next_token();
+            self.next_token();
+            let t = self.parse_type()?;
+            Some(t)
+        } else {
+            None
+        };
+
         if !self.peek_token_is(&Token::Equal) {
             self.peek_error(&Token::Equal);
             return None;
@@ -91,7 +100,27 @@ impl<'a> Parser<'a> {
             self.next_token();
         }
 
-        Some(Statement::Let { name, mutable, value })
+        Some(Statement::Let {
+            name,
+            mutable,
+            type_annotation,
+            value,
+        })
+    }
+
+    fn parse_type(&mut self) -> Option<Type> {
+        match self.current_token.clone() {
+            Token::Identifier(name) => match name.as_str() {
+                "i32" => Some(Type::I32),
+                "i64" => Some(Type::I64),
+                "f64" => Some(Type::F64),
+                "bool" => Some(Type::Bool),
+                "char" => Some(Type::Char),
+                "string" => Some(Type::String),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     fn parse_return_statement(&mut self) -> Option<Statement> {

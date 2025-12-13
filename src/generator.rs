@@ -129,9 +129,9 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
     fn get_type(&self, expression: &Expression) -> Result<BasicTypeEnum<'ctx>, &'static str> {
         let semantic_type = self.semantic_analyzer.type_of(expression).ok_or("could not determine type")?;
         match semantic_type {
-            semantic::Type::Integer => Ok(self.context.i64_type().as_basic_type_enum()),
-            semantic::Type::Float => Ok(self.context.f64_type().as_basic_type_enum()),
-            semantic::Type::Boolean => Ok(self.context.bool_type().as_basic_type_enum()),
+            semantic::Type::I64 => Ok(self.context.i64_type().as_basic_type_enum()),
+            semantic::Type::F64 => Ok(self.context.f64_type().as_basic_type_enum()),
+            semantic::Type::Bool => Ok(self.context.bool_type().as_basic_type_enum()),
             semantic::Type::Char => Ok(self.context.i8_type().as_basic_type_enum()),
             _ => Err("unsupported type")
         }

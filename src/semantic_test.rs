@@ -20,8 +20,45 @@ fn test_type_checking() {
     assert_eq!(analyzer.errors.len(), 1);
     assert_eq!(
         analyzer.errors[0],
-        "type mismatch: Integer and Float"
+        "type mismatch: I64 and F64"
     );
+}
+
+#[test]
+fn test_type_annotation_mismatch() {
+    let input = r#"
+        let x: i64 = 10.5;
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&program);
+
+    assert_eq!(analyzer.errors.len(), 1);
+    assert_eq!(
+        analyzer.errors[0],
+        "type mismatch: annotated type I64, but got F64"
+    );
+}
+
+#[test]
+fn test_type_inference() {
+    let input = r#"
+        let x = 5;
+        let y: i64 = x;
+    "#;
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    let mut analyzer = SemanticAnalyzer::new();
+    analyzer.analyze(&program);
+
+    assert_eq!(analyzer.errors.len(), 0);
 }
 
 #[test]
@@ -74,7 +111,7 @@ fn test_if_condition_not_boolean() {
     assert_eq!(analyzer.errors.len(), 1);
     assert_eq!(
         analyzer.errors[0],
-        "if condition must be a boolean, but got Integer"
+        "if condition must be a boolean, but got I64"
     );
 }
 
@@ -105,7 +142,7 @@ fn test_while_condition_not_boolean() {
     assert_eq!(analyzer.errors.len(), 1);
     assert_eq!(
         analyzer.errors[0],
-        "while condition must be a boolean, but got Integer"
+        "while condition must be a boolean, but got I64"
     );
 }
 

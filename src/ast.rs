@@ -1,10 +1,21 @@
 use crate::lexer::Token;
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum Type {
+    I32,
+    I64,
+    F64,
+    Bool,
+    Char,
+    String,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let {
         name: String,
         mutable: bool,
+        type_annotation: Option<Type>,
         value: Expression,
     },
     Return(Expression),

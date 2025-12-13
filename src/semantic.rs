@@ -1,13 +1,14 @@
 use std::collections::HashMap;
-use crate::ast::{Program, Statement, Expression};
+use crate::ast::{Program, Statement, Expression, Type as AstType};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
-    Integer,
-    Float,
-    String,
+    I32,
+    I64,
+    F64,
+    Bool,
     Char,
-    Boolean,
+    String,
     Void,
 }
 
@@ -50,9 +51,33 @@ impl SemanticAnalyzer {
 
     fn analyze_statement(&mut self, statement: &Statement) {
         match statement {
-            Statement::Let { name, mutable, value } => {
+            Statement::Let {
+                name,
+                mutable,
+                type_annotation,
+                value,
+            } => {
                 let expr_type = self.analyze_expression(value);
-                self.scopes.last_mut().unwrap().insert(name.clone(), Symbol { type_: expr_type, mutable: *mutable });
+                let var_type = match type_annotation {
+                    Some(t) => {
+                        let annotated_type = type_from_ast(t);
+                        if annotated_type != expr_type {
+                            self.errors.push(format!(
+                                "type mismatch: annotated type {:?}, but got {:?}",
+                                annotated_type, expr_type
+                            ));
+                        }
+                        annotated_type
+                    }
+                    None => expr_type,
+                };
+                self.scopes.last_mut().unwrap().insert(
+                    name.clone(),
+                    Symbol {
+                        type_: var_type,
+                        mutable: *mutable,
+                    },
+                );
             }
             Statement::Return(expr) => {
                 self.analyze_expression(expr);
@@ -65,7 +90,7 @@ impl SemanticAnalyzer {
             }
             Statement::If { condition, consequence, alternative } => {
                 let cond_type = self.analyze_expression(condition);
-                if cond_type != Type::Boolean {
+                if cond_type != Type::Bool {
                     self.errors.push(format!(
                         "if condition must be a boolean, but got {:?}",
                         cond_type
@@ -78,7 +103,7 @@ impl SemanticAnalyzer {
             }
             Statement::While { condition, body } => {
                 let cond_type = self.analyze_expression(condition);
-                if cond_type != Type::Boolean {
+                if cond_type != Type::Bool {
                     self.errors.push(format!(
                         "while condition must be a boolean, but got {:?}",
                         cond_type
@@ -116,11 +141,11 @@ impl SemanticAnalyzer {
                 self.errors.push(format!("undeclared variable: {}", name));
                 Type::Void
             }
-            Expression::Integer(_) => Type::Integer,
-            Expression::Float(_) => Type::Float,
+            Expression::Integer(_) => Type::I64,
+            Expression::Float(_) => Type::F64,
             Expression::String(_) => Type::String,
             Expression::Char(_) => Type::Char,
-            Expression::Boolean(_) => Type::Boolean,
+            Expression::Boolean(_) => Type::Bool,
             Expression::Prefix(_, expr) => self.analyze_expression(expr),
             Expression::Infix(left, op, right) => {
                 let left_type = self.analyze_expression(left);
@@ -144,7 +169,7 @@ impl SemanticAnalyzer {
                     | crate::lexer::Token::LessThan
                     | crate::lexer::Token::GreaterThan
                     | crate::lexer::Token::LessThanOrEqual
-                    | crate::lexer::Token::GreaterThanOrEqual => Type::Boolean,
+                    | crate::lexer::Token::GreaterThanOrEqual => Type::Bool,
                     _ => Type::Void,
                 }
             }
@@ -182,11 +207,11 @@ impl SemanticAnalyzer {
                 }
                 None
             }
-            Expression::Integer(_) => Some(Type::Integer),
-            Expression::Float(_) => Some(Type::Float),
+            Expression::Integer(_) => Some(Type::I64),
+            Expression::Float(_) => Some(Type::F64),
             Expression::String(_) => Some(Type::String),
             Expression::Char(_) => Some(Type::Char),
-            Expression::Boolean(_) => Some(Type::Boolean),
+            Expression::Boolean(_) => Some(Type::Bool),
             Expression::Prefix(_, expr) => self.type_of(expr),
             Expression::Infix(left, op, _) => {
                 let left_type = self.type_of(left)?;
@@ -200,7 +225,7 @@ impl SemanticAnalyzer {
                     | crate::lexer::Token::LessThan
                     | crate::lexer::Token::GreaterThan
                     | crate::lexer::Token::LessThanOrEqual
-                    | crate::lexer::Token::GreaterThanOrEqual => Some(Type::Boolean),
+                    | crate::lexer::Token::GreaterThanOrEqual => Some(Type::Bool),
                     _ => None,
                 }
             }
@@ -214,5 +239,16 @@ impl SemanticAnalyzer {
             }
             _ => None,
         }
+    }
+}
+
+fn type_from_ast(ast_type: &AstType) -> Type {
+    match ast_type {
+        AstType::I32 => Type::I32,
+        AstType::I64 => Type::I64,
+        AstType::F64 => Type::F64,
+        AstType::Bool => Type::Bool,
+        AstType::Char => Type::Char,
+        AstType::String => Type::String,
     }
 }
