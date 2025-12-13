@@ -1,4 +1,4 @@
-use crate::ast::{Program, Statement, Expression};
+use crate::ast::{Program, Statement, Expression, Parameter};
 use crate::lexer::{Lexer, Token};
 
 pub struct Parser<'a> {
@@ -49,12 +49,114 @@ impl<'a> Parser<'a> {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.current_token {
             Token::Let => self.parse_let_statement(),
+            Token::Fn => self.parse_fn_statement(),
             Token::Return => self.parse_return_statement(),
             Token::If => self.parse_if_statement(),
             Token::While => self.parse_while_statement(),
             Token::Break => Some(Statement::Break),
             _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_fn_statement(&mut self) -> Option<Statement> {
+        if !self.peek_token_is(&Token::Identifier("".to_string())) {
+            self.peek_error(&Token::Identifier("".to_string()));
+            return None;
+        }
+        self.next_token();
+
+        let name = if let Token::Identifier(name) = self.current_token.clone() {
+            name
+        } else {
+            return None;
+        };
+
+        if !self.peek_token_is(&Token::LParen) {
+            self.peek_error(&Token::LParen);
+            return None;
+        }
+        self.next_token();
+
+        let parameters = self.parse_function_parameters()?;
+
+        if !self.peek_token_is(&Token::Colon) {
+            self.peek_error(&Token::Colon);
+            return None;
+        }
+        self.next_token();
+        self.next_token();
+
+        let return_type = if let Token::Identifier(name) = self.current_token.clone() {
+            name
+        } else {
+            return None;
+        };
+
+        if !self.peek_token_is(&Token::LBrace) {
+            self.peek_error(&Token::LBrace);
+            return None;
+        }
+        self.next_token();
+
+        let body = self.parse_block_statement()?;
+
+        Some(Statement::Function {
+            name,
+            parameters,
+            return_type,
+            body: Box::new(body),
+        })
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<Parameter>> {
+        let mut parameters = Vec::new();
+
+        if self.peek_token_is(&Token::RParen) {
+            self.next_token();
+            return Some(parameters);
+        }
+
+        self.next_token();
+
+        loop {
+            let name = if let Token::Identifier(name) = self.current_token.clone() {
+                name
+            } else {
+                return None;
+            };
+
+            if !self.peek_token_is(&Token::Colon) {
+                self.peek_error(&Token::Colon);
+                return None;
+            }
+            self.next_token();
+            self.next_token();
+
+            let type_annotation = if let Token::Identifier(name) = self.current_token.clone() {
+                name
+            } else {
+                return None;
+            };
+
+            parameters.push(Parameter {
+                name,
+                type_annotation,
+            });
+
+            if !self.peek_token_is(&Token::Comma) {
+                break;
+            }
+            self.next_token();
+            self.next_token();
+        }
+
+        if !self.peek_token_is(&Token::RParen) {
+            self.peek_error(&Token::RParen);
+            return None;
+        }
+        self.next_token();
+
+        Some(parameters)
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {

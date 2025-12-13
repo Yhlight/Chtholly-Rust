@@ -1,11 +1,23 @@
 use crate::lexer::Token;
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Parameter {
+    pub name: String,
+    pub type_annotation: String,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let {
         name: String,
         mutable: bool,
         value: Expression,
+    },
+    Function {
+        name: String,
+        parameters: Vec<Parameter>,
+        return_type: String,
+        body: Box<Statement>,
     },
     Return(Expression),
     Expression(Expression),

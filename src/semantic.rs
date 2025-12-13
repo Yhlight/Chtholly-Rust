@@ -54,6 +54,9 @@ impl SemanticAnalyzer {
                 let expr_type = self.analyze_expression(value);
                 self.scopes.last_mut().unwrap().insert(name.clone(), Symbol { type_: expr_type, mutable: *mutable });
             }
+            Statement::Function { .. } => {
+                // TODO: Implement semantic analysis for function definitions
+            }
             Statement::Return(expr) => {
                 self.analyze_expression(expr);
             }

@@ -58,6 +58,9 @@ impl<'a, 'ctx> CodeGenerator<'a, 'ctx> {
                 self.builder.build_store(alloca, value).map_err(|_| "Failed to build store")?;
                 self.variables.insert(name.clone(), alloca);
             }
+            Statement::Function { .. } => {
+                // TODO: Implement code generation for function definitions
+            }
             Statement::Return(expr) => {
                 let value = self.generate_expression(expr)?;
                 self.builder.build_return(Some(&value)).map_err(|_| "Failed to build return")?;
