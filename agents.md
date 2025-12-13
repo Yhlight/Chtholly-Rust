@@ -33,7 +33,13 @@ sudo apt-get install -y \
     libc++-18-dev \
     llvm-18-dev \
     libpolly-18-dev \
-    libzstd-dev
+    libzstd-dev \
+    lld-18 \
+    lldb-18 \
+    clang-tools-18 \
+    clang-format-18 \
+    libclang-rt-18-dev \
+    libomp-18-dev
 ```
 
 ### 环境变量的配置
@@ -44,13 +50,14 @@ sudo apt-get install -y \
 
 ## 项目要求
 
+
 1. Chtholly 是一门基于 C++17 编写的编程语言，使用 CMake 进行构建， Python脚本辅助构建，LLVM 作为后端，语法规范文档是 `Chtholly.md`（已经提供）。
 
 2. 项目使用 `.gitignore` 进行版本控制，不要提交构建产物与二进制文件。
 
-3. TDD 驱动，以稳定项目为主，增量实现，避免回归。
+3. TDD 驱动，以稳定项目为主，增量实现，避免回归，每一个计划的推进前，都需要重新阅读 `Chtholly.md` 中相关语法规范。
 
-4. 每一个计划的推进前，都需要重新阅读 `Chtholly.md` 中相关语法规范。
+4. 采用LL(K)等现代化专业技术，建议使用Web search查找最优实现方案。
 
 5. 需要创建一个 `RoadMap.md`（尽可能详细）记录项目的进度，每一个功能的实现都需要通过此文档进行反馈。
 
