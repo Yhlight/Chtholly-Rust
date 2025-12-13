@@ -229,4 +229,47 @@ void SemanticAnalyzer::visit(IfStmtAST& node) {
     }
 }
 
+void SemanticAnalyzer::visit(WhileStmtAST& node) {
+    node.getCond()->accept(*this);
+    if (!lastType->isBoolTy()) {
+        throw std::runtime_error("While condition must be a boolean expression");
+    }
+
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+}
+
+void SemanticAnalyzer::visit(ForStmtAST& node) {
+    if (node.getInit()) {
+        node.getInit()->accept(*this);
+    }
+
+    if (node.getCond()) {
+        node.getCond()->accept(*this);
+        if (!lastType->isBoolTy()) {
+            throw std::runtime_error("For condition must be a boolean expression");
+        }
+    }
+
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+
+    if (node.getIncr()) {
+        node.getIncr()->accept(*this);
+    }
+}
+
+void SemanticAnalyzer::visit(DoWhileStmtAST& node) {
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+
+    node.getCond()->accept(*this);
+    if (!lastType->isBoolTy()) {
+        throw std::runtime_error("Do-while condition must be a boolean expression");
+    }
+}
+
 } // namespace Chtholly

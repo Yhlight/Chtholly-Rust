@@ -263,4 +263,107 @@ void CodeGenerator::visit(IfStmtAST& node) {
     builder->SetInsertPoint(mergeBB);
 }
 
+void CodeGenerator::visit(WhileStmtAST& node) {
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* loopCondBB = llvm::BasicBlock::Create(*context, "loopcond", func);
+    llvm::BasicBlock* loopBodyBB = llvm::BasicBlock::Create(*context, "loopbody");
+    llvm::BasicBlock* afterLoopBB = llvm::BasicBlock::Create(*context, "afterloop");
+
+    builder->CreateBr(loopCondBB);
+
+    builder->SetInsertPoint(loopCondBB);
+    node.getCond()->accept(*this);
+    llvm::Value* condV = lastValue;
+    if (!condV) {
+        throw std::runtime_error("Invalid while condition");
+    }
+    condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 0, true), "whilecond");
+    builder->CreateCondBr(condV, loopBodyBB, afterLoopBB);
+
+    func->insert(func->end(), loopBodyBB);
+    builder->SetInsertPoint(loopBodyBB);
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+    builder->CreateBr(loopCondBB);
+
+    func->insert(func->end(), afterLoopBB);
+    builder->SetInsertPoint(afterLoopBB);
+}
+
+void CodeGenerator::visit(ForStmtAST& node) {
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
+
+    if (node.getInit()) {
+        node.getInit()->accept(*this);
+    }
+
+    llvm::BasicBlock* loopCondBB = llvm::BasicBlock::Create(*context, "loopcond", func);
+    llvm::BasicBlock* loopBodyBB = llvm::BasicBlock::Create(*context, "loopbody");
+    llvm::BasicBlock* loopIncrBB = llvm::BasicBlock::Create(*context, "loopincr");
+    llvm::BasicBlock* afterLoopBB = llvm::BasicBlock::Create(*context, "afterloop");
+
+    builder->CreateBr(loopCondBB);
+
+    builder->SetInsertPoint(loopCondBB);
+    if (node.getCond()) {
+        node.getCond()->accept(*this);
+        llvm::Value* condV = lastValue;
+        if (!condV) {
+            throw std::runtime_error("Invalid for condition");
+        }
+        condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 0, true), "forcond");
+        builder->CreateCondBr(condV, loopBodyBB, afterLoopBB);
+    } else {
+        builder->CreateBr(loopBodyBB);
+    }
+
+    func->insert(func->end(), loopBodyBB);
+    builder->SetInsertPoint(loopBodyBB);
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+    builder->CreateBr(loopIncrBB);
+
+    func->insert(func->end(), loopIncrBB);
+    builder->SetInsertPoint(loopIncrBB);
+    if (node.getIncr()) {
+        node.getIncr()->accept(*this);
+    }
+    builder->CreateBr(loopCondBB);
+
+    func->insert(func->end(), afterLoopBB);
+    builder->SetInsertPoint(afterLoopBB);
+}
+
+void CodeGenerator::visit(DoWhileStmtAST& node) {
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* loopBodyBB = llvm::BasicBlock::Create(*context, "loopbody", func);
+    llvm::BasicBlock* loopCondBB = llvm::BasicBlock::Create(*context, "loopcond");
+    llvm::BasicBlock* afterLoopBB = llvm::BasicBlock::Create(*context, "afterloop");
+
+    builder->CreateBr(loopBodyBB);
+
+    builder->SetInsertPoint(loopBodyBB);
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+    builder->CreateBr(loopCondBB);
+
+    func->insert(func->end(), loopCondBB);
+    builder->SetInsertPoint(loopCondBB);
+    node.getCond()->accept(*this);
+    llvm::Value* condV = lastValue;
+    if (!condV) {
+        throw std::runtime_error("Invalid do-while condition");
+    }
+    condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 0, true), "dowhilecond");
+    builder->CreateCondBr(condV, loopBodyBB, afterLoopBB);
+
+    func->insert(func->end(), afterLoopBB);
+    builder->SetInsertPoint(afterLoopBB);
+}
+
 } // namespace Chtholly

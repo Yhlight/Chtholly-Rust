@@ -224,6 +224,53 @@ public:
     void accept(ASTVisitor& visitor) override;
 };
 
+class WhileStmtAST : public StmtAST {
+    std::unique_ptr<ExprAST> Cond;
+    std::vector<std::unique_ptr<StmtAST>> Body;
+
+public:
+    WhileStmtAST(std::unique_ptr<ExprAST> Cond,
+                 std::vector<std::unique_ptr<StmtAST>> Body)
+        : Cond(std::move(Cond)), Body(std::move(Body)) {}
+
+    ExprAST* getCond() const { return Cond.get(); }
+    std::vector<std::unique_ptr<StmtAST>>& getBody() { return Body; }
+    void accept(ASTVisitor& visitor) override;
+};
+
+class ForStmtAST : public StmtAST {
+    std::unique_ptr<StmtAST> Init;
+    std::unique_ptr<ExprAST> Cond;
+    std::unique_ptr<ExprAST> Incr;
+    std::vector<std::unique_ptr<StmtAST>> Body;
+
+public:
+    ForStmtAST(std::unique_ptr<StmtAST> Init, std::unique_ptr<ExprAST> Cond,
+               std::unique_ptr<ExprAST> Incr, std::vector<std::unique_ptr<StmtAST>> Body)
+        : Init(std::move(Init)), Cond(std::move(Cond)), Incr(std::move(Incr)),
+          Body(std::move(Body)) {}
+
+    StmtAST* getInit() const { return Init.get(); }
+    ExprAST* getCond() const { return Cond.get(); }
+    ExprAST* getIncr() const { return Incr.get(); }
+    std::vector<std::unique_ptr<StmtAST>>& getBody() { return Body; }
+    void accept(ASTVisitor& visitor) override;
+};
+
+class DoWhileStmtAST : public StmtAST {
+    std::unique_ptr<ExprAST> Cond;
+    std::vector<std::unique_ptr<StmtAST>> Body;
+
+public:
+    DoWhileStmtAST(std::unique_ptr<ExprAST> Cond,
+                   std::vector<std::unique_ptr<StmtAST>> Body)
+        : Cond(std::move(Cond)), Body(std::move(Body)) {}
+
+    ExprAST* getCond() const { return Cond.get(); }
+    std::vector<std::unique_ptr<StmtAST>>& getBody() { return Body; }
+    void accept(ASTVisitor& visitor) override;
+};
+
 } // namespace Chtholly
 
 #endif // CHTHOLLY_AST_H

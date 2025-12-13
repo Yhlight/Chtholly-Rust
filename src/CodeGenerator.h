@@ -33,6 +33,9 @@ public:
     void visit(ReturnStmtAST& node) override;
     void visit(ExprStmtAST& node) override;
     void visit(IfStmtAST& node) override;
+    void visit(WhileStmtAST& node) override;
+    void visit(ForStmtAST& node) override;
+    void visit(DoWhileStmtAST& node) override;
 
 private:
     llvm::Type* llvmTypeFromChthollyType(const Type* type);

@@ -36,6 +36,10 @@ private:
     std::unique_ptr<StmtAST> parseReturnStatement();
     std::unique_ptr<StmtAST> parseExpressionStatement();
     std::unique_ptr<StmtAST> parseIfStatement();
+    std::unique_ptr<StmtAST> parseWhileStatement();
+    std::unique_ptr<StmtAST> parseForStatement();
+    std::unique_ptr<StmtAST> parseDoWhileStatement();
+    std::unique_ptr<StmtAST> parseForInit();
 
     void consume(TokenType expected);
 

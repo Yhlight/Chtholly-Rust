@@ -69,6 +69,12 @@ std::unique_ptr<StmtAST> Parser::parseStatement() {
         switch (currentToken.type) {
         case TokenType::If:
             return parseIfStatement();
+        case TokenType::While:
+            return parseWhileStatement();
+        case TokenType::For:
+            return parseForStatement();
+        case TokenType::Do:
+            return parseDoWhileStatement();
         case TokenType::Let:
             return parseVarDeclStatement();
         case TokenType::Return:
@@ -374,6 +380,91 @@ std::unique_ptr<StmtAST> Parser::parseIfStatement() {
     }
 
     return std::make_unique<IfStmtAST>(std::move(Cond), std::move(Then), std::move(Else));
+}
+
+std::unique_ptr<StmtAST> Parser::parseWhileStatement() {
+    consume(TokenType::While);
+    consume(TokenType::LeftParen);
+    auto Cond = parseExpression();
+    if (!Cond) return nullptr;
+    consume(TokenType::RightParen);
+
+    consume(TokenType::LeftBrace);
+    std::vector<std::unique_ptr<StmtAST>> Body;
+    while (currentToken.type != TokenType::RightBrace && currentToken.type != TokenType::EndOfFile) {
+        auto stmt = parseStatement();
+        if (stmt) {
+            Body.push_back(std::move(stmt));
+        }
+    }
+    consume(TokenType::RightBrace);
+
+    return std::make_unique<WhileStmtAST>(std::move(Cond), std::move(Body));
+}
+
+std::unique_ptr<StmtAST> Parser::parseForStatement() {
+    consume(TokenType::For);
+    consume(TokenType::LeftParen);
+
+    std::unique_ptr<StmtAST> Init = nullptr;
+    if (currentToken.type != TokenType::Semicolon) {
+        Init = parseForInit();
+    }
+    consume(TokenType::Semicolon);
+
+    std::unique_ptr<ExprAST> Cond = nullptr;
+    if (currentToken.type != TokenType::Semicolon) {
+        Cond = parseExpression();
+    }
+    consume(TokenType::Semicolon);
+
+    std::unique_ptr<ExprAST> Incr = nullptr;
+    if (currentToken.type != TokenType::RightParen) {
+        Incr = parseExpression();
+    }
+    consume(TokenType::RightParen);
+
+    consume(TokenType::LeftBrace);
+    std::vector<std::unique_ptr<StmtAST>> Body;
+    while (currentToken.type != TokenType::RightBrace && currentToken.type != TokenType::EndOfFile) {
+        auto stmt = parseStatement();
+        if (stmt) {
+            Body.push_back(std::move(stmt));
+        }
+    }
+    consume(TokenType::RightBrace);
+
+    return std::make_unique<ForStmtAST>(std::move(Init), std::move(Cond), std::move(Incr), std::move(Body));
+}
+
+std::unique_ptr<StmtAST> Parser::parseDoWhileStatement() {
+    consume(TokenType::Do);
+
+    consume(TokenType::LeftBrace);
+    std::vector<std::unique_ptr<StmtAST>> Body;
+    while (currentToken.type != TokenType::RightBrace && currentToken.type != TokenType::EndOfFile) {
+        auto stmt = parseStatement();
+        if (stmt) {
+            Body.push_back(std::move(stmt));
+        }
+    }
+    consume(TokenType::RightBrace);
+
+    consume(TokenType::While);
+    consume(TokenType::LeftParen);
+    auto Cond = parseExpression();
+    if (!Cond) return nullptr;
+    consume(TokenType::RightParen);
+    consume(TokenType::Semicolon);
+
+    return std::make_unique<DoWhileStmtAST>(std::move(Cond), std::move(Body));
+}
+
+std::unique_ptr<StmtAST> Parser::parseForInit() {
+    if (currentToken.type == TokenType::Let) {
+        return parseVarDeclStatement();
+    }
+    return parseExpressionStatement();
 }
 
 } // namespace Chtholly

@@ -17,6 +17,9 @@ class VarDeclStmtAST;
 class ReturnStmtAST;
 class ExprStmtAST;
 class IfStmtAST;
+class WhileStmtAST;
+class ForStmtAST;
+class DoWhileStmtAST;
 
 class ASTVisitor {
 public:
@@ -35,6 +38,9 @@ public:
     virtual void visit(ReturnStmtAST& node) = 0;
     virtual void visit(ExprStmtAST& node) = 0;
     virtual void visit(IfStmtAST& node) = 0;
+    virtual void visit(WhileStmtAST& node) = 0;
+    virtual void visit(ForStmtAST& node) = 0;
+    virtual void visit(DoWhileStmtAST& node) = 0;
 };
 
 } // namespace Chtholly

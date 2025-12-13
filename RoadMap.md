@@ -84,7 +84,7 @@ This phase will add more features to make Chtholly a more expressive and useful 
 
 *   **Milestone 3.2: Control Flow**
     *   [x] Implement `if-else` expressions.
-    *   [ ] Implement `while`, `for`, and `do-while` loops.
+    *   [x] Implement `while`, `for`, and `do-while` loops.
     *   [ ] Implement `switch-case` statements with the improved semantics (`fallthrough`).
 
 *   **Milestone 3.3: Advanced Types**

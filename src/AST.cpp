@@ -59,4 +59,16 @@ void IfStmtAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
+void WhileStmtAST::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+
+void ForStmtAST::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+
+void DoWhileStmtAST::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+
 } // namespace Chtholly
