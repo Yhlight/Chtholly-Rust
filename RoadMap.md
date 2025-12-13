@@ -68,7 +68,7 @@ This phase is the cornerstone of Chtholly's memory safety guarantees.
 - [x] `array`: Dynamic (`T[]`) arrays.
 
 ### Milestone 3.3: Generics & Contracts
-- [ ] Generic functions (`fn add<T>(a: T, b: T) -> T`).
+- [ ] Generic functions (`fn add<T>(a: T, b: T): T`).
 - [ ] Generic data structures (`class Point<T>`).
 
 ## Phase 4: Standard Library & Tooling
