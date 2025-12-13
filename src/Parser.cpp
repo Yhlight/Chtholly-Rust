@@ -9,6 +9,7 @@ namespace Chtholly {
 static std::map<TokenType, int> BinopPrecedence;
 
 void InitializePrecedence() {
+    BinopPrecedence[TokenType::Equal] = 2;
     BinopPrecedence[TokenType::Less] = 10;
     BinopPrecedence[TokenType::LessEqual] = 10;
     BinopPrecedence[TokenType::Greater] = 10;
@@ -128,6 +129,23 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
         case TokenType::Integer:
         case TokenType::Float:
             return parseNumberExpression();
+        case TokenType::String:
+            return parseStringExpression();
+        case TokenType::Ampersand: {
+            consume(TokenType::Ampersand);
+            bool isMutable = false;
+            if (currentToken.type == TokenType::Mut) {
+                consume(TokenType::Mut);
+                isMutable = true;
+            }
+            auto expr = parsePrimary();
+            return std::make_unique<BorrowExprAST>(std::move(expr), isMutable);
+        }
+        case TokenType::Star: {
+            consume(TokenType::Star);
+            auto expr = parsePrimary();
+            return std::make_unique<DereferenceExprAST>(std::move(expr));
+        }
         case TokenType::LeftParen:
             consume(TokenType::LeftParen);
             {
@@ -147,9 +165,21 @@ std::unique_ptr<ExprAST> Parser::parseNumberExpression() {
     return std::make_unique<NumberExprAST>(value, tokType);
 }
 
+std::unique_ptr<ExprAST> Parser::parseStringExpression() {
+    std::string value = currentToken.value;
+    consume(TokenType::String);
+    return std::make_unique<StringExprAST>(value);
+}
+
 std::unique_ptr<ExprAST> Parser::parseIdentifierExpression() {
     std::string IdName = currentToken.value;
     consume(TokenType::Identifier);
+
+    if (currentToken.type == TokenType::Equal) {
+        consume(TokenType::Equal);
+        auto Value = parseExpression();
+        return std::make_unique<AssignExprAST>(IdName, std::move(Value));
+    }
 
     if (currentToken.type != TokenType::LeftParen)
         return std::make_unique<VariableExprAST>(IdName);
@@ -260,6 +290,17 @@ std::unique_ptr<FunctionAST> Parser::parseFunctionDefinition() {
 }
 
 Type* Parser::parseType() {
+    if (currentToken.type == TokenType::Ampersand) {
+        consume(TokenType::Ampersand);
+        bool isMutable = false;
+        if (currentToken.type == TokenType::Mut) {
+            consume(TokenType::Mut);
+            isMutable = true;
+        }
+        Type* baseType = parseType();
+        return Type::getReferenceTy(baseType, isMutable);
+    }
+
     std::string TypeName = currentToken.value;
     consume(TokenType::Identifier);
     if (TypeName == "i32") {
@@ -270,6 +311,8 @@ Type* Parser::parseType() {
         return Type::getVoidTy();
     } else if (TypeName == "bool") {
         return Type::getBoolTy();
+    } else if (TypeName == "string") {
+        return Type::getStringTy();
     }
     return nullptr;
 }

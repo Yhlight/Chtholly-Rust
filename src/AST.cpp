@@ -7,11 +7,27 @@ void NumberExprAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
+void StringExprAST::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+
 void VariableExprAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
 void BinaryExprAST::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+
+void AssignExprAST::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+
+void BorrowExprAST::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+
+void DereferenceExprAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 

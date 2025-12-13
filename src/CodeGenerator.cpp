@@ -14,6 +14,8 @@ llvm::Type* CodeGenerator::llvmTypeFromChthollyType(const Type* type) {
         return llvm::Type::getVoidTy(*context);
     } else if (type->isBoolTy()) {
         return llvm::Type::getInt1Ty(*context);
+    } else if (type->isStringTy()) {
+        return llvm::Type::getInt8Ty(*context)->getPointerTo();
     }
     return nullptr;
 }
@@ -22,6 +24,13 @@ CodeGenerator::CodeGenerator() {
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>("ChthollyJIT", *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
+
+    std::vector<llvm::Type*> printlnArgs;
+    printlnArgs.push_back(llvm::Type::getInt8Ty(*context)->getPointerTo());
+    llvm::FunctionType* printlnType = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(*context), printlnArgs, false);
+    llvm::Function::Create(printlnType, llvm::Function::ExternalLinkage,
+                           "println", module.get());
 }
 
 void CodeGenerator::generate(FunctionAST& function) {
@@ -38,6 +47,22 @@ void CodeGenerator::visit(NumberExprAST& node) {
     } else {
         lastValue = llvm::ConstantFP::get(*context, llvm::APFloat(node.getValue()));
     }
+}
+
+void CodeGenerator::visit(StringExprAST& node) {
+    lastValue = builder->CreateGlobalStringPtr(node.getValue());
+}
+
+void CodeGenerator::visit(AssignExprAST& node) {
+    // TODO: Implement code generation for assignment
+}
+
+void CodeGenerator::visit(BorrowExprAST& node) {
+    // TODO: Implement code generation for borrow
+}
+
+void CodeGenerator::visit(DereferenceExprAST& node) {
+    // TODO: Implement code generation for dereference
 }
 
 void CodeGenerator::visit(VariableExprAST& node) {

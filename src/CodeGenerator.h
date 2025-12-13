@@ -20,8 +20,12 @@ public:
     void dump();
 
     void visit(NumberExprAST& node) override;
+    void visit(StringExprAST& node) override;
     void visit(VariableExprAST& node) override;
     void visit(BinaryExprAST& node) override;
+    void visit(AssignExprAST& node) override;
+    void visit(BorrowExprAST& node) override;
+    void visit(DereferenceExprAST& node) override;
     void visit(CallExprAST& node) override;
     void visit(PrototypeAST& node) override;
     void visit(FunctionAST& node) override;

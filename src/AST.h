@@ -32,6 +32,16 @@ public:
     void accept(ASTVisitor& visitor) override;
 };
 
+/// StringExprAST - Expression class for string literals.
+class StringExprAST : public ExprAST {
+    std::string Val;
+
+public:
+    StringExprAST(const std::string& Val) : Val(Val) {}
+    const std::string& getValue() const { return Val; }
+    void accept(ASTVisitor& visitor) override;
+};
+
 /// VariableExprAST - Expression class for referencing a variable, like "a".
 class VariableExprAST : public ExprAST {
     std::string Name;
@@ -61,6 +71,45 @@ public:
     ExprAST* getRHS() const { return RHS.get(); }
     const Type* getType() const { return Ty; }
     void setType(Type* t) { Ty = t; }
+    void accept(ASTVisitor& visitor) override;
+};
+
+/// AssignExprAST - Expression class for assignment.
+class AssignExprAST : public ExprAST {
+    std::string Name;
+    std::unique_ptr<ExprAST> Value;
+
+public:
+    AssignExprAST(const std::string& Name, std::unique_ptr<ExprAST> Value)
+        : Name(Name), Value(std::move(Value)) {}
+
+    const std::string& getName() const { return Name; }
+    ExprAST* getValue() const { return Value.get(); }
+    void accept(ASTVisitor& visitor) override;
+};
+
+/// BorrowExprAST - Expression class for borrow expressions.
+class BorrowExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> Expr;
+    bool IsMutable;
+
+public:
+    BorrowExprAST(std::unique_ptr<ExprAST> Expr, bool IsMutable)
+        : Expr(std::move(Expr)), IsMutable(IsMutable) {}
+
+    ExprAST* getExpr() const { return Expr.get(); }
+    bool isMutable() const { return IsMutable; }
+    void accept(ASTVisitor& visitor) override;
+};
+
+/// DereferenceExprAST - Expression class for dereference expressions.
+class DereferenceExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> Expr;
+
+public:
+    DereferenceExprAST(std::unique_ptr<ExprAST> Expr) : Expr(std::move(Expr)) {}
+
+    ExprAST* getExpr() const { return Expr.get(); }
     void accept(ASTVisitor& visitor) override;
 };
 
