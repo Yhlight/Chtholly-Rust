@@ -42,11 +42,42 @@ sudo apt-get install -y \
     libomp-18-dev
 ```
 
-### 环境变量的配置
+### Toolchain-LLVM18
 
-除此之外，你需要设置环境变量LLVM_DIR，尽管CMake能够自动查找LLVM所在的位置。
+为了得到一个合适的LLVM环境，您需要根据以下步骤配置。
 
-但我们推荐还是手动指定LLVM的CMake文件的位置。
+#### 创建工具链文件 (Toolchain-LLVM18.cmake)
+
+请在您的项目根目录下创建一个名为 `Toolchain-LLVM18.cmake` 的文件，并粘贴以下内容：
+
+```cmake
+# Toolchain-LLVM18.cmake
+
+set(CMAKE_C_COMPILER clang-18)
+set(CMAKE_CXX_COMPILER clang++-18)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+
+set(LINKER_FLAGS "-fuse-ld=lld-18 -stdlib=libc++")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LINKER_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LINKER_FLAGS}")
+set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${LINKER_FLAGS}")
+
+set(LLVM_DIR "/usr/lib/llvm-18/lib/cmake/llvm")
+
+find_program(LLVM_AR NAMES llvm-ar-18 llvm-ar REQUIRED)
+find_program(LLVM_RANLIB NAMES llvm-ranlib-18 llvm-ranlib REQUIRED)
+set(CMAKE_AR ${LLVM_AR})
+set(CMAKE_RANLIB ${LLVM_RANLIB})
+```
+
+#### 使用工具链文件配置 CMake
+
+请在您的项目根目录执行：
+
+```bash
+cmake -S /app -B /app/build -DCMAKE_TOOLCHAIN_FILE=Toolchain-LLVM18.cmake
+```
 
 ## 项目要求
 
