@@ -1,11 +1,9 @@
-cmake_minimum_required(VERSION 3.10)
-project(Chtholly)
+cmake_minimum_required(VERSION 3.16)
+project(ChthollyLanguage CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Find LLVM
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 18 REQUIRED CONFIG 
+    COMPONENTS Core Support Demangle Analysis IRReader MCJIT 
+)
 
 add_subdirectory(src)
 add_subdirectory(tests)
