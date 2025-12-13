@@ -82,6 +82,12 @@ set(CMAKE_RANLIB ${LLVM_RANLIB})
 cmake -S /app -B /app/build -DCMAKE_TOOLCHAIN_FILE=Toolchain-LLVM18.cmake
 ```
 
+由于不知名的原因，我们发现有些时候需要使用下述命令才能够正确编译。
+
+```bash
+mkdir -p build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=../Toolchain-LLVM18.cmake ..
+```
+
 ## 项目要求
 
 1. Chtholly 是一门基于 C++17 编写的编程语言，使用 CMake 进行构建， Python脚本辅助构建，LLVM 作为后端，语法规范文档是 `Chtholly.md`（已经提供）。
