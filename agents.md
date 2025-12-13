@@ -33,7 +33,13 @@ sudo apt-get install -y \
     libc++-18-dev \
     llvm-18-dev \
     libpolly-18-dev \
-    libzstd-dev
+    libzstd-dev \
+    lld-18 \
+    lldb-18 \
+    clang-tools-18 \
+    clang-format-18 \
+    libclang-rt-18-dev \
+    libomp-18-dev
 ```
 
 ### 环境变量的配置
