@@ -822,7 +822,7 @@ const ARRAY_SIZE: i32 = const_math::calculate_size(10, 5);
 // 数组常量
 const PRIME_NUMBERS: i32[] = [2, 3, 5, 7, 11];
 
-// 结构体常量（假设 Point 是 Copy 类型）
+// 结构体常量
 const ORIGIN: Point = Point { x: 0, y: 0 }; 
 ```
 
@@ -868,28 +868,6 @@ fn main(): Result<i32, SystemError>
 {
     let runtime_result = const_fibonacci(20); // 运行时执行
     // ...
-}
-```
-
-## Const Struct 常结构体
-
-Chtholly支持常结构体，常结构体内部所有成员皆为const成员。
-
-常结构体是编译型产物，不会在运行时中生成。
-
-所有的数据都会以各种合理的方式传递给运行时。
-
-常结构体的成员允许延迟赋值，但是仅限于编译期的使用。
-
-```chtholly
-const struct Point {
-    const x: i32;  // 允许延迟赋值
-    const y: i32;
-
-    const fn print(&self): void
-    {
-
-    }
 }
 ```
 
@@ -940,3 +918,25 @@ Chtholly 应该扩展其 `Result<T, E>` 错误处理机制 来支持编译期：
 
 1.  **`const fn` 返回 `Result`：** 允许 `const fn` 返回 `Result<T, E>`，以表示可能失败的操作。
 2.  **编译期强制：** 如果一个 `const` 常量依赖于一个返回 `Result` 的 `const fn`，则开发者**必须**在编译期处理 `Err` 分支。
+
+### Const Struct 常结构体
+
+Chtholly支持常结构体，常结构体内部所有成员皆为const成员。
+
+常结构体是编译型产物，不会在运行时中生成。
+
+所有的数据都会以各种合理的方式传递给运行时。
+
+常结构体的成员允许延迟赋值，但是仅限于编译期的使用。
+
+```chtholly
+const struct Point {
+    const x: i32;  // 允许延迟赋值
+    const y: i32;
+
+    const fn print(&self): void
+    {
+
+    }
+}
+```
