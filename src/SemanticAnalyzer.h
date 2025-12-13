@@ -14,6 +14,7 @@ public:
     void analyze(std::vector<std::unique_ptr<FunctionAST>>& functions);
 
     void visit(NumberExprAST& node) override;
+    void visit(BooleanExprAST& node) override;
     void visit(VariableExprAST& node) override;
     void visit(BinaryExprAST& node) override;
     void visit(CallExprAST& node) override;
@@ -23,6 +24,10 @@ public:
     void visit(ReturnStmtAST& node) override;
     void visit(ExprStmtAST& node) override;
     void visit(IfStmtAST& node) override;
+    void visit(WhileStmtAST& node) override;
+    void visit(ForStmtAST& node) override;
+    void visit(DoWhileStmtAST& node) override;
+    void visit(SwitchStmtAST& node) override;
 
 private:
     mutable std::map<std::string, const Type*> symbolTable;

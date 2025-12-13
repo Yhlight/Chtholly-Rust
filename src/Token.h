@@ -36,6 +36,8 @@ enum class TokenType {
     Identifier,
     Integer,
     Float,
+    True,
+    False,
     String,
     Char,
 

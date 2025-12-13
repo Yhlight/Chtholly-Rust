@@ -28,8 +28,8 @@ void CodeGenerator::generate(FunctionAST& function) {
     function.accept(*this);
 }
 
-void CodeGenerator::dump() {
-    module->print(llvm::errs(), nullptr);
+void CodeGenerator::dump(llvm::raw_ostream& os) {
+    module->print(os, nullptr);
 }
 
 void CodeGenerator::visit(NumberExprAST& node) {
@@ -38,6 +38,10 @@ void CodeGenerator::visit(NumberExprAST& node) {
     } else {
         lastValue = llvm::ConstantFP::get(*context, llvm::APFloat(node.getValue()));
     }
+}
+
+void CodeGenerator::visit(BooleanExprAST& node) {
+    lastValue = llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), node.getValue());
 }
 
 void CodeGenerator::visit(VariableExprAST& node) {
@@ -60,6 +64,19 @@ void CodeGenerator::visit(BinaryExprAST& node) {
 
     if (node.getType()->isIntegerTy()) {
         switch (node.getOp()) {
+            case TokenType::Equal: {
+                auto* LHSE = dynamic_cast<VariableExprAST*>(node.getLHS());
+                if (!LHSE) {
+                    throw std::runtime_error("destination of '=' must be a variable");
+                }
+                llvm::Value* Variable = namedValues[LHSE->getName()];
+                if (!Variable) {
+                    throw std::runtime_error("Unknown variable name");
+                }
+                builder->CreateStore(R, Variable);
+                lastValue = R;
+                break;
+            }
             case TokenType::Plus:
                 lastValue = builder->CreateAdd(L, R, "addtmp");
                 break;
@@ -236,6 +253,123 @@ void CodeGenerator::visit(IfStmtAST& node) {
 
     func->insert(func->end(), mergeBB);
     builder->SetInsertPoint(mergeBB);
+}
+
+void CodeGenerator::visit(WhileStmtAST& node) {
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* condBB = llvm::BasicBlock::Create(*context, "while.cond", func);
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(*context, "while.body");
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(*context, "while.end");
+
+    builder->CreateBr(condBB);
+
+    builder->SetInsertPoint(condBB);
+    node.getCond()->accept(*this);
+    llvm::Value* condV = lastValue;
+    if (!condV) {
+        throw std::runtime_error("Invalid while condition");
+    }
+    builder->CreateCondBr(condV, bodyBB, afterBB);
+    condBB = builder->GetInsertBlock();
+
+    func->insert(func->end(), bodyBB);
+    builder->SetInsertPoint(bodyBB);
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+    builder->CreateBr(condBB);
+    bodyBB = builder->GetInsertBlock();
+
+    func->insert(func->end(), afterBB);
+    builder->SetInsertPoint(afterBB);
+}
+
+void CodeGenerator::visit(SwitchStmtAST& node) {
+    node.getCond()->accept(*this);
+    llvm::Value* condV = lastValue;
+    if (!condV) {
+        throw std::runtime_error("Invalid switch condition");
+    }
+
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(*context, "switch.end");
+    llvm::SwitchInst* switchInst = builder->CreateSwitch(condV, afterBB, node.getCases().size());
+
+    for (auto& Case : node.getCases()) {
+        Case.first->accept(*this);
+        auto* caseVal = llvm::dyn_cast<llvm::ConstantInt>(lastValue);
+        if (!caseVal) {
+            throw std::runtime_error("case expression is not a constant integer");
+        }
+        llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(*context, "switch.case", func);
+        switchInst->addCase(caseVal, caseBB);
+        builder->SetInsertPoint(caseBB);
+        for (auto& stmt : Case.second) {
+            stmt->accept(*this);
+        }
+        builder->CreateBr(afterBB);
+    }
+
+    func->insert(func->end(), afterBB);
+    builder->SetInsertPoint(afterBB);
+}
+
+void CodeGenerator::visit(DoWhileStmtAST& node) {
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(*context, "do.body", func);
+    llvm::BasicBlock* condBB = llvm::BasicBlock::Create(*context, "do.cond");
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(*context, "do.end");
+
+    builder->CreateBr(bodyBB);
+
+    builder->SetInsertPoint(bodyBB);
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+    builder->CreateBr(condBB);
+
+    func->insert(func->end(), condBB);
+    builder->SetInsertPoint(condBB);
+    node.getCond()->accept(*this);
+    llvm::Value* condV = lastValue;
+    if (!condV) {
+        throw std::runtime_error("Invalid do-while condition");
+    }
+    builder->CreateCondBr(condV, bodyBB, afterBB);
+
+    func->insert(func->end(), afterBB);
+    builder->SetInsertPoint(afterBB);
+}
+
+void CodeGenerator::visit(ForStmtAST& node) {
+    node.getInit()->accept(*this);
+
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock* condBB = llvm::BasicBlock::Create(*context, "for.cond", func);
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(*context, "for.body");
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(*context, "for.end");
+
+    builder->CreateBr(condBB);
+
+    builder->SetInsertPoint(condBB);
+    node.getCond()->accept(*this);
+    llvm::Value* condV = lastValue;
+    if (!condV) {
+        throw std::runtime_error("Invalid for condition");
+    }
+    builder->CreateCondBr(condV, bodyBB, afterBB);
+
+    func->insert(func->end(), bodyBB);
+    builder->SetInsertPoint(bodyBB);
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+    node.getIncr()->accept(*this);
+    builder->CreateBr(condBB);
+
+    func->insert(func->end(), afterBB);
+    builder->SetInsertPoint(afterBB);
 }
 
 } // namespace Chtholly

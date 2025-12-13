@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
         generator.generate(*func);
     }
 
-    generator.dump();
+    generator.dump(llvm::errs());
 
     return 0;
 }

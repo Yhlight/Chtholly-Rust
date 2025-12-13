@@ -36,6 +36,96 @@ TEST(SemanticAnalyzerTest, UndeclaredFunction) {
     EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
 }
 
+TEST(SemanticAnalyzerTest, ValidWhileStatement) {
+    std::string source = "fn main(): void { let x: bool = true; while (x) {} }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_NO_THROW(analyzer.analyze(functions));
+}
+
+TEST(SemanticAnalyzerTest, InvalidWhileStatementCondition) {
+    std::string source = "fn main(): void { let x: i32 = 1; while (x) {} }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, ValidForStatement) {
+    std::string source = "fn main(): void { for (let i: i32 = 0; i < 10; i = i + 1) {} }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_NO_THROW(analyzer.analyze(functions));
+}
+
+TEST(SemanticAnalyzerTest, InvalidForStatementCondition) {
+    std::string source = "fn main(): void { for (let i: i32 = 0; 1; i = i + 1) {} }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, ValidDoWhileStatement) {
+    std::string source = "fn main(): void { let x: bool = true; do {} while (x); }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_NO_THROW(analyzer.analyze(functions));
+}
+
+TEST(SemanticAnalyzerTest, InvalidDoWhileStatementCondition) {
+    std::string source = "fn main(): void { let x: i32 = 1; do {} while (x); }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, ValidSwitchStatement) {
+    std::string source = "fn main(): void { let x: i32 = 1; switch (x) { case 1: {} } }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_NO_THROW(analyzer.analyze(functions));
+}
+
+TEST(SemanticAnalyzerTest, InvalidSwitchStatementCondition) {
+    std::string source = "fn main(): void { let x: bool = true; switch (x) { case true: {} } }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, InvalidSwitchCaseType) {
+    std::string source = "fn main(): void { let x: i32 = 1; switch (x) { case 1.0: {} } }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, NonConstantSwitchCase) {
+    std::string source = "fn main(): void { let x: i32 = 1; let y: i32 = 2; switch (x) { case y: {} } }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
 TEST(SemanticAnalyzerTest, IncorrectArgumentCount) {
     std::string source = "fn foo(a: i32): void; fn main(): void { foo(); }";
     Lexer lexer(source);

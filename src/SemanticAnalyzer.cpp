@@ -22,6 +22,10 @@ void SemanticAnalyzer::visit(NumberExprAST& node) {
     }
 }
 
+void SemanticAnalyzer::visit(BooleanExprAST& node) {
+    lastType = Type::getBoolTy();
+}
+
 void SemanticAnalyzer::visit(VariableExprAST& node) {
     if (symbolTable.find(node.getName()) == symbolTable.end()) {
         throw std::runtime_error("Undeclared variable: " + node.getName());
@@ -41,6 +45,11 @@ void SemanticAnalyzer::visit(BinaryExprAST& node) {
     }
 
     switch (node.getOp()) {
+        case TokenType::Equal:
+            if (!dynamic_cast<VariableExprAST*>(node.getLHS())) {
+                throw std::runtime_error("Destination of '=' must be a variable");
+            }
+            break;
         case TokenType::Less:
         case TokenType::LessEqual:
         case TokenType::Greater:
@@ -140,6 +149,63 @@ void SemanticAnalyzer::visit(IfStmtAST& node) {
 
     for (auto& stmt : node.getElse()) {
         stmt->accept(*this);
+    }
+}
+
+void SemanticAnalyzer::visit(WhileStmtAST& node) {
+    node.getCond()->accept(*this);
+    if (!lastType->isBoolTy()) {
+        throw std::runtime_error("While condition must be a boolean expression");
+    }
+
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+}
+
+void SemanticAnalyzer::visit(DoWhileStmtAST& node) {
+    node.getCond()->accept(*this);
+    if (!lastType->isBoolTy()) {
+        throw std::runtime_error("Do-while condition must be a boolean expression");
+    }
+
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+}
+
+void SemanticAnalyzer::visit(ForStmtAST& node) {
+    node.getInit()->accept(*this);
+    node.getCond()->accept(*this);
+    if (!lastType->isBoolTy()) {
+        throw std::runtime_error("For condition must be a boolean expression");
+    }
+    node.getIncr()->accept(*this);
+
+    for (auto& stmt : node.getBody()) {
+        stmt->accept(*this);
+    }
+}
+
+void SemanticAnalyzer::visit(SwitchStmtAST& node) {
+    node.getCond()->accept(*this);
+    const Type* condType = lastType;
+
+    if (!condType->isIntegerTy()) {
+        throw std::runtime_error("Switch condition must be an integer expression");
+    }
+
+    for (auto& Case : node.getCases()) {
+        Case.first->accept(*this);
+        if (lastType->getTypeID() != condType->getTypeID()) {
+            throw std::runtime_error("Switch case type mismatch");
+        }
+        if (!dynamic_cast<NumberExprAST*>(Case.first.get())) {
+            throw std::runtime_error("Case expressions must be constant integers");
+        }
+        for (auto& stmt : Case.second) {
+            stmt->accept(*this);
+        }
     }
 }
 
