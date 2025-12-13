@@ -3,6 +3,7 @@
 
 #include <string>
 #include <memory>
+#include <optional>
 #include <vector>
 #include "Token.h"
 #include "Type.h"
@@ -16,17 +17,19 @@ class StmtAST;
 class ExprAST {
 public:
     virtual ~ExprAST() = default;
-    virtual void accept(ASTVisitor& visitor) const = 0;
+    virtual void accept(ASTVisitor& visitor) = 0;
 };
 
 /// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
     double Val;
+    TokenType TokType;
 
 public:
-    NumberExprAST(double Val) : Val(Val) {}
+    NumberExprAST(double Val, TokenType TokType) : Val(Val), TokType(TokType) {}
     double getValue() const { return Val; }
-    void accept(ASTVisitor& visitor) const override;
+    TokenType getTokType() const { return TokType; }
+    void accept(ASTVisitor& visitor) override;
 };
 
 /// VariableExprAST - Expression class for referencing a variable, like "a".
@@ -39,7 +42,7 @@ public:
     const std::string& getName() const { return Name; }
     const Type* getType() const { return Ty; }
     void setType(Type* t) { Ty = t; }
-    void accept(ASTVisitor& visitor) const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
 /// BinaryExprAST - Expression class for a binary operator.
@@ -54,11 +57,11 @@ public:
         : Op(op), LHS(std::move(LHS)), RHS(std::move(RHS)), Ty(nullptr) {}
 
     TokenType getOp() const { return Op; }
-    const ExprAST* getLHS() const { return LHS.get(); }
-    const ExprAST* getRHS() const { return RHS.get(); }
+    ExprAST* getLHS() const { return LHS.get(); }
+    ExprAST* getRHS() const { return RHS.get(); }
     const Type* getType() const { return Ty; }
     void setType(Type* t) { Ty = t; }
-    void accept(ASTVisitor& visitor) const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
 /// CallExprAST - Expression class for function calls.
@@ -72,8 +75,8 @@ public:
         : Callee(Callee), Args(std::move(Args)) {}
 
     const std::string& getCallee() const { return Callee; }
-    const std::vector<std::unique_ptr<ExprAST>>& getArgs() const { return Args; }
-    void accept(ASTVisitor& visitor) const override;
+    std::vector<std::unique_ptr<ExprAST>>& getArgs() { return Args; }
+    void accept(ASTVisitor& visitor) override;
 };
 
 /// PrototypeAST - This class represents the "prototype" for a function,
@@ -91,30 +94,31 @@ public:
     const std::string &getName() const { return Name; }
     const std::vector<std::pair<std::string, Type*>> &getArgs() const { return Args; }
     const Type* getReturnType() const { return ReturnType; }
-    void accept(ASTVisitor& visitor) const;
+    void accept(ASTVisitor& visitor);
 };
 
 /// FunctionAST - This class represents a function definition itself.
 class FunctionAST {
     std::unique_ptr<PrototypeAST> Proto;
-    std::vector<std::unique_ptr<StmtAST>> Body;
+    std::optional<std::vector<std::unique_ptr<StmtAST>>> Body;
 
 public:
     virtual ~FunctionAST() = default;
     FunctionAST(std::unique_ptr<PrototypeAST> Proto,
-                std::vector<std::unique_ptr<StmtAST>> Body)
+                std::optional<std::vector<std::unique_ptr<StmtAST>>> Body)
         : Proto(std::move(Proto)), Body(std::move(Body)) {}
 
-    const PrototypeAST* getProto() const { return Proto.get(); }
-    const std::vector<std::unique_ptr<StmtAST>>& getBody() const { return Body; }
-    void accept(ASTVisitor& visitor) const;
+    PrototypeAST* getProto() const { return Proto.get(); }
+    const std::optional<std::vector<std::unique_ptr<StmtAST>>>& getBody() const { return Body; }
+    bool isDeclaration() const { return !Body.has_value(); }
+    void accept(ASTVisitor& visitor);
 };
 
 /// StmtAST - Base class for all statement nodes.
 class StmtAST {
 public:
     virtual ~StmtAST() = default;
-    virtual void accept(ASTVisitor& visitor) const = 0;
+    virtual void accept(ASTVisitor& visitor) = 0;
 };
 
 /// VarDeclStmtAST - Statement class for a variable declaration like "let x: i32 = 5;".
@@ -131,8 +135,8 @@ public:
     const std::string& getName() const { return Name; }
     const Type* getType() const { return Ty; }
     bool isMutable() const { return IsMutable; }
-    const ExprAST* getInit() const { return Init.get(); }
-    void accept(ASTVisitor& visitor) const override;
+    ExprAST* getInit() const { return Init.get(); }
+    void accept(ASTVisitor& visitor) override;
 };
 
 /// ReturnStmtAST - Statement class for a return statement.
@@ -141,8 +145,8 @@ class ReturnStmtAST : public StmtAST {
 
 public:
     ReturnStmtAST(std::unique_ptr<ExprAST> Value) : Value(std::move(Value)) {}
-    const ExprAST* getValue() const { return Value.get(); }
-    void accept(ASTVisitor& visitor) const override;
+    ExprAST* getValue() const { return Value.get(); }
+    void accept(ASTVisitor& visitor) override;
 };
 
 class ExprStmtAST : public StmtAST {
@@ -150,8 +154,8 @@ class ExprStmtAST : public StmtAST {
 
 public:
     ExprStmtAST(std::unique_ptr<ExprAST> expr) : expr(std::move(expr)) {}
-    const ExprAST* getExpr() const { return expr.get(); }
-    void accept(ASTVisitor& visitor) const override;
+    ExprAST* getExpr() const { return expr.get(); }
+    void accept(ASTVisitor& visitor) override;
 };
 
 class IfStmtAST : public StmtAST {
@@ -165,10 +169,10 @@ public:
               std::vector<std::unique_ptr<StmtAST>> Else)
         : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
 
-    const ExprAST* getCond() const { return Cond.get(); }
-    const std::vector<std::unique_ptr<StmtAST>>& getThen() const { return Then; }
-    const std::vector<std::unique_ptr<StmtAST>>& getElse() const { return Else; }
-    void accept(ASTVisitor& visitor) const override;
+    ExprAST* getCond() const { return Cond.get(); }
+    std::vector<std::unique_ptr<StmtAST>>& getThen() { return Then; }
+    std::vector<std::unique_ptr<StmtAST>>& getElse() { return Else; }
+    void accept(ASTVisitor& visitor) override;
 };
 
 } // namespace Chtholly

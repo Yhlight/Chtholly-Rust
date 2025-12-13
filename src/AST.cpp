@@ -3,43 +3,43 @@
 
 namespace Chtholly {
 
-void NumberExprAST::accept(ASTVisitor& visitor) const {
+void NumberExprAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void VariableExprAST::accept(ASTVisitor& visitor) const {
+void VariableExprAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void BinaryExprAST::accept(ASTVisitor& visitor) const {
+void BinaryExprAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void CallExprAST::accept(ASTVisitor& visitor) const {
+void CallExprAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void PrototypeAST::accept(ASTVisitor& visitor) const {
+void PrototypeAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void FunctionAST::accept(ASTVisitor& visitor) const {
+void FunctionAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void VarDeclStmtAST::accept(ASTVisitor& visitor) const {
+void VarDeclStmtAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void ReturnStmtAST::accept(ASTVisitor& visitor) const {
+void ReturnStmtAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void ExprStmtAST::accept(ASTVisitor& visitor) const {
+void ExprStmtAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 
-void IfStmtAST::accept(ASTVisitor& visitor) const {
+void IfStmtAST::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 

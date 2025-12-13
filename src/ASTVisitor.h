@@ -17,16 +17,16 @@ class IfStmtAST;
 class ASTVisitor {
 public:
     virtual ~ASTVisitor() = default;
-    virtual void visit(const NumberExprAST& node) = 0;
-    virtual void visit(const VariableExprAST& node) = 0;
-    virtual void visit(const BinaryExprAST& node) = 0;
-    virtual void visit(const CallExprAST& node) = 0;
-    virtual void visit(const PrototypeAST& node) = 0;
-    virtual void visit(const FunctionAST& node) = 0;
-    virtual void visit(const VarDeclStmtAST& node) = 0;
-    virtual void visit(const ReturnStmtAST& node) = 0;
-    virtual void visit(const ExprStmtAST& node) = 0;
-    virtual void visit(const IfStmtAST& node) = 0;
+    virtual void visit(NumberExprAST& node) = 0;
+    virtual void visit(VariableExprAST& node) = 0;
+    virtual void visit(BinaryExprAST& node) = 0;
+    virtual void visit(CallExprAST& node) = 0;
+    virtual void visit(PrototypeAST& node) = 0;
+    virtual void visit(FunctionAST& node) = 0;
+    virtual void visit(VarDeclStmtAST& node) = 0;
+    virtual void visit(ReturnStmtAST& node) = 0;
+    virtual void visit(ExprStmtAST& node) = 0;
+    virtual void visit(IfStmtAST& node) = 0;
 };
 
 } // namespace Chtholly

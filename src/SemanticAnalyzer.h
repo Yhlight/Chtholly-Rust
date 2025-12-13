@@ -11,21 +11,22 @@ namespace Chtholly {
 
 class SemanticAnalyzer : public ASTVisitor {
 public:
-    void analyze(const FunctionAST& function);
+    void analyze(std::vector<std::unique_ptr<FunctionAST>>& functions);
 
-    void visit(const NumberExprAST& node) override;
-    void visit(const VariableExprAST& node) override;
-    void visit(const BinaryExprAST& node) override;
-    void visit(const CallExprAST& node) override;
-    void visit(const PrototypeAST& node) override;
-    void visit(const FunctionAST& node) override;
-    void visit(const VarDeclStmtAST& node) override;
-    void visit(const ReturnStmtAST& node) override;
-    void visit(const ExprStmtAST& node) override;
-    void visit(const IfStmtAST& node) override;
+    void visit(NumberExprAST& node) override;
+    void visit(VariableExprAST& node) override;
+    void visit(BinaryExprAST& node) override;
+    void visit(CallExprAST& node) override;
+    void visit(PrototypeAST& node) override;
+    void visit(FunctionAST& node) override;
+    void visit(VarDeclStmtAST& node) override;
+    void visit(ReturnStmtAST& node) override;
+    void visit(ExprStmtAST& node) override;
+    void visit(IfStmtAST& node) override;
 
 private:
     mutable std::map<std::string, const Type*> symbolTable;
+    std::map<std::string, const PrototypeAST*> functionTable;
     const Type* m_currentFunctionReturnType = nullptr;
     const Type* lastType;
 };

@@ -142,8 +142,9 @@ std::unique_ptr<ExprAST> Parser::parsePrimary() {
 
 std::unique_ptr<ExprAST> Parser::parseNumberExpression() {
     double value = std::stod(currentToken.value);
+    auto tokType = currentToken.type;
     consume(currentToken.type);
-    return std::make_unique<NumberExprAST>(value);
+    return std::make_unique<NumberExprAST>(value, tokType);
 }
 
 std::unique_ptr<ExprAST> Parser::parseIdentifierExpression() {
@@ -231,6 +232,11 @@ std::unique_ptr<FunctionAST> Parser::parseFunctionDefinition() {
         consume(TokenType::Fn);
         auto Proto = parsePrototype();
         if (!Proto) return nullptr;
+
+        if (currentToken.type == TokenType::Semicolon) {
+            consume(TokenType::Semicolon);
+            return std::make_unique<FunctionAST>(std::move(Proto), std::nullopt);
+        }
 
         consume(TokenType::LeftBrace);
 

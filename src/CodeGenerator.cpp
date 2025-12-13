@@ -24,15 +24,15 @@ CodeGenerator::CodeGenerator() {
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
 }
 
-void CodeGenerator::generate(const FunctionAST& function) {
+void CodeGenerator::generate(FunctionAST& function) {
     function.accept(*this);
 }
 
-void CodeGenerator::dump() const {
+void CodeGenerator::dump() {
     module->print(llvm::errs(), nullptr);
 }
 
-void CodeGenerator::visit(const NumberExprAST& node) {
+void CodeGenerator::visit(NumberExprAST& node) {
     if (node.getValue() == (int)node.getValue()) {
         lastValue = llvm::ConstantInt::get(*context, llvm::APInt(32, node.getValue(), true));
     } else {
@@ -40,23 +40,22 @@ void CodeGenerator::visit(const NumberExprAST& node) {
     }
 }
 
-void CodeGenerator::visit(const VariableExprAST& node) {
+void CodeGenerator::visit(VariableExprAST& node) {
     llvm::Value* v = namedValues[node.getName()];
     if (!v) {
-        // TODO: Error handling
+        throw std::runtime_error("Unknown variable name: " + node.getName());
     }
     lastValue = builder->CreateLoad(llvmTypeFromChthollyType(node.getType()), v, node.getName());
 }
 
-void CodeGenerator::visit(const BinaryExprAST& node) {
+void CodeGenerator::visit(BinaryExprAST& node) {
     node.getLHS()->accept(*this);
     llvm::Value* L = lastValue;
     node.getRHS()->accept(*this);
     llvm::Value* R = lastValue;
 
     if (!L || !R) {
-        // TODO: Error handling
-        return;
+        throw std::runtime_error("Invalid binary expression");
     }
 
     if (node.getType()->isIntegerTy()) {
@@ -83,8 +82,7 @@ void CodeGenerator::visit(const BinaryExprAST& node) {
                 lastValue = builder->CreateICmpEQ(L, R, "cmptmp");
                 break;
             default:
-                // TODO: Error handling
-                break;
+                throw std::runtime_error("Invalid binary operator");
         }
     } else if (node.getType()->isFloatTy()) {
         switch (node.getOp()) {
@@ -110,17 +108,31 @@ void CodeGenerator::visit(const BinaryExprAST& node) {
                 lastValue = builder->CreateFCmpUEQ(L, R, "cmptmp");
                 break;
             default:
-                // TODO: Error handling
-                break;
+                throw std::runtime_error("Invalid binary operator");
         }
     }
 }
 
-void CodeGenerator::visit(const CallExprAST& node) {
-    // TODO: Implement
+void CodeGenerator::visit(CallExprAST& node) {
+    llvm::Function* calleeF = module->getFunction(node.getCallee());
+    if (!calleeF) {
+        throw std::runtime_error("Unknown function referenced: " + node.getCallee());
+    }
+
+    if (calleeF->arg_size() != node.getArgs().size()) {
+        throw std::runtime_error("Incorrect # arguments passed");
+    }
+
+    std::vector<llvm::Value*> argsV;
+    for (auto& arg : node.getArgs()) {
+        arg->accept(*this);
+        argsV.push_back(lastValue);
+    }
+
+    lastValue = builder->CreateCall(calleeF, argsV, "calltmp");
 }
 
-void CodeGenerator::visit(const PrototypeAST& node) {
+void CodeGenerator::visit(PrototypeAST& node) {
     std::vector<llvm::Type*> ArgTypes;
     for (const auto& arg : node.getArgs()) {
         ArgTypes.push_back(llvmTypeFromChthollyType(arg.second));
@@ -140,7 +152,7 @@ void CodeGenerator::visit(const PrototypeAST& node) {
     lastValue = func;
 }
 
-void CodeGenerator::visit(const FunctionAST& node) {
+void CodeGenerator::visit(FunctionAST& node) {
     node.getProto()->accept(*this);
     llvm::Function* func = static_cast<llvm::Function*>(lastValue);
 
@@ -152,20 +164,21 @@ void CodeGenerator::visit(const FunctionAST& node) {
         namedValues[std::string(arg.getName())] = &arg;
     }
 
-    for (const auto& stmt : node.getBody()) {
-        stmt->accept(*this);
+    if (node.getBody()) {
+        for (auto& stmt : *node.getBody()) {
+            stmt->accept(*this);
+        }
     }
 
     llvm::verifyFunction(*func);
     lastValue = func;
 }
 
-void CodeGenerator::visit(const VarDeclStmtAST& node) {
+void CodeGenerator::visit(VarDeclStmtAST& node) {
     node.getInit()->accept(*this);
     llvm::Value* initVal = lastValue;
     if (!initVal) {
-        // TODO: Error handling
-        return;
+        throw std::runtime_error("Invalid initialization value");
     }
 
     llvm::Function* func = builder->GetInsertBlock()->getParent();
@@ -176,7 +189,7 @@ void CodeGenerator::visit(const VarDeclStmtAST& node) {
     namedValues[node.getName()] = alloca;
 }
 
-void CodeGenerator::visit(const ReturnStmtAST& node) {
+void CodeGenerator::visit(ReturnStmtAST& node) {
     if (node.getValue()) {
         node.getValue()->accept(*this);
         builder->CreateRet(lastValue);
@@ -185,16 +198,15 @@ void CodeGenerator::visit(const ReturnStmtAST& node) {
     }
 }
 
-void CodeGenerator::visit(const ExprStmtAST& node) {
+void CodeGenerator::visit(ExprStmtAST& node) {
     node.getExpr()->accept(*this);
 }
 
-void CodeGenerator::visit(const IfStmtAST& node) {
+void CodeGenerator::visit(IfStmtAST& node) {
     node.getCond()->accept(*this);
     llvm::Value* condV = lastValue;
     if (!condV) {
-        // TODO: Error handling
-        return;
+        throw std::runtime_error("Invalid if condition");
     }
 
     condV = builder->CreateICmpNE(condV, llvm::ConstantInt::get(llvm::Type::getInt1Ty(*context), 0, true), "ifcond");
@@ -208,7 +220,7 @@ void CodeGenerator::visit(const IfStmtAST& node) {
     builder->CreateCondBr(condV, thenBB, elseBB);
 
     builder->SetInsertPoint(thenBB);
-    for (const auto& stmt : node.getThen()) {
+    for (auto& stmt : node.getThen()) {
         stmt->accept(*this);
     }
     builder->CreateBr(mergeBB);
@@ -216,7 +228,7 @@ void CodeGenerator::visit(const IfStmtAST& node) {
 
     func->insert(func->end(), elseBB);
     builder->SetInsertPoint(elseBB);
-    for (const auto& stmt : node.getElse()) {
+    for (auto& stmt : node.getElse()) {
         stmt->accept(*this);
     }
     builder->CreateBr(mergeBB);

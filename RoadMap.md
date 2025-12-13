@@ -35,8 +35,8 @@ This phase focuses on setting up the basic infrastructure for the compiler, incl
     *   [ ] Write integration tests that compile a simple Chtholly program to LLVM IR.
 
 *   **Milestone 1.5: End-to-End "Hello, World!"**
-    *   [ ] Extend the lexer, parser, and code generator to support function calls (e.g., a built-in `println` function).
-    *   [ ] Implement the `main` function entry point.
+    *   [x] Extend the lexer, parser, and code generator to support function calls (e.g., a built-in `println` function).
+    *   [x] Implement the `main` function entry point.
     *   [ ] Achieve the first successful compilation and execution of a "Hello, World!" program.
 
 ---

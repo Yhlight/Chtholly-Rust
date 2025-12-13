@@ -34,13 +34,11 @@ int main(int argc, char** argv) {
     }
 
     Chtholly::SemanticAnalyzer analyzer;
-    for (const auto& func : functions) {
-        try {
-            analyzer.analyze(*func);
-        } catch (const std::runtime_error& e) {
-            std::cerr << "Semantic error: " << e.what() << std::endl;
-            return 1;
-        }
+    try {
+        analyzer.analyze(functions);
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Semantic error: " << e.what() << std::endl;
+        return 1;
     }
 
     Chtholly::CodeGenerator generator;

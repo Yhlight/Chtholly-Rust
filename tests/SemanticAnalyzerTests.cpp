@@ -13,7 +13,7 @@ TEST(SemanticAnalyzerTest, ValidFunction) {
     SemanticAnalyzer analyzer;
 
     ASSERT_EQ(functions.size(), 1);
-    EXPECT_NO_THROW(analyzer.analyze(*functions[0]));
+    EXPECT_NO_THROW(analyzer.analyze(functions));
 }
 
 TEST(SemanticAnalyzerTest, UndeclaredVariable) {
@@ -24,7 +24,34 @@ TEST(SemanticAnalyzerTest, UndeclaredVariable) {
     SemanticAnalyzer analyzer;
 
     ASSERT_EQ(functions.size(), 1);
-    EXPECT_THROW(analyzer.analyze(*functions[0]), std::runtime_error);
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, UndeclaredFunction) {
+    std::string source = "fn main(): void { foo(); }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, IncorrectArgumentCount) {
+    std::string source = "fn foo(a: i32): void; fn main(): void { foo(); }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, IncorrectArgumentType) {
+    std::string source = "fn foo(a: i32): void; fn main(): void { foo(1.0); }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
 }
 
 TEST(SemanticAnalyzerTest, ValidIfStatement) {
@@ -35,7 +62,7 @@ TEST(SemanticAnalyzerTest, ValidIfStatement) {
     SemanticAnalyzer analyzer;
 
     ASSERT_EQ(functions.size(), 1);
-    EXPECT_NO_THROW(analyzer.analyze(*functions[0]));
+    EXPECT_NO_THROW(analyzer.analyze(functions));
 }
 
 TEST(SemanticAnalyzerTest, InvalidIfStatementCondition) {
@@ -46,7 +73,7 @@ TEST(SemanticAnalyzerTest, InvalidIfStatementCondition) {
     SemanticAnalyzer analyzer;
 
     ASSERT_EQ(functions.size(), 1);
-    EXPECT_THROW(analyzer.analyze(*functions[0]), std::runtime_error);
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
 }
 
 TEST(SemanticAnalyzerTest, ValidReturnType) {
@@ -57,7 +84,7 @@ TEST(SemanticAnalyzerTest, ValidReturnType) {
     SemanticAnalyzer analyzer;
 
     ASSERT_EQ(functions.size(), 1);
-    EXPECT_NO_THROW(analyzer.analyze(*functions[0]));
+    EXPECT_NO_THROW(analyzer.analyze(functions));
 }
 
 TEST(SemanticAnalyzerTest, InvalidReturnType) {
@@ -68,7 +95,7 @@ TEST(SemanticAnalyzerTest, InvalidReturnType) {
     SemanticAnalyzer analyzer;
 
     ASSERT_EQ(functions.size(), 1);
-    EXPECT_THROW(analyzer.analyze(*functions[0]), std::runtime_error);
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
 }
 
 TEST(SemanticAnalyzerTest, RedeclaredVariable) {
@@ -79,5 +106,5 @@ TEST(SemanticAnalyzerTest, RedeclaredVariable) {
     SemanticAnalyzer analyzer;
 
     ASSERT_EQ(functions.size(), 1);
-    EXPECT_THROW(analyzer.analyze(*functions[0]), std::runtime_error);
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
 }

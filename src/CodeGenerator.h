@@ -16,19 +16,19 @@ class CodeGenerator : public ASTVisitor {
 public:
     CodeGenerator();
 
-    void generate(const FunctionAST& function);
-    void dump() const;
+    void generate(FunctionAST& function);
+    void dump();
 
-    void visit(const NumberExprAST& node) override;
-    void visit(const VariableExprAST& node) override;
-    void visit(const BinaryExprAST& node) override;
-    void visit(const CallExprAST& node) override;
-    void visit(const PrototypeAST& node) override;
-    void visit(const FunctionAST& node) override;
-    void visit(const VarDeclStmtAST& node) override;
-    void visit(const ReturnStmtAST& node) override;
-    void visit(const ExprStmtAST& node) override;
-    void visit(const IfStmtAST& node) override;
+    void visit(NumberExprAST& node) override;
+    void visit(VariableExprAST& node) override;
+    void visit(BinaryExprAST& node) override;
+    void visit(CallExprAST& node) override;
+    void visit(PrototypeAST& node) override;
+    void visit(FunctionAST& node) override;
+    void visit(VarDeclStmtAST& node) override;
+    void visit(ReturnStmtAST& node) override;
+    void visit(ExprStmtAST& node) override;
+    void visit(IfStmtAST& node) override;
 
 private:
     llvm::Type* llvmTypeFromChthollyType(const Type* type);

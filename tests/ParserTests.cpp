@@ -17,7 +17,7 @@ TEST(ParserTest, ParseLetStatementWithType) {
     auto* func = functions[0].get();
     ASSERT_NE(func, nullptr);
 
-    const auto& body = func->getBody();
+    const auto& body = func->getBody().value();
     ASSERT_EQ(body.size(), 1);
 
     auto* var_decl = dynamic_cast<VarDeclStmtAST*>(body[0].get());
@@ -63,7 +63,7 @@ TEST(ParserTest, ParseBinaryExpression) {
 
     ASSERT_EQ(functions.size(), 1);
     auto* func = functions[0].get();
-    const auto& body = func->getBody();
+    const auto& body = func->getBody().value();
     ASSERT_EQ(body.size(), 1);
 
     auto* var_decl = dynamic_cast<VarDeclStmtAST*>(body[0].get());
@@ -90,17 +90,17 @@ TEST(ParserTest, ParseCallExpression) {
 
     ASSERT_EQ(functions.size(), 1);
     auto* func = functions[0].get();
-    const auto& body = func->getBody();
+    const auto& body = func->getBody().value();
     ASSERT_EQ(body.size(), 1);
 
     auto* call_stmt = dynamic_cast<ExprStmtAST*>(body[0].get());
     ASSERT_NE(call_stmt, nullptr);
 
-    auto* call_expr = dynamic_cast<const CallExprAST*>(call_stmt->getExpr());
+    auto* call_expr = dynamic_cast<CallExprAST*>(call_stmt->getExpr());
     ASSERT_NE(call_expr, nullptr);
     EXPECT_EQ(call_expr->getCallee(), "foo");
 
-    const auto& args = call_expr->getArgs();
+    auto& args = call_expr->getArgs();
     ASSERT_EQ(args.size(), 2);
 }
 
@@ -112,7 +112,7 @@ TEST(ParserTest, ParseIfStatement) {
 
     ASSERT_EQ(functions.size(), 1);
     auto* func = functions[0].get();
-    const auto& body = func->getBody();
+    const auto& body = func->getBody().value();
     ASSERT_EQ(body.size(), 1);
 
     auto* if_stmt = dynamic_cast<IfStmtAST*>(body[0].get());
