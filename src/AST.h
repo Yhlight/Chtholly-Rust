@@ -32,10 +32,13 @@ public:
 /// VariableExprAST - Expression class for referencing a variable, like "a".
 class VariableExprAST : public ExprAST {
     std::string Name;
+    Type* Ty;
 
 public:
-    VariableExprAST(const std::string &Name) : Name(Name) {}
+    VariableExprAST(const std::string &Name) : Name(Name), Ty(nullptr) {}
     const std::string& getName() const { return Name; }
+    const Type* getType() const { return Ty; }
+    void setType(Type* t) { Ty = t; }
     void accept(ASTVisitor& visitor) const override;
 };
 
@@ -43,15 +46,18 @@ public:
 class BinaryExprAST : public ExprAST {
     TokenType Op;
     std::unique_ptr<ExprAST> LHS, RHS;
+    Type* Ty;
 
 public:
     BinaryExprAST(TokenType op, std::unique_ptr<ExprAST> LHS,
                   std::unique_ptr<ExprAST> RHS)
-        : Op(op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+        : Op(op), LHS(std::move(LHS)), RHS(std::move(RHS)), Ty(nullptr) {}
 
     TokenType getOp() const { return Op; }
     const ExprAST* getLHS() const { return LHS.get(); }
     const ExprAST* getRHS() const { return RHS.get(); }
+    const Type* getType() const { return Ty; }
+    void setType(Type* t) { Ty = t; }
     void accept(ASTVisitor& visitor) const override;
 };
 

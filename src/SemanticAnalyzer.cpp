@@ -20,7 +20,8 @@ void SemanticAnalyzer::visit(const VariableExprAST& node) {
     if (symbolTable.find(node.getName()) == symbolTable.end()) {
         throw std::runtime_error("Undeclared variable: " + node.getName());
     }
-    lastType = symbolTable[node.getName()];
+    lastType = symbolTable.at(node.getName());
+    const_cast<VariableExprAST&>(node).setType(const_cast<Type*>(lastType));
 }
 
 void SemanticAnalyzer::visit(const BinaryExprAST& node) {
@@ -45,6 +46,8 @@ void SemanticAnalyzer::visit(const BinaryExprAST& node) {
         default:
             lastType = LHSType;
     }
+
+    const_cast<BinaryExprAST&>(node).setType(const_cast<Type*>(lastType));
 }
 
 void SemanticAnalyzer::visit(const CallExprAST& node) {

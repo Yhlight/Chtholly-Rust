@@ -1,5 +1,5 @@
 # src/CMakeLists.txt
-add_library(chtholly_lib lib.cpp Lexer.cpp Parser.cpp AST.cpp SemanticAnalyzer.cpp Type.cpp Token.cpp)
+add_library(chtholly_lib lib.cpp Lexer.cpp Parser.cpp AST.cpp SemanticAnalyzer.cpp Type.cpp Token.cpp CodeGenerator.cpp)
 
 # Add LLVM include dirs and definitions
 target_include_directories(chtholly_lib PRIVATE ${LLVM_INCLUDE_DIRS})
@@ -13,4 +13,5 @@ llvm_map_components_to_libnames(llvm_libs core support analysis irreader mcjit)
 target_link_libraries(chtholly_lib PRIVATE ${llvm_libs})
 
 add_executable(chtholly_compiler driver.cpp)
+target_include_directories(chtholly_compiler PRIVATE ${LLVM_INCLUDE_DIRS})
 target_link_libraries(chtholly_compiler PRIVATE chtholly_lib)

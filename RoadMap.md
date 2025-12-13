@@ -29,9 +29,9 @@ This phase focuses on setting up the basic infrastructure for the compiler, incl
     *   [x] Write unit tests to check for semantic errors like undeclared variables or type mismatches.
 
 *   **Milestone 1.4: LLVM IR Generation**
-    *   [ ] Set up the LLVM backend.
-    *   [ ] Implement a code generator that traverses the AST and generates LLVM Intermediate Representation (IR).
-    *   [ ] Focus on generating code for simple variable declarations and assignments.
+    *   [x] Set up the LLVM backend.
+    *   [x] Implement a code generator that traverses the AST and generates LLVM Intermediate Representation (IR).
+    *   [x] Focus on generating code for simple variable declarations and assignments.
     *   [ ] Write integration tests that compile a simple Chtholly program to LLVM IR.
 
 *   **Milestone 1.5: End-to-End "Hello, World!"**
