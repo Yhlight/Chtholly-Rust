@@ -9,6 +9,18 @@
 
 namespace Chtholly {
 
+enum class OwnershipState {
+    Owned,
+    Moved
+};
+
+struct Symbol {
+    const Type* type;
+    OwnershipState state;
+    bool isMutable;
+};
+
+
 class SemanticAnalyzer : public ASTVisitor {
 public:
     void analyze(std::vector<std::unique_ptr<FunctionAST>>& functions);
@@ -25,7 +37,7 @@ public:
     void visit(IfStmtAST& node) override;
 
 private:
-    mutable std::map<std::string, const Type*> symbolTable;
+    mutable std::map<std::string, Symbol> symbolTable;
     std::map<std::string, const PrototypeAST*> functionTable;
     const Type* m_currentFunctionReturnType = nullptr;
     const Type* lastType;

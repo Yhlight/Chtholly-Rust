@@ -46,9 +46,35 @@ void CodeGenerator::visit(VariableExprAST& node) {
         throw std::runtime_error("Unknown variable name: " + node.getName());
     }
     lastValue = builder->CreateLoad(llvmTypeFromChthollyType(node.getType()), v, node.getName());
+
+    if (node.isMove()) {
+        // For now, move is the same as copy for primitive types.
+        // Later, this is where we would invalidate the source.
+    }
 }
 
 void CodeGenerator::visit(BinaryExprAST& node) {
+    if (node.getOp() == TokenType::Equal) {
+        VariableExprAST* LHSE = static_cast<VariableExprAST*>(node.getLHS());
+        if (!LHSE) {
+            throw std::runtime_error("destination of '=' must be a variable");
+        }
+        node.getRHS()->accept(*this);
+        llvm::Value* val = lastValue;
+        if (!val) {
+            throw std::runtime_error("Invalid value in assignment");
+        }
+
+        llvm::Value* variable = namedValues[LHSE->getName()];
+        if (!variable) {
+            throw std::runtime_error("Unknown variable name: " + LHSE->getName());
+        }
+        builder->CreateStore(val, variable);
+        lastValue = val;
+        return;
+    }
+
+
     node.getLHS()->accept(*this);
     llvm::Value* L = lastValue;
     node.getRHS()->accept(*this);

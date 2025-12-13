@@ -27,6 +27,39 @@ TEST(SemanticAnalyzerTest, UndeclaredVariable) {
     EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
 }
 
+TEST(SemanticAnalyzerTest, UseAfterMove) {
+    std::string source = "fn main(): void { let x: i32 = 10; let y: i32 = x; let z: i32 = x; }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+
+    ASSERT_EQ(functions.size(), 1);
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
+TEST(SemanticAnalyzerTest, ValidMove) {
+    std::string source = "fn main(): void { let x: i32 = 10; let y: i32 = x; }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+
+    ASSERT_EQ(functions.size(), 1);
+    EXPECT_NO_THROW(analyzer.analyze(functions));
+}
+
+TEST(SemanticAnalyzerTest, FunctionCallMove) {
+    std::string source = "fn foo(a: i32): void; fn main(): void { let x: i32 = 10; foo(x); let y: i32 = x; }";
+    Lexer lexer(source);
+    Parser parser(lexer);
+    auto functions = parser.parse();
+    SemanticAnalyzer analyzer;
+
+    ASSERT_EQ(functions.size(), 2);
+    EXPECT_THROW(analyzer.analyze(functions), std::runtime_error);
+}
+
 TEST(SemanticAnalyzerTest, UndeclaredFunction) {
     std::string source = "fn main(): void { foo(); }";
     Lexer lexer(source);

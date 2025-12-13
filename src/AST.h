@@ -36,12 +36,15 @@ public:
 class VariableExprAST : public ExprAST {
     std::string Name;
     Type* Ty;
+    bool m_isMove = false;
 
 public:
     VariableExprAST(const std::string &Name) : Name(Name), Ty(nullptr) {}
     const std::string& getName() const { return Name; }
     const Type* getType() const { return Ty; }
     void setType(Type* t) { Ty = t; }
+    bool isMove() const { return m_isMove; }
+    void setMove(bool isMove) { m_isMove = isMove; }
     void accept(ASTVisitor& visitor) override;
 };
 

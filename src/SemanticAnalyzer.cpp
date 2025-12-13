@@ -23,10 +23,14 @@ void SemanticAnalyzer::visit(NumberExprAST& node) {
 }
 
 void SemanticAnalyzer::visit(VariableExprAST& node) {
-    if (symbolTable.find(node.getName()) == symbolTable.end()) {
+    auto it = symbolTable.find(node.getName());
+    if (it == symbolTable.end()) {
         throw std::runtime_error("Undeclared variable: " + node.getName());
     }
-    lastType = symbolTable.at(node.getName());
+    if (it->second.state == OwnershipState::Moved) {
+        throw std::runtime_error("Variable " + node.getName() + " has been moved");
+    }
+    lastType = it->second.type;
     node.setType(const_cast<Type*>(lastType));
 }
 
@@ -35,6 +39,27 @@ void SemanticAnalyzer::visit(BinaryExprAST& node) {
     const Type* LHSType = lastType;
     node.getRHS()->accept(*this);
     const Type* RHSType = lastType;
+
+    if (node.getOp() == TokenType::Equal) {
+        if (auto* var = dynamic_cast<VariableExprAST*>(node.getLHS())) {
+            auto it = symbolTable.find(var->getName());
+            if (it == symbolTable.end()) {
+                throw std::runtime_error("Undeclared variable: " + var->getName());
+            }
+            if (!it->second.isMutable) {
+                throw std::runtime_error("Cannot assign to immutable variable: " + var->getName());
+            }
+            if (auto* rhsVar = dynamic_cast<VariableExprAST*>(node.getRHS())) {
+                auto rhsIt = symbolTable.find(rhsVar->getName());
+                if (rhsIt != symbolTable.end()) {
+                    rhsIt->second.state = OwnershipState::Moved;
+                    rhsVar->setMove(true);
+                }
+            }
+            it->second.state = OwnershipState::Owned;
+        }
+    }
+
 
     if (LHSType->getTypeID() != RHSType->getTypeID()) {
         throw std::runtime_error("Type mismatch in binary expression");
@@ -71,6 +96,13 @@ void SemanticAnalyzer::visit(CallExprAST& node) {
         if (lastType->getTypeID() != proto->getArgs()[i].second->getTypeID()) {
             throw std::runtime_error("Type mismatch in argument " + std::to_string(i) + " of call to " + node.getCallee());
         }
+        if (auto* var = dynamic_cast<VariableExprAST*>(node.getArgs()[i].get())) {
+            auto it = symbolTable.find(var->getName());
+            if (it != symbolTable.end()) {
+                it->second.state = OwnershipState::Moved;
+                var->setMove(true);
+            }
+        }
     }
 
     lastType = proto->getReturnType();
@@ -85,7 +117,7 @@ void SemanticAnalyzer::visit(FunctionAST& node) {
     m_currentFunctionReturnType = node.getProto()->getReturnType();
 
     for (const auto& arg : node.getProto()->getArgs()) {
-        symbolTable[arg.first] = arg.second;
+        symbolTable[arg.first] = {arg.second, OwnershipState::Owned, false};
     }
 
     if (node.getBody()) {
@@ -100,13 +132,21 @@ void SemanticAnalyzer::visit(VarDeclStmtAST& node) {
         throw std::runtime_error("Variable already declared: " + node.getName());
     }
     node.getInit()->accept(*this);
+    if (auto* var = dynamic_cast<VariableExprAST*>(node.getInit())) {
+        auto it = symbolTable.find(var->getName());
+        if (it != symbolTable.end()) {
+            it->second.state = OwnershipState::Moved;
+            var->setMove(true);
+        }
+    }
+    const Type* initType = lastType;
     if (node.getType()) {
-        if (node.getType()->getTypeID() != lastType->getTypeID()) {
+        if (node.getType()->getTypeID() != initType->getTypeID()) {
             throw std::runtime_error("Type mismatch in variable declaration");
         }
-        symbolTable[node.getName()] = node.getType();
+        symbolTable[node.getName()] = {node.getType(), OwnershipState::Owned, node.isMutable()};
     } else {
-        symbolTable[node.getName()] = lastType;
+        symbolTable[node.getName()] = {initType, OwnershipState::Owned, node.isMutable()};
     }
 }
 

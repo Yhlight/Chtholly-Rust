@@ -46,9 +46,9 @@ This phase focuses on setting up the basic infrastructure for the compiler, incl
 This is the most critical phase, focusing on Chtholly's core memory safety features.
 
 *   **Milestone 2.1: Implementing Ownership and Move Semantics**
-    *   [ ] Enhance the semantic analyzer to track the ownership of variables.
-    *   [ ] Implement move semantics for assignments and function arguments.
-    *   [ ] The compiler should invalidate a variable after its value has been moved.
+    *   [x] Enhance the semantic analyzer to track the ownership of variables.
+    *   [x] Implement move semantics for assignments and function arguments.
+    *   [x] The compiler should invalidate a variable after its value has been moved.
     *   [ ] Write tests to ensure that using a moved variable results in a compile-time error.
 
 *   **Milestone 2.2: Implementing Borrowing and References**
